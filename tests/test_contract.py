@@ -264,3 +264,121 @@ def test_md3_counts_in_result() -> None:
     assert result["conditions"]["A"]["n_units_active"] == 12
 
 
+def test_schema_null_trial_index() -> None:
+    units, responses = make_tables()
+    responses["trial_index"] = responses["trial_index"].astype("Int64")
+    responses.loc[0, "trial_index"] = pd.NA
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert "trial_index" in str(exc)
+    assert exc.found == 1
+    assert exc.required == 0
+
+
+def test_md4_null_stim_time() -> None:
+    units, responses = make_tables()
+    responses["stim_time_ns"] = responses["stim_time_ns"].astype("Int64")
+    responses.loc[0, "stim_time_ns"] = pd.NA
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD4
+    assert "null" in str(exc)
+    assert exc.found == 1
+    assert exc.required == 0
+
+
+def test_md4_not_increasing() -> None:
+    units, responses = make_tables()
+    t4_val = int(responses.loc[responses["trial_index"] == 4, "stim_time_ns"].iloc[0])
+    responses.loc[responses["trial_index"] == 5, "stim_time_ns"] = t4_val
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD4
+    assert "strictly increasing" in str(exc)
+    assert exc.found == t4_val
+    assert exc.required == t4_val
+
+
+def test_md4_inconsistent_stim_time_across_units() -> None:
+    units, responses = make_tables()
+    mask = (responses["unit_id"] == "u00") & (responses["trial_index"] == 3)
+    responses.loc[mask, "stim_time_ns"] = responses.loc[mask, "stim_time_ns"] + 1
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD4
+    assert "trial_index 3" in str(exc)
+    assert exc.found == 2
+    assert exc.required == 1
+
+
+def test_md4_inconsistent_condition_across_units() -> None:
+    units, responses = make_tables(n_units=9, conditions=("A", "B"))
+    mask = (responses["unit_id"] == "u00") & (responses["trial_index"] == 3)
+    responses.loc[mask, "condition"] = "B"
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD4
+    assert "trial_index 3" in str(exc)
+    assert exc.found == 2
+    assert exc.required == 1
+
+
+def test_md5_duplicate_row() -> None:
+    units, responses = make_tables()
+    dup = responses[(responses["unit_id"] == "u00") & (responses["trial_index"] == 7)].copy()
+    responses = pd.concat([responses, dup], ignore_index=True)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD5
+    assert exc.found == 2
+    assert exc.required == 1
+    assert "u00" in str(exc)
+
+
+def test_md6_window_below_minimum() -> None:
+    units, responses = make_tables()
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=0.4)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD6
+    assert str(exc) == "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s."
+    assert exc.found == 0.4
+    assert exc.required == 2.0
+
+
+def test_md6_isi_too_short() -> None:
+    units, responses = make_tables(isi_s=1.5)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD6
+    assert exc.found == 1.5
+    assert "Trial 0" in str(exc)
+
+
+def test_md6_load_duration_tightens() -> None:
+    units, responses = make_tables(isi_s=3.0)
+    validate(units, responses, MEASURES, post_stim_window_s=2.0, load_duration_s=0.0)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, load_duration_s=1.5)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD6
+    assert exc.found == 1.5
+
+
+def test_result_reports_isi() -> None:
+    units, responses = make_tables()
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["min_inter_stimulus_s"] == 5.0
+    assert result["post_stim_window_s"] == 2.0
+    assert result["load_duration_s"] == 0.0
+
+
+

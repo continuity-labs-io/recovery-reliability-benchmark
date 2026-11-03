@@ -19,6 +19,7 @@ MD2_MUST = 10
 MD2_SHOULD = 20
 MD3_MUST = 8
 MD3_SHOULD = 15
+MD6_MUST = 2.0
 
 
 class Requirement(str, Enum):
@@ -101,7 +102,13 @@ def validate(
     load_duration_s: float = 0.0,
     extra_forbidden: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Validate units and responses (SCHEMA and MD-1..MD-3; MD-4..MD-6 are added in Step 3)."""
+    """Validate units and responses against SCHEMA and MD-1 through MD-6.
+
+    For MD-6, every trial except the last in time must have at least
+    ``post_stim_window_s`` seconds available before the next stimulus onset
+    (after subtracting ``load_duration_s``). The last trial is not checked
+    because the input tables do not record a recording-end timestamp.
+    """
     units = units.copy()
     responses = responses.copy()
 
@@ -153,6 +160,15 @@ def validate(
             Requirement.SCHEMA,
             f"{count} responses rows reference unit_id '{bad_id}', which is not in units.",
             found=count,
+            required=0,
+        )
+
+    null_trial_index = int(responses["trial_index"].isna().sum())
+    if null_trial_index > 0:
+        raise ContractViolation(
+            Requirement.SCHEMA,
+            f"{null_trial_index} responses rows have a null trial_index, requires 0.",
+            found=null_trial_index,
             required=0,
         )
 
@@ -210,6 +226,96 @@ def validate(
     )
     n_units_active = max(conditions_info[c]["n_units_active"] for c in evaluated_conditions)
 
+    null_stim = int(responses["stim_time_ns"].isna().sum())
+    if null_stim > 0:
+        raise ContractViolation(
+            Requirement.MD4,
+            f"{null_stim} responses rows have a null stim_time_ns, requires 0.",
+            found=null_stim,
+            required=0,
+        )
+
+    for trial_idx, trial_rows in responses.groupby("trial_index"):
+        n_cond = int(trial_rows["condition"].nunique(dropna=False))
+        if n_cond != 1:
+            vals = ", ".join(f"'{v}'" for v in sorted(trial_rows["condition"].astype(str).unique()))
+            raise ContractViolation(
+                Requirement.MD4,
+                f"trial_index {int(trial_idx)} has {n_cond} distinct condition values ({vals}), requires 1.",
+                found=n_cond,
+                required=1,
+            )
+
+    for trial_idx, trial_rows in responses.groupby("trial_index"):
+        n_times = int(trial_rows["stim_time_ns"].nunique())
+        if n_times != 1:
+            raise ContractViolation(
+                Requirement.MD4,
+                f"trial_index {int(trial_idx)} has {n_times} distinct stim_time_ns values, requires 1.",
+                found=n_times,
+                required=1,
+            )
+
+    trials = (
+        responses[["trial_index", "condition", "stim_time_ns"]]
+        .drop_duplicates()
+        .sort_values("trial_index")
+        .reset_index(drop=True)
+    )
+    for cond, cond_trials in trials.groupby("condition", sort=False):
+        prev_trial: int | None = None
+        prev_time: int | None = None
+        for row in cond_trials.itertuples(index=False):
+            curr_trial = int(row.trial_index)
+            curr_time = int(row.stim_time_ns)
+            if prev_time is not None and curr_time <= prev_time:
+                raise ContractViolation(
+                    Requirement.MD4,
+                    f"stim_time_ns is not strictly increasing within condition '{cond}': "
+                    f"trial {curr_trial} at {curr_time} ns does not exceed trial {prev_trial} at {prev_time} ns.",
+                    found=curr_time,
+                    required=prev_time,
+                )
+            prev_trial = curr_trial
+            prev_time = curr_time
+
+    pair_counts = responses.groupby(["unit_id", "trial_index"], sort=False).size()
+    dup_pairs = pair_counts[pair_counts > 1]
+    if not dup_pairs.empty:
+        (bad_unit, bad_trial), count = dup_pairs.index[0], int(dup_pairs.iloc[0])
+        raise ContractViolation(
+            Requirement.MD5,
+            f"{count} rows for trial {int(bad_trial)} on unit '{bad_unit}', requires 1.",
+            found=count,
+            required=1,
+        )
+
+    if post_stim_window_s < MD6_MUST:
+        raise ContractViolation(
+            Requirement.MD6,
+            f"Post-stimulus window {post_stim_window_s:.1f} s, requires {MD6_MUST:.1f} s.",
+            found=float(post_stim_window_s),
+            required=MD6_MUST,
+        )
+
+    trials_by_time = trials.sort_values(["stim_time_ns", "trial_index"]).reset_index(drop=True)
+    onsets = trials_by_time["stim_time_ns"].astype(int).to_list()
+    trial_indices = trials_by_time["trial_index"].astype(int).to_list()
+    gaps_s: list[float] = []
+    for i in range(len(onsets) - 1):
+        gap_s = (onsets[i + 1] - onsets[i]) / 1e9
+        gaps_s.append(gap_s)
+        available = gap_s - load_duration_s
+        if available < post_stim_window_s:
+            raise ContractViolation(
+                Requirement.MD6,
+                f"Trial {trial_indices[i]} has {available:.3f} s available before the next stimulus "
+                f"(gap {gap_s:.3f} s minus load {load_duration_s:.3f} s), requires {post_stim_window_s:.3f} s.",
+                found=float(available),
+                required=float(post_stim_window_s),
+            )
+    min_inter_stimulus_s = float(min(gaps_s))
+
     return {
         "spec_version": SPEC_VERSION,
         "n_preparations": int(units["preparation_id"].nunique()),
@@ -222,4 +328,7 @@ def validate(
         "trials_per_unit_condition": float(responses.groupby(["unit_id", "condition"]).size().median()),
         "conditions": conditions_info,
         "evaluated_conditions": evaluated_conditions,
+        "post_stim_window_s": float(post_stim_window_s),
+        "load_duration_s": float(load_duration_s),
+        "min_inter_stimulus_s": min_inter_stimulus_s,
     }
