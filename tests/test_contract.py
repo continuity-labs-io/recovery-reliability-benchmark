@@ -1,4 +1,4 @@
-"""Tests for the Recovery Reliability Benchmark data contract (Step 1: MD-0 slice)."""
+"""Tests for the Recovery Reliability Benchmark data contract."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def test_md0_missing_units_column() -> None:
     units = units.drop(columns=["preparation_id"])
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "preparation_id" in str(exc_info.value)
 
 
@@ -54,7 +54,7 @@ def test_md0_missing_responses_column() -> None:
     responses = responses.drop(columns=["condition"])
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "condition" in str(exc_info.value)
 
 
@@ -62,7 +62,7 @@ def test_md0_measure_not_a_column() -> None:
     units, responses = make_tables()
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, ["missing"], post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "missing" in str(exc_info.value)
 
 
@@ -70,12 +70,12 @@ def test_md0_forbidden_measure() -> None:
     units, responses = make_tables()
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, ["condition"], post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "condition" in str(exc_info.value)
 
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, ["tau"], post_stim_window_s=2.0, extra_forbidden={"tau"})
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "tau" in str(exc_info.value)
 
 
@@ -84,7 +84,7 @@ def test_md0_measure_not_numeric() -> None:
     responses["tau"] = "x"
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "tau" in str(exc_info.value)
 
 
@@ -93,7 +93,7 @@ def test_md0_measure_all_null() -> None:
     responses["tau"] = float("nan")
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "tau" in str(exc_info.value)
 
 
@@ -102,7 +102,7 @@ def test_md0_duplicate_unit_id() -> None:
     units = pd.concat([units, units.iloc[[0]]], ignore_index=True)
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "u00" in str(exc_info.value)
 
 
@@ -113,7 +113,7 @@ def test_md0_orphan_response() -> None:
     responses = pd.concat([responses, orphan], ignore_index=True)
     with pytest.raises(ContractViolation) as exc_info:
         validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert exc_info.value.requirement == "MD-0"
+    assert exc_info.value.requirement == "SCHEMA"
     assert "ghost" in str(exc_info.value)
 
 
@@ -167,4 +167,100 @@ def test_contract_violation_accepts_string_or_enum() -> None:
     for exc in (ContractViolation("MD-2", "m"), ContractViolation(Requirement.MD2, "m")):
         assert exc.requirement is Requirement.MD2
         assert exc.to_dict()["requirement"] == "MD-2"
+
+
+def test_md1_two_preparations() -> None:
+    units, responses = make_tables()
+    units.loc[units.index[-1], "preparation_id"] = "prep1"
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD1
+    assert "preparation_id" in str(exc)
+    assert exc.found == 2
+    assert exc.required == 1
+
+
+def test_md1_two_sessions() -> None:
+    units, responses = make_tables()
+    units.loc[units.index[-1], "session_id"] = "sess1"
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD1
+    assert "session_id" in str(exc)
+    assert exc.found == 2
+    assert exc.required == 1
+
+
+def test_md1_two_recordings() -> None:
+    units, responses = make_tables()
+    units.loc[units.index[-1], "recording_id"] = "rec1"
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD1
+    assert "recording_id" in str(exc)
+    assert exc.found == 2
+    assert exc.required == 1
+
+
+def test_md2_too_few_trials() -> None:
+    units, responses = make_tables(n_trials=6)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD2
+    assert exc.found == 6
+    assert exc.required == 10
+
+
+def test_md2_passes_if_any_condition_has_enough() -> None:
+    units, responses = make_tables(n_trials=10, conditions=("A", "B"))
+    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 15))].reset_index(drop=True)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conditions"]["B"]["n_trials"] == 5
+    assert result["evaluated_conditions"] == ["A"]
+
+
+def test_md3_too_few_units() -> None:
+    units, responses = make_tables(n_units=5)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD3
+    assert exc.found == 5
+    assert exc.required == 8
+
+
+def test_md3_missing_row_makes_unit_inactive() -> None:
+    units, responses = make_tables()
+    u00_first = responses.index[responses["unit_id"] == "u00"][0]
+    responses = responses.drop(index=u00_first).reset_index(drop=True)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD3
+    assert exc.found == 7
+    assert exc.required == 8
+
+
+def test_md3_null_measure_makes_unit_inactive() -> None:
+    units, responses = make_tables()
+    u00_first = responses.index[responses["unit_id"] == "u00"][0]
+    responses.loc[u00_first, "tau"] = float("nan")
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.MD3
+    assert exc.found == 7
+    assert exc.required == 8
+
+
+def test_md3_counts_in_result() -> None:
+    units, responses = make_tables(n_units=12)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["n_units_active"] == 12
+    assert result["conditions"]["A"]["n_units_active"] == 12
+
 
