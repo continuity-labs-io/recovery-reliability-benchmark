@@ -3,6 +3,14 @@
 
 A public benchmark testing whether recovery kinetics after a standardized conditioning load are reliable enough to serve as a functional endpoint.
 
+## What is being benchmarked
+
+A benchmark normally holds the data fixed and varies the method. This one is the other way around: the computation is fixed and every lab brings different data, which makes it closer to an inter-laboratory ring trial than to an ImageNet-style benchmark.
+
+What gets scored is the measures. A recovery measure (a time constant, an amplitude, a fraction recovered) receives a reliability ceiling on each contributed dataset, and the output is which measures hold up and where. The contributed datasets are the test set. [SPEC.md](SPEC.md) defines what makes a dataset admissible to that test set, the same way ImageNet defines what counts as a labeled image; without it, a result on one dataset and a result on another are not comparable.
+
+Today the repository checks admissibility (`rrb-check`) and describes the conditioning load ([protocol.py](src/recovery_reliability_benchmark/protocol.py)). The ceiling computation ([METHOD.md](METHOD.md)) and the ability to submit a new measure and have it scored against the corpus come next.
+
 ## Quickstart
 
 ```bash
