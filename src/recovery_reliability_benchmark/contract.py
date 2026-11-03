@@ -21,6 +21,9 @@ MD3_MUST = 8
 MD3_SHOULD = 15
 MD6_MUST = 2.0
 
+CONFORMING = "conforming"
+FULLY_CONFORMING = "fully_conforming"
+
 
 class Requirement(str, Enum):
     """Minimum Dataset (MD) requirements from SPEC.md.
@@ -104,6 +107,10 @@ def validate(
 ) -> dict[str, Any]:
     """Validate units and responses against SCHEMA and MD-1 through MD-6.
 
+    Each measure must vary within at least one (unit_id, condition) group:
+    a column constant within units but varying across them (an electrode
+    position, an identifier) would score as perfectly reliable.
+
     For MD-6, every trial except the last in time must have at least
     ``post_stim_window_s`` seconds available before the next stimulus onset
     (after subtracting ``load_duration_s``). The last trial is not checked
@@ -172,6 +179,20 @@ def validate(
             required=0,
         )
 
+    unit_cond_groups = responses.groupby(["unit_id", "condition"], sort=False, dropna=False)
+    for measure in measures:
+        group_nuni = [
+            int(grp[measure].nunique(dropna=True))
+            for _, grp in unit_cond_groups
+            if int(grp[measure].notna().sum()) >= 2
+        ]
+        if group_nuni and all(n <= 1 for n in group_nuni):
+            raise ContractViolation(
+                Requirement.SCHEMA,
+                f"measure '{measure}' is constant within every (unit_id, condition) group "
+                "and carries no trial-to-trial information, requires variation in at least one group.",
+            )
+
     for col in ("preparation_id", "session_id", "recording_id"):
         n_distinct = int(units[col].nunique())
         if n_distinct != 1:
@@ -183,7 +204,7 @@ def validate(
                 required=1,
             )
 
-    conditions_info: dict[str, dict[str, int]] = {}
+    conditions_info: dict[str, dict[str, Any]] = {}
     for cond in responses["condition"].unique():
         cond_rows = responses[responses["condition"] == cond]
         n_trials_cond = int(cond_rows["trial_index"].nunique())
@@ -316,6 +337,30 @@ def validate(
             )
     min_inter_stimulus_s = float(min(gaps_s))
 
+    evaluated_set = set(evaluated_conditions)
+    for cond, info in conditions_info.items():
+        if cond in evaluated_set:
+            failed: list[str] = []
+            if info["n_trials"] < MD2_SHOULD:
+                failed.append(Requirement.MD2.value)
+            if info["n_units_active"] < MD3_SHOULD:
+                failed.append(Requirement.MD3.value)
+            info["should_failed"] = failed
+        else:
+            info["should_failed"] = None
+
+    best_condition = min(
+        evaluated_conditions,
+        key=lambda c: (
+            len(conditions_info[c]["should_failed"]),
+            -conditions_info[c]["n_units_active"],
+            -conditions_info[c]["n_trials"],
+            c,
+        ),
+    )
+    should_failed = list(conditions_info[best_condition]["should_failed"])
+    conformance = FULLY_CONFORMING if not should_failed else CONFORMING
+
     return {
         "spec_version": SPEC_VERSION,
         "n_preparations": int(units["preparation_id"].nunique()),
@@ -328,6 +373,9 @@ def validate(
         "trials_per_unit_condition": float(responses.groupby(["unit_id", "condition"]).size().median()),
         "conditions": conditions_info,
         "evaluated_conditions": evaluated_conditions,
+        "best_condition": best_condition,
+        "should_failed": should_failed,
+        "conformance": conformance,
         "post_stim_window_s": float(post_stim_window_s),
         "load_duration_s": float(load_duration_s),
         "min_inter_stimulus_s": min_inter_stimulus_s,

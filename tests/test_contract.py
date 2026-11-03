@@ -10,6 +10,8 @@ from pandas.api.types import is_integer_dtype
 
 from tests.conftest import make_tables
 from recovery_reliability_benchmark.contract import (
+    CONFORMING,
+    FULLY_CONFORMING,
     SPEC_VERSION,
     ContractViolation,
     Requirement,
@@ -379,6 +381,76 @@ def test_result_reports_isi() -> None:
     assert result["min_inter_stimulus_s"] == 5.0
     assert result["post_stim_window_s"] == 2.0
     assert result["load_duration_s"] == 0.0
+
+
+def test_conforming_level() -> None:
+    units, responses = make_tables()
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conformance"] == CONFORMING
+    assert result["conformance"] == "conforming"
+    assert result["should_failed"] == ["MD-2", "MD-3"]
+    assert result["best_condition"] == "A"
+
+
+def test_fully_conforming() -> None:
+    units, responses = make_tables(n_units=15, n_trials=20)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conformance"] == FULLY_CONFORMING
+    assert result["conformance"] == "fully_conforming"
+    assert result["should_failed"] == []
+    assert result["conditions"]["A"]["should_failed"] == []
+
+
+def test_should_partial() -> None:
+    units, responses = make_tables(n_units=15, n_trials=10)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conformance"] == "conforming"
+    assert result["should_failed"] == ["MD-2"]
+
+
+def test_best_condition_skips_unevaluated() -> None:
+    units, responses = make_tables(n_units=15, n_trials=20, conditions=("A", "B"))
+    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 25))].reset_index(drop=True)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conformance"] == "fully_conforming"
+    assert result["best_condition"] == "A"
+    assert result["conditions"]["B"]["should_failed"] is None
+
+
+def test_best_condition_tiebreak() -> None:
+    units, responses = make_tables(n_units=15, n_trials=10, conditions=("A", "B"))
+    dropped_units = {f"u{i:02d}" for i in range(8, 15)}
+    responses = responses[~((responses["condition"] == "A") & (responses["unit_id"].isin(dropped_units)))].reset_index(
+        drop=True
+    )
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conditions"]["A"]["should_failed"] == ["MD-2", "MD-3"]
+    assert result["conditions"]["B"]["should_failed"] == ["MD-2"]
+    assert result["best_condition"] == "B"
+    assert result["should_failed"] == ["MD-2"]
+    assert result["conformance"] == "conforming"
+
+
+def test_schema_constant_measure_per_unit() -> None:
+    units, responses = make_tables()
+    unit_map = {u: float(i + 1) for i, u in enumerate(units["unit_id"])}
+    responses["pos"] = responses["unit_id"].map(unit_map)
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, ["tau", "pos"], post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert "pos" in str(exc)
+
+
+def test_schema_constant_measure_everywhere() -> None:
+    units, responses = make_tables()
+    responses["bias"] = 1.0
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, ["tau", "bias"], post_stim_window_s=2.0)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert "bias" in str(exc)
+
 
 
 
