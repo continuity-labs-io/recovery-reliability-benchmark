@@ -12,6 +12,7 @@ from tests.conftest import make_tables
 from recovery_reliability_benchmark.contract import (
     SPEC_VERSION,
     ContractViolation,
+    Requirement,
     read_tables,
     validate,
 )
@@ -151,3 +152,19 @@ def test_contract_violation_str_and_dict() -> None:
         "found": 6,
         "required": 10,
     }
+
+
+def test_requirement_enum() -> None:
+    assert len(Requirement) == 7
+    assert Requirement("MD-3") is Requirement.MD3
+    assert Requirement.MD3 == "MD-3"
+    for member in Requirement:
+        assert isinstance(member.description, str)
+        assert len(member.description) > 0
+
+
+def test_contract_violation_accepts_string_or_enum() -> None:
+    for exc in (ContractViolation("MD-2", "m"), ContractViolation(Requirement.MD2, "m")):
+        assert exc.requirement is Requirement.MD2
+        assert exc.to_dict()["requirement"] == "MD-2"
+

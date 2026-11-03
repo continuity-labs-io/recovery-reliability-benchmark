@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -15,22 +16,62 @@ ID_COLUMNS = UNITS_REQUIRED
 FORBIDDEN_MEASURES = frozenset(RESPONSES_REQUIRED)
 
 
+class Requirement(str, Enum):
+    """Minimum Dataset (MD) requirements from SPEC.md.
+
+    A dataset must satisfy every MD requirement's MUST threshold to be
+    "conforming" and every SHOULD threshold to be "fully_conforming".
+    validate() checks them in numeric order and raises ContractViolation
+    on the first failure.
+    """
+
+    MD0 = "MD-0"  # Schema: required columns present, measures numeric and allowed, ids unique, no orphan responses.
+    MD1 = "MD-1"  # Identity: exactly one preparation_id, session_id, and recording_id across the joined tables.
+    MD2 = "MD-2"  # Trials: at least 10 trials per (unit_id, condition); SHOULD 20.
+    MD3 = "MD-3"  # Units: at least 8 units active (all measures non-null) in every trial of each condition; SHOULD 15.
+    MD4 = "MD-4"  # Timeline: stim_time_ns non-null and strictly increasing with trial_index; one stim_time_ns and one condition per trial_index across units.
+    MD5 = "MD-5"  # Uniqueness: exactly one row per (unit_id, trial_index).
+    MD6 = "MD-6"  # Window: post_stim_window_s >= 2.0 and, for every load except the last, the gap to the next load minus load_duration_s is at least post_stim_window_s.
+
+    @property
+    def description(self) -> str:
+        return _REQUIREMENT_DESCRIPTIONS[self]
+
+
+_REQUIREMENT_DESCRIPTIONS: dict[Requirement, str] = {
+    Requirement.MD0: "Schema: required columns present, measures numeric and allowed, ids unique, no orphan responses.",
+    Requirement.MD1: "Identity: exactly one preparation_id, session_id, and recording_id across the joined tables.",
+    Requirement.MD2: "Trials: at least 10 trials per (unit_id, condition); SHOULD 20.",
+    Requirement.MD3: "Units: at least 8 units active (all measures non-null) in every trial of each condition; SHOULD 15.",
+    Requirement.MD4: "Timeline: stim_time_ns non-null and strictly increasing with trial_index; one stim_time_ns and one condition per trial_index across units.",
+    Requirement.MD5: "Uniqueness: exactly one row per (unit_id, trial_index).",
+    Requirement.MD6: "Window: post_stim_window_s >= 2.0 and, for every load except the last, the gap to the next load minus load_duration_s is at least post_stim_window_s.",
+}
+
+
 class ContractViolation(Exception):
     """Raised when input tables violate a benchmark data contract requirement."""
 
-    def __init__(self, requirement: str, message: str, found: Any = None, required: Any = None) -> None:
-        super().__init__(f"{requirement} failed. {message}")
-        self.requirement = requirement
+    def __init__(
+        self,
+        requirement: Requirement | str,
+        message: str,
+        found: Any = None,
+        required: Any = None,
+    ) -> None:
+        req = Requirement(requirement)
+        super().__init__(f"{req.value} failed. {message}")
+        self.requirement: Requirement = req
         self.message = message
         self.found = found
         self.required = required
 
     def __str__(self) -> str:
-        return f"{self.requirement} failed. {self.message}"
+        return f"{self.requirement.value} failed. {self.message}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "requirement": self.requirement,
+            "requirement": self.requirement.value,
             "message": self.message,
             "found": self.found,
             "required": self.required,
@@ -61,28 +102,28 @@ def validate(
 
     for col in UNITS_REQUIRED:
         if col not in units.columns:
-            raise ContractViolation("MD-0", f"units is missing required column '{col}'.")
+            raise ContractViolation(Requirement.MD0, f"units is missing required column '{col}'.")
 
     for col in RESPONSES_REQUIRED:
         if col not in responses.columns:
-            raise ContractViolation("MD-0", f"responses is missing required column '{col}'.")
+            raise ContractViolation(Requirement.MD0, f"responses is missing required column '{col}'.")
 
     if not measures:
-        raise ContractViolation("MD-0", "measures must not be empty.")
+        raise ContractViolation(Requirement.MD0, "measures must not be empty.")
     for measure in measures:
         if measure not in responses.columns:
-            raise ContractViolation("MD-0", f"measure '{measure}' is not a column of responses.")
+            raise ContractViolation(Requirement.MD0, f"measure '{measure}' is not a column of responses.")
 
     forbidden = FORBIDDEN_MEASURES | (extra_forbidden or set())
     for measure in measures:
         if measure in forbidden:
-            raise ContractViolation("MD-0", f"'{measure}' is not allowed as a measure.")
+            raise ContractViolation(Requirement.MD0, f"'{measure}' is not allowed as a measure.")
 
     for measure in measures:
         if not is_numeric_dtype(responses[measure]):
-            raise ContractViolation("MD-0", f"measure '{measure}' is not numeric.")
+            raise ContractViolation(Requirement.MD0, f"measure '{measure}' is not numeric.")
         if responses[measure].isna().all():
-            raise ContractViolation("MD-0", f"measure '{measure}' is entirely null.")
+            raise ContractViolation(Requirement.MD0, f"measure '{measure}' is entirely null.")
 
     for col in ID_COLUMNS:
         units[col] = units[col].astype(str)
@@ -93,7 +134,7 @@ def validate(
     if not duplicates.empty:
         bad_id, count = duplicates.index[0], int(duplicates.iloc[0])
         raise ContractViolation(
-            "MD-0", f"unit_id '{bad_id}' appears {count} times in units, requires 1.", found=count, required=1
+            Requirement.MD0, f"unit_id '{bad_id}' appears {count} times in units, requires 1.", found=count, required=1
         )
 
     orphan_mask = ~responses["unit_id"].isin(set(units["unit_id"]))
@@ -101,7 +142,10 @@ def validate(
         bad_id = responses.loc[orphan_mask, "unit_id"].iloc[0]
         count = int((responses["unit_id"] == bad_id).sum())
         raise ContractViolation(
-            "MD-0", f"{count} responses rows reference unit_id '{bad_id}', which is not in units.", found=count, required=0
+            Requirement.MD0,
+            f"{count} responses rows reference unit_id '{bad_id}', which is not in units.",
+            found=count,
+            required=0,
         )
 
     return {
