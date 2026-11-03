@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
+import hashlib
+import json
+import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -380,3 +384,95 @@ def validate(
         "load_duration_s": float(load_duration_s),
         "min_inter_stimulus_s": min_inter_stimulus_s,
     }
+
+
+def file_sha256(path: str | Path) -> str:
+    """Return the SHA-256 hex digest of a file's contents."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the contract validator CLI and print the conformance report.
+
+    This report is what a lab shares; the data stays on their machine.
+    """
+    parser = argparse.ArgumentParser(
+        description="Validate units and responses CSV tables against the benchmark data contract."
+    )
+    parser.add_argument("units_csv", help="Path to units CSV file.")
+    parser.add_argument("responses_csv", help="Path to responses CSV file.")
+    parser.add_argument("--measures", required=True, help="Comma-separated measure column names.")
+    parser.add_argument("--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds.")
+    parser.add_argument("--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds.")
+    parser.add_argument("--extra-forbidden", default="", help="Comma-separated extra forbidden measure names.")
+    parser.add_argument("--json", action="store_true", dest="as_json", help="Emit report as JSON.")
+    args = parser.parse_args(argv)
+
+    measures = [m.strip() for m in args.measures.split(",") if m.strip()]
+    extra_forbidden = [m.strip() for m in args.extra_forbidden.split(",") if m.strip()]
+
+    try:
+        units, responses = read_tables(args.units_csv, args.responses_csv)
+    except (FileNotFoundError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    inputs_meta = {
+        "units": {"path": args.units_csv, "sha256": file_sha256(args.units_csv)},
+        "responses": {"path": args.responses_csv, "sha256": file_sha256(args.responses_csv)},
+    }
+    arguments_meta = {
+        "measures": measures,
+        "post_stim_window_s": float(args.post_stim_window_s),
+        "load_duration_s": float(args.load_duration_s),
+        "extra_forbidden": extra_forbidden,
+    }
+
+    try:
+        result = validate(
+            units,
+            responses,
+            measures=measures,
+            post_stim_window_s=args.post_stim_window_s,
+            load_duration_s=args.load_duration_s,
+            extra_forbidden=set(extra_forbidden) if extra_forbidden else None,
+        )
+    except ContractViolation as exc:
+        if args.as_json:
+            doc = {
+                "spec_version": SPEC_VERSION,
+                "status": "violation",
+                "inputs": inputs_meta,
+                "arguments": arguments_meta,
+                "violation": exc.to_dict(),
+            }
+            print(json.dumps(doc, indent=2, sort_keys=True))
+        else:
+            print(str(exc))
+        return 1
+
+    if args.as_json:
+        doc = {
+            "spec_version": SPEC_VERSION,
+            "status": result["conformance"],
+            "inputs": inputs_meta,
+            "arguments": arguments_meta,
+            "result": result,
+        }
+        print(json.dumps(doc, indent=2, sort_keys=True))
+    else:
+        print(f"{result['conformance']} (SPEC v{result['spec_version']})")
+        for key, value in result.items():
+            if key == "conditions":
+                continue
+            print(f"{key}: {value}")
+        print("conditions:")
+        for name, info in result["conditions"].items():
+            sf = info["should_failed"] or "none"
+            print(f"  {name}: n_trials={info['n_trials']} n_units_active={info['n_units_active']} should_failed={sf}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
