@@ -1,2 +1,40 @@
 """Recovery Reliability Benchmark package."""
 
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
+from .contract import (
+    SPEC_VERSION,
+    ContractViolation,
+    Requirement,
+    read_tables,
+    validate,
+)
+from .protocol import (
+    Burst,
+    Protocol,
+    Pulse,
+    Train,
+    default_pulse,
+)
+
+try:
+    __version__ = version("recovery-reliability-benchmark")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
+
+__all__ = [
+    "SPEC_VERSION",
+    "Burst",
+    "ContractViolation",
+    "Protocol",
+    "Pulse",
+    "Requirement",
+    "Train",
+    "__version__",
+    "default_pulse",
+    "read_tables",
+    "validate",
+]
+

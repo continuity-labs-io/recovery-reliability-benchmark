@@ -1,9 +1,9 @@
-# Recovery Measurement Benchmark
+# Recovery Reliability Benchmark
 
 ## The within-session reliability ceiling: method
 
 **Version 1.0**
-Reference implementation: `evaluate.py`
+Reference implementation: `src/recovery_reliability_benchmark/evaluate.py` (planned; not yet in the repository)
 
 ---
 

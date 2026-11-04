@@ -1,4 +1,4 @@
-# Recovery Measurement Benchmark
+# Recovery Reliability Benchmark
 
 ## Contribution terms
 
@@ -12,7 +12,7 @@ This is a statement of how the benchmark operates, not a legal agreement. If you
 
 ## 1. What you provide
 
-**One conforming dataset.** Six requirements, verifiable on your own machine before anything is shared. See the [conformance specification](01-dataset-conformance-spec.md).
+**One conforming dataset.** Six requirements, verifiable on your own machine before anything is shared. See the [conformance specification](SPEC.md).
 
 **Minimal metadata.** Species or cell source, age or days in vitro, instrument, recording modality, and the stimulus protocol as actually run. Not as planned.
 

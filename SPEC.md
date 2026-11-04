@@ -12,7 +12,7 @@ The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as in RFC 211
 
 ## 1. What the benchmark asks
 
-We have not found recovery kinetics after a standardized conditioning load used as a functional endpoint in MEA pharmacology or in tissue release testing, although conditioning-and-probe protocols themselves are established and standard. If you know of a counterexample, open an issue. The claim is meant to be checked.
+Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported. If you know of a counterexample, open an issue. The claim is meant to be checked.
 
 The benchmark asks whether they can be. The first question, which gates every other one, is whether a recovery measure is reliable enough to distinguish a preparation from a repeat of itself.
 

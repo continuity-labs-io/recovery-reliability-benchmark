@@ -3,6 +3,8 @@
 
 A public benchmark testing whether recovery kinetics after a standardized conditioning load are reliable enough to serve as a functional endpoint.
 
+Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported.
+
 ## What is being benchmarked
 
 A benchmark normally holds the data fixed and varies the method. This one is the other way around: the computation is fixed and every lab brings different data, which makes it closer to an inter-laboratory ring trial than to an ImageNet-style benchmark.

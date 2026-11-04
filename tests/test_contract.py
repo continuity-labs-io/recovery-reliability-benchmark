@@ -452,5 +452,23 @@ def test_schema_constant_measure_everywhere() -> None:
     assert "bias" in str(exc)
 
 
+def test_validate_at_scale() -> None:
+    # Took minutes before vectorization of constant-measure and MD-3 checks; should take seconds now.
+    units, responses = make_tables(n_units=1000, n_trials=100)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conformance"] == "fully_conforming"
+    assert result["n_units_active"] == 1000
+    assert result["n_trials"] == 100
 
+
+def test_md3_vectorized_matches_original() -> None:
+    units, responses = make_tables(n_units=12, n_trials=10, conditions=("A", "B"))
+    drop_idx = responses.index[(responses["unit_id"] == "u00") & (responses["condition"] == "A")][0]
+    responses = responses.drop(index=drop_idx).reset_index(drop=True)
+    nan_idx = responses.index[(responses["unit_id"] == "u01") & (responses["condition"] == "B")][0]
+    responses.loc[nan_idx, "tau"] = float("nan")
+
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["conditions"]["A"]["n_units_active"] == 11
+    assert result["conditions"]["B"]["n_units_active"] == 11
 

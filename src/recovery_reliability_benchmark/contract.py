@@ -183,14 +183,12 @@ def validate(
             required=0,
         )
 
-    unit_cond_groups = responses.groupby(["unit_id", "condition"], sort=False, dropna=False)
+    g = responses.groupby(["unit_id", "condition"], sort=False, dropna=False)
     for measure in measures:
-        group_nuni = [
-            int(grp[measure].nunique(dropna=True))
-            for _, grp in unit_cond_groups
-            if int(grp[measure].notna().sum()) >= 2
-        ]
-        if group_nuni and all(n <= 1 for n in group_nuni):
+        nun = g[measure].nunique()
+        cnt = g[measure].count()
+        eligible = cnt >= 2
+        if eligible.any() and (nun[eligible] <= 1).all():
             raise ContractViolation(
                 Requirement.SCHEMA,
                 f"measure '{measure}' is constant within every (unit_id, condition) group "
@@ -208,22 +206,22 @@ def validate(
                 required=1,
             )
 
-    conditions_info: dict[str, dict[str, Any]] = {}
-    for cond in responses["condition"].unique():
-        cond_rows = responses[responses["condition"] == cond]
-        n_trials_cond = int(cond_rows["trial_index"].nunique())
-        n_active = 0
-        if n_trials_cond > 0:
-            for _, unit_rows in cond_rows.groupby("unit_id", sort=False):
-                if (
-                    int(unit_rows["trial_index"].nunique()) == n_trials_cond
-                    and bool(unit_rows[measures].notna().all().all())
-                ):
-                    n_active += 1
-        conditions_info[str(cond)] = {
-            "n_trials": n_trials_cond,
-            "n_units_active": n_active,
+    responses["complete"] = responses[measures].notna().all(axis=1)
+    g = responses.groupby(["condition", "unit_id"], sort=False)
+    n_tr = g["trial_index"].nunique()
+    all_complete = g["complete"].all()
+    n_trials_cond = responses.groupby("condition")["trial_index"].nunique()
+    responses = responses.drop(columns=["complete"])
+    cond_trials_for_unit = n_tr.index.get_level_values("condition").map(n_trials_cond)
+    unit_active = (n_tr == cond_trials_for_unit) & all_complete
+    n_units_active_by_cond = unit_active.groupby(level="condition", sort=False).sum()
+    conditions_info: dict[str, dict[str, Any]] = {
+        str(cond): {
+            "n_trials": int(n_trials_cond[cond]),
+            "n_units_active": int(n_units_active_by_cond[cond]) if int(n_trials_cond[cond]) > 0 else 0,
         }
+        for cond in responses["condition"].unique()
+    }
 
     best_trial_cond = max(conditions_info, key=lambda c: conditions_info[c]["n_trials"])
     max_trials = conditions_info[best_trial_cond]["n_trials"]
