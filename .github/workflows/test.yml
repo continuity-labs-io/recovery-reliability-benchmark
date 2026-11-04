@@ -31,3 +31,5 @@ jobs:
       - run: rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0
       - run: rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0 --json > report.json
       - run: python -c "import json; r=json.load(open('report.json')); assert r['status']=='fully_conforming', r['status']"
+      - run: rrb-evaluate examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0 --n-perm 100 --json > evaluate.json
+      - run: python -c "import json; r=json.load(open('evaluate.json')); assert r['status']=='ok', r['status']"

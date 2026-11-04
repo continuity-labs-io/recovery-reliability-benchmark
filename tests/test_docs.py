@@ -86,3 +86,10 @@ def test_anchor_claim_pinned() -> None:
         text = (ROOT / doc_name).read_text(encoding="utf-8")
         assert anchor_claim in text
 
+
+def test_method_reference_implementation() -> None:
+    text = (ROOT / "METHOD.md").read_text(encoding="utf-8")
+    assert "Reference implementation: `src/recovery_reliability_benchmark/evaluate.py`" in text
+    assert "(planned; not yet in the repository)" not in text
+
+

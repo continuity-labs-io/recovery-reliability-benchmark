@@ -3,7 +3,7 @@
 ## The within-session reliability ceiling: method
 
 **Version 1.0**
-Reference implementation: `src/recovery_reliability_benchmark/evaluate.py` (planned; not yet in the repository)
+Reference implementation: `src/recovery_reliability_benchmark/evaluate.py`
 
 ---
 
@@ -40,26 +40,29 @@ The correlation therefore runs **across units**, not across trials. Between-unit
 
 ## 3. Procedure
 
-Input: a conforming dataset (MD-1 through MD-6), one measure column, one condition.
+Input: a conforming dataset (MD-1 through MD-6), one or more measure columns, and the evaluated conditions identified by `validate()`.
 
-**Step 1. Condition-centering.** For each condition, subtract the mean of the measure over all unit-trial pairs in that condition. Run with and without; report both.
+**Step 1. Partition.** Within each `(unit_id, condition)` group in the evaluated conditions, sort trials by `trial_index` and rank them `k = 0, 1, 2, ...` within the group (not by global `trial_index` parity).
 
-**Step 2. Partition.** Within each unit-condition group, split trials into halves A and B.
+- `odd_even` (default, implemented in v1): even `k` go to half A, odd `k` go to half B.
+- `random`: random partition, repeated `n_splits` times (not yet implemented in v1).
 
-- `odd_even` (default): even trial indices to A, odd to B.
-- `random`: random partition, repeated `n_splits` times.
+Groups where either half is empty are dropped.
 
-**Step 3. Aggregate.** For each unit u, take the mean of the measure over its half-A trials to give x_A[u], and over its half-B trials to give x_B[u].
+**Step 2. Aggregate.** For each `(unit_id, condition)` group, take the mean of the measure over its half-A trials to give `x_A[u, c]`, and over its half-B trials to give `x_B[u, c]`, skipping nulls within each half and dropping pairs where either half-mean is `NaN`.
 
-**Step 4. Correlate.** Pearson r between x_A and x_B across units.
+**Step 3. Per-condition and pooled estimates.** Two estimates are formed from the half-means:
 
-**Step 5. Correct for length.** Spearman-Brown with k = 2:
+- **Per-condition:** within each evaluated condition `c`, take the vector of pairs `(x_A[u, c], x_B[u, c])` across units `u`.
+- **Pooled:** pool the pairs `(x_A[u, c], x_B[u, c])` across all evaluated conditions, both **uncentered** and **condition-centered**. Condition-centering subtracts each condition's mean over units from `x_A` and from `x_B`, within each half separately, before correlating.
+
+**Step 4. Correlate and correct for length.** Compute Pearson `r` between the two halves (`NaN` if fewer than 3 pairs or if either half is constant) and apply the Spearman-Brown correction with `k = 2`:
 
     rho = 2r / (1 + r)
 
-**Step 6.** Under `random`, repeat steps 2 to 5 `n_splits` times and report median with interquartile range.
+**Step 5. Headline rule.** When there are two or more evaluated conditions, the headline ceiling is the pooled condition-centered estimate (`pooled_centered`). When there is a single evaluated condition, the pooled and per-condition estimates coincide (Pearson correlation is shift-invariant) and the headline is the per-condition estimate of `validate()`'s `best_condition` (`per_condition`).
 
-**Edge cases.** With an odd trial count one half carries one extra trial; record it. If r <= 0 the Spearman-Brown correction is not meaningful and diverges as r approaches -1, so report the ceiling as 0.0 with the raw r alongside and a flag. A non-positive split-half correlation means there is no reliable between-unit variance to measure.
+**Edge cases.** With an odd trial count one half carries one extra trial; record it (`odd_trials`). If `r <= 0` (or `NaN`) the Spearman-Brown correction is not meaningful and diverges as `r` approaches -1, so report the ceiling as `0.0` with the raw `r` alongside and a flag (`r_nonpositive`). A non-positive split-half correlation means there is no reliable between-unit variance to measure.
 
 ---
 
@@ -67,7 +70,9 @@ Input: a conforming dataset (MD-1 through MD-6), one measure column, one conditi
 
 Without centering, variance between conditions inflates the apparent reliability of the measure itself. A measure that only tracks which condition was delivered will produce a high uncentered ceiling while carrying no information about units.
 
-Only the centered figure is comparable to a centered cross-session result. Both are reported so the gap is visible. On the fs369 pilot the uncentered ceiling was 0.779 and the centered ceiling 0.76.
+In the per-condition estimate, centering subtracts one constant from every unit in that condition and cannot change the correlation, so centering is reported for the pooled estimate only. In the pooled estimate, `(unit_id, condition)` pairs share units across conditions, so `n_pairs` overstates the number of independent samples; the independence census counts distinct units alongside pairs.
+
+Only the centered figure is comparable to a centered cross-session result. Both are reported so the gap is visible. On the fs369 pilot the uncentered ceiling was 0.779 and the centered ceiling 0.76, each the geometric mean of two sessions' within-session ceilings.
 
 ---
 
@@ -75,20 +80,20 @@ Only the centered figure is comparable to a centered cross-session result. Both 
 
 ### 5.1 Synthetic positive control
 
-Generate data with a known reliability and confirm the pipeline recovers it.
+Generate data from scratch with a known reliability and confirm the pipeline recovers it.
 
-For a target full-length reliability rho across n trials, draw per-unit true values T from N(0, 1) and per-trial errors from N(0, sigma squared) with:
+For a target full-length reliability `rho` across `n = 20` trials on `1000` units, draw per-unit true values `T ~ N(0, 1)` and per-trial errors `E ~ N(0, n(1 - rho) / rho)`:
 
     sigma^2 = n * (1 - rho) / rho
 
-Run the synthetic data through the identical path: contract validation, centering, partition, correlation, correction.
+Run the synthetic data through the identical pipeline (`validate` -> `split_halves` -> `ceiling`) and require recovery within `0.05` (`|recovered - injected| <= tolerance`). The pilot's `gate1.py` used day-1 values plus noise instead; the two constructions agree in expectation.
 
-**Pass:** |recovered - injected| <= tolerance, default 0.05.
+**Pass:** `|recovered - injected| <= tolerance`, default `0.05`.
 **Fail:** the pipeline has a defect and every other number in the run is void. This control is evaluated first for that reason.
 
 ### 5.2 Label-permutation null
 
-Permute unit identity within each condition and rerun the identical code path. This is a flag on the same function rather than a separate routine, because a null that executes different code tests nothing.
+Within each condition, permute the unit labels of half B (`*_B` and `n_B` rows) and recompute the headline ceiling through the same `ceiling()` function, rather than a separate routine, because a null that executes different code tests nothing.
 
 **Pass:** median corrected correlation at or near zero, and the 95th percentile across permutations below the observed ceiling.
 **Fail:** the observed ceiling is reachable by shuffled data and carries no information.
@@ -97,7 +102,7 @@ Default `n_perm` = 1000.
 
 ### 5.3 Independence accounting
 
-Not a statistic. A census reporting counts at every level, in order: preparations, sessions, units, conditions, trials. The reported n is stated explicitly alongside what else could have been counted.
+Not a statistic. A census reporting counts at every level, in order: preparations, sessions, recordings, units, active units, conditions, evaluated conditions, trials, and median trials per unit-condition. The reported n is stated explicitly alongside what else could have been counted.
 
 Most reported sample sizes in this literature count trials, which inflates apparent confidence by an order of magnitude or more.
 
@@ -117,9 +122,9 @@ Most reported sample sizes in this literature count trials, which inflates appar
 
 | Parameter | Default | Effect |
 |---|---|---|
-| `split_mode` | `odd_even` | Partition rule. `random` available. |
-| `n_splits` | 100 | Repetitions under `random`. Ignored under `odd_even`. |
-| `center` | both | Centered and uncentered both reported. |
+| `split_mode` | `odd_even` | Partition rule. v1 implements `odd_even` only (`random` is not yet implemented). |
+| `n_splits` | 100 | Repetitions under `random` (not yet implemented in v1). Ignored under `odd_even`. |
+| `center` | both | Centered and uncentered both reported on the pooled estimate. |
 | `n_perm` | 1000 | Permutations for the null. |
 | `injected_r` | 0.85 | Target reliability for the positive control. |
 | `tolerance` | 0.05 | Pass band for the positive control. |
