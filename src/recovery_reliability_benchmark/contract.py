@@ -35,21 +35,21 @@ FULLY_CONFORMING = "fully_conforming"
 
 
 class Requirement(StrEnum):
-    """Minimum Dataset (MD) requirements from SPEC.md.
+    """Minimum dataset (`min-dataset-*`) requirements from SPEC.md.
 
-    A dataset must satisfy every MD requirement's MUST threshold to be
+    A dataset must satisfy every minimum dataset requirement's MUST threshold to be
     "conforming" and every SHOULD threshold to be "fully_conforming".
     validate() checks them in numeric order and raises ContractViolation
     on the first failure.
     """
 
     SCHEMA = "SCHEMA"
-    MD1 = "MD-1"
-    MD2 = "MD-2"
-    MD3 = "MD-3"
-    MD4 = "MD-4"
-    MD5 = "MD-5"
-    MD6 = "MD-6"
+    MD1 = "min-dataset-1"
+    MD2 = "min-dataset-2"
+    MD3 = "min-dataset-3"
+    MD4 = "min-dataset-4"
+    MD5 = "min-dataset-5"
+    MD6 = "min-dataset-6"
 
     @property
     def description(self) -> str:
@@ -129,13 +129,13 @@ def validate(
     conditions: dict[str, Condition] | None = None,
     spikes: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """Validate units and responses against SCHEMA and MD-1 through MD-6.
+    """Validate units and responses against SCHEMA and min-dataset-1 through min-dataset-6.
 
     Each measure must vary within at least one (unit_id, condition) group:
     a column constant within units but varying across them (an electrode
     position, an identifier) would score as perfectly reliable.
 
-    For MD-6, every trial except the last in time must have at least
+    For min-dataset-6, every trial except the last in time must have at least
     ``post_stim_window_s`` seconds available before the next stimulus onset
     (after subtracting ``load_duration_s``). The last trial is not checked
     because the input tables do not record a recording-end timestamp.

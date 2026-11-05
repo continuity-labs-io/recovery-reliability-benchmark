@@ -202,7 +202,7 @@ def test_cli_evaluate_violation(tmp_path: Path, capsys: pytest.CaptureFixture[st
     )
     captured = capsys.readouterr()
     assert rc == 1
-    assert captured.out.startswith("MD-2 failed.")
+    assert captured.out.startswith("min-dataset-2 failed.")
 
 
 def test_ci_contains_truth_at_scale() -> None:

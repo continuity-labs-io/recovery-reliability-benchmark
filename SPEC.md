@@ -6,7 +6,7 @@
 Status: normative
 Reference implementation: `src/recovery_reliability_benchmark/contract.py`, run as `rrb-check`
 
-The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as in RFC 2119.
+The keywords MUST, MUST NOT, SHOULD and MAY are to be interpreted as in [RFC 2119](https://www.ietf.org/rfc/rfc2119.txt).
 
 ---
 
@@ -46,7 +46,7 @@ This document defines the smallest dataset from which that question can be answe
 
 **Active** — a unit is active in a trial when the dataset has a row for that unit and trial with every measure non-null.
 
-**Evaluated condition** — a condition that satisfies the MUST thresholds of MD-2 and MD-3. The computation in section 3 runs on evaluated conditions.
+**Evaluated condition** — a condition that satisfies the MUST thresholds of the minimum dataset requirements `min-dataset-2` and `min-dataset-3` (section 4). The computation in section 3 runs on evaluated conditions.
 
 ---
 
@@ -60,35 +60,35 @@ Every requirement in section 4 follows from this procedure.
 
 ---
 
-## 4. Requirements
+## 4. Minimum Dataset Requirements
 
 | ID | Requirement | MUST | SHOULD |
 |---|---|---|---|
-| MD-1 | Preparations, sessions and recordings present | exactly 1 of each | |
-| MD-2 | Trials per condition | ≥ 10 in at least one condition | ≥ 20 |
-| MD-3 | Recording units active in every trial of an evaluated condition | ≥ 8 | ≥ 30 |
-| MD-4 | Stimulus onset timestamps | present, one per trial across units, strictly increasing within a condition | |
-| MD-5 | Rows per unit-trial pair | exactly 1 | |
-| MD-6 | Post-stimulus window per trial | ≥ 2.0 s | |
+| min-dataset-1 | Preparations, sessions and recordings present | exactly 1 of each | |
+| min-dataset-2 | Trials per condition | ≥ 10 in at least one condition | ≥ 20 |
+| min-dataset-3 | Recording units active in every trial of an evaluated condition | ≥ 8 | ≥ 30 |
+| min-dataset-4 | Stimulus onset timestamps | present, one per trial across units, strictly increasing within a condition | |
+| min-dataset-5 | Rows per unit-trial pair | exactly 1 | |
+| min-dataset-6 | Post-stimulus window per trial | ≥ 2.0 s | |
 
-**MD-1 — Single session.**
+**min-dataset-1 — Single session.**
 The dataset MUST contain exactly one session from exactly one preparation, in exactly one recording. Longitudinal data is out of scope for this computation. A second recording identifier is a second acquisition and therefore a second session.
 
-**MD-2 — Repeated trials.**
+**min-dataset-2 — Repeated trials.**
 At least one condition MUST contain 10 or more trials, and SHOULD contain 20 or more. A trial is counted once per distinct trial index. Below 10, the two halves are too short for the correlation to be stable.
 
-**MD-3 — Multiple recording units.**
-At least one condition that satisfies MD-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 30 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 15 says what a null is allowed to mean.
+**min-dataset-3 — Multiple recording units.**
+At least one condition that satisfies min-dataset-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 30 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 15 says what a null is allowed to mean.
 
 The MUST thresholds define when the computation is possible. They do not make a single-dataset estimate precise. For a measure with single-trial reliability 0.2, the ceiling of a 10-trial session is 0.71 and of a 20-trial session 0.83. Simulated 95% intervals of the estimate (1,000 seeds, one condition): 8 units and 10 trials, [0.00, 0.95], and 7% of such runs report exactly 0 (19% when the single-trial reliability is 0.1); 15 units and 20 trials, [0.49, 0.95]; 30 units and 20 trials, [0.67, 0.92]. Pooling three conditions at 8 units and 10 trials gives [0.10, 0.90]. Every estimate is reported with its interval and converted to a single-trial reliability so sessions with different trial counts can be compared. Full table: docs/thresholds.md.
 
-**MD-4 — Stimulus timestamps.**
+**min-dataset-4 — Stimulus timestamps.**
 The dataset MUST provide the onset time of every stimulus, on the same clock as the response data. Every unit on a preparation receives the same stimulus, so each trial MUST carry exactly one onset time and exactly one condition across all units. Onset times MUST be strictly increasing with trial index within a condition.
 
-**MD-5 — Trial-level resolution.**
+**min-dataset-5 — Trial-level resolution.**
 The dataset MUST provide per-trial data: exactly one row per unit and trial. One row per unit is a summary statistic, which cannot be partitioned into halves; two rows for the same unit and trial count one trial twice.
 
-**MD-6 — Post-stimulus window.**
+**min-dataset-6 — Post-stimulus window.**
 Each trial MUST carry at least 2.0 seconds of recording after stimulus onset. The submitter declares the analysis window. The declared window MUST be at least 2.0 s, and for every trial except the last it MUST fit before the next stimulus onset. The last trial has no following onset and is not checked. If the stimulus is a conditioning train of nonzero duration, the submitter MAY declare that duration; the window is then required after the train ends, which only tightens the check. This is the requirement that most often fails, because many stimulation protocols use short inter-stimulus intervals. A protocol truncating at 200 ms cannot resolve a seconds-scale return.
 
 ---
@@ -107,11 +107,11 @@ The dataset's level is the level of its best condition. The reference implementa
 
 ## 6. Not required
 
-Multiple sessions. Conditioning bursts. A probe ladder. Any particular neural preparation type, species or cell source. Any particular instrument. Any particular modality: calcium imaging satisfies MD-1 through MD-6 as readily as an electrode array. Any aging-related metadata.
+Multiple sessions. Conditioning bursts. A probe ladder. Any particular neural preparation type, species or cell source. Any particular instrument. Any particular modality: calcium imaging satisfies min-dataset-1 through min-dataset-6 as readily as an electrode array. Any aging-related metadata.
 
 ---
 
-## 7. Optional, in order of value
+## 7. Optional Dataset Requirements, in order of value
 
 | ID | Item | Why it matters |
 |---|---|---|
@@ -236,9 +236,9 @@ Run the reference implementation against your data:
 
     rrb-check units.csv responses.csv --measures tau,amplitude --post-stim-window-s 2.0
 
-It checks SCHEMA, then MD-1 through MD-6 in order, raises on the first violation, and names the requirement ID, the value found, and the value required:
+It checks SCHEMA, then min-dataset-1 through min-dataset-6 in order, raises on the first violation, and names the requirement ID, the value found, and the value required:
 
-    MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.
+    min-dataset-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.
 
 Exit status is 0 when the dataset conforms, 1 on a violation, and 2 when the input could not be read. With `--json` it prints a report containing the verdict, the counts behind it, the specification version, and the SHA-256 of both input files. The report is what a lab shares. No data leaves your machine to check conformance.
 

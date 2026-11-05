@@ -1,4 +1,4 @@
-"""Tests for the MD-2/MD-3 threshold simulation script and SPEC.md numbers."""
+"""Tests for the min-dataset-2/min-dataset-3 threshold simulation script and SPEC.md numbers."""
 
 from __future__ import annotations
 

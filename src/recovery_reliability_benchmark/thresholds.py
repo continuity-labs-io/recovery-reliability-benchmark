@@ -1,4 +1,4 @@
-"""Simulate the sampling distribution of the reliability ceiling across MD-2/MD-3 thresholds."""
+"""Simulate the sampling distribution of the reliability ceiling across min-dataset-2/min-dataset-3 thresholds."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ def render_markdown(cells: list[dict[str, Any]], seeds: int, command: str) -> st
         "",
         (
             "Simulated sampling distribution of the within-session reliability ceiling across the "
-            "MD-2 (`n_trials`) and MD-3 (`n_units`) thresholds. Synthetic datasets were generated "
+            "min-dataset-2 (`n_trials`) and min-dataset-3 (`n_units`) thresholds. Synthetic datasets were generated "
             "with `recovery_reliability_benchmark.synthetic.make_tables` (Gaussian unit true values "
             "and per-trial errors scaled to single-trial reliability `rho1`, with condition offsets "
             "`{A: 0.0, B: 1.0, C: 2.0}` when `n_conditions == 3`) and estimated with "
@@ -149,7 +149,7 @@ def write_json(path: Path, cells: list[dict[str, Any]], seeds: int, command: str
 def main(argv: list[str] | None = None) -> int:
     """Run the threshold simulation grid and write Markdown and JSON outputs."""
     parser = argparse.ArgumentParser(
-        description="Simulate the sampling distribution of the reliability ceiling across MD-2/MD-3 thresholds."
+        description="Simulate the sampling distribution of the reliability ceiling across min-dataset-2/min-dataset-3 thresholds."
     )
     parser.add_argument("--seeds", type=int, default=1000, help="Number of random seeds per cell.")
     parser.add_argument("--out", default="output/thresholds", help="Output path stem (writes .md and .json).")

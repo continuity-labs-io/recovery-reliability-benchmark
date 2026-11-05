@@ -45,7 +45,7 @@ rrb-evaluate examples/units.csv examples/responses.csv \
 --measures tau,amplitude \
 --post-stim-window-s 2.0
 
-# threshold simulation across MD-2/MD-3 grid (writes output/thresholds.md and .json)
+# threshold simulation across min-dataset-2/min-dataset-3 grid (writes output/thresholds.md and .json)
 rrb-thresholds --fast --out output/thresholds
 ```
 
@@ -58,7 +58,7 @@ The first line of output is the conformance level (`conforming` or `fully_confor
 - `src/recovery_reliability_benchmark/metadata.py` — Pydantic schemas and loaders for `preparation.json` and `conditions.json` sidecars.
 - `src/recovery_reliability_benchmark/synthetic.py` — Synthetic dataset generator with configurable single-session reliability and condition offsets.
 - `src/recovery_reliability_benchmark/evaluate.py` — Odd/even split-half reliability ceiling, Fisher-z interval, permutation null, and positive control (`rrb-evaluate`).
-- `src/recovery_reliability_benchmark/thresholds.py` — Monte Carlo simulation of the reliability ceiling across MD-2/MD-3 thresholds (`rrb-thresholds`).
+- `src/recovery_reliability_benchmark/thresholds.py` — Monte Carlo simulation of the reliability ceiling across min-dataset-2/min-dataset-3 thresholds (`rrb-thresholds`).
 - `examples/` — Conforming synthetic example tables (`units.csv`, `responses.csv`), metadata sidecars (`preparation.json`, `conditions.json`), and generator script.
 - `scripts/` — CLI wrapper script (`scripts/thresholds.py`) for regenerating threshold simulation outputs.
 - `docs/` — Maintainer terms (`docs/terms.md`) and generated threshold simulation tables (`docs/thresholds.md`, `docs/thresholds.json`).

@@ -32,7 +32,7 @@ No observed correlation between two applications of a measure can exceed that me
 
 ## 2. What "the measure" is
 
-Not a scalar. For one session and one condition, the measure is computed per recording unit, producing a **vector indexed by unit**. That vector is the measurement.
+For one session and one condition, the measure is computed per recording unit, producing a **vector indexed by unit**. That vector is the measurement.
 
 The correlation therefore runs **across units**, not across trials. Between-unit variance is the signal. If every unit returned the same value there would be nothing to correlate and the method would be undefined, which is also why section 4 matters.
 
@@ -40,7 +40,7 @@ The correlation therefore runs **across units**, not across trials. Between-unit
 
 ## 3. Procedure
 
-Input: a conforming dataset (MD-1 through MD-6), one or more measure columns, and the evaluated conditions identified by `validate()`.
+Input: a conforming dataset (min-dataset-1 through min-dataset-6), one or more measure columns, and the evaluated conditions identified by `validate()`.
 
 **Step 1. Partition.** Within each `(unit_id, condition)` group in the evaluated conditions, sort trials by `trial_index` and rank them `k = 0, 1, 2, ...` within the group (not by global `trial_index` parity).
 
@@ -89,7 +89,7 @@ Without centering, variance between conditions inflates the apparent reliability
 
 In the per-condition estimate, centering subtracts one constant from every unit in that condition and cannot change the correlation, so centering is reported for the pooled estimate only. In the pooled estimate, `(unit_id, condition)` pairs share units across conditions, so `n_pairs` overstates the number of independent samples; the independence census counts distinct units alongside pairs.
 
-Only the centered figure is comparable to a centered cross-session result. Both are reported so the gap is visible. On the fs369 pilot the uncentered ceiling was 0.779 and the centered ceiling 0.76, each the geometric mean of two sessions' within-session ceilings.
+Only the centered figure is comparable to a centered cross-session result. Both are reported so the gap is visible. On the [FinalSpark](https://finalspark.com/) (`fs369`) pilot the uncentered ceiling was 0.779 and the centered ceiling 0.76, each the geometric mean of two sessions' within-session ceilings.
 
 ---
 
@@ -119,9 +119,18 @@ Default `n_perm` = 1000.
 
 ### 5.3 Independence accounting
 
-Not a statistic. A census reporting counts at every level, in order: preparations, sessions, recordings, units, active units, conditions, evaluated conditions, trials, and median trials per unit-condition. The reported n is stated explicitly alongside what else could have been counted.
+This is a census that reports counts at every level, in order: 
+- preparations
+- sessions
+- recordings
+- units
+- active units
+- conditions
+- evaluated conditions
+- trials
+- median trials per unit-condition
 
-Most reported sample sizes in this literature count trials, which inflates apparent confidence by an order of magnitude or more.
+The reported n is stated explicitly alongside what else could have been counted.
 
 ---
 

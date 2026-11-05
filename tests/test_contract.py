@@ -146,14 +146,14 @@ def test_read_tables_dtypes(tmp_path: Path) -> None:
 
 def test_contract_violation_str_and_dict() -> None:
     exc = ContractViolation(
-        "MD-2",
+        "min-dataset-2",
         "6 trials for condition 'A' on unit 'ch17', requires 10.",
         found=6,
         required=10,
     )
-    assert str(exc) == "MD-2 failed. 6 trials for condition 'A' on unit 'ch17', requires 10."
+    assert str(exc) == "min-dataset-2 failed. 6 trials for condition 'A' on unit 'ch17', requires 10."
     assert exc.to_dict() == {
-        "requirement": "MD-2",
+        "requirement": "min-dataset-2",
         "message": "6 trials for condition 'A' on unit 'ch17', requires 10.",
         "found": 6,
         "required": 10,
@@ -162,17 +162,17 @@ def test_contract_violation_str_and_dict() -> None:
 
 def test_requirement_enum() -> None:
     assert len(Requirement) == 7
-    assert Requirement("MD-3") is Requirement.MD3
-    assert Requirement.MD3 == "MD-3"
+    assert Requirement("min-dataset-3") is Requirement.MD3
+    assert Requirement.MD3 == "min-dataset-3"
     for member in Requirement:
         assert isinstance(member.description, str)
         assert len(member.description) > 0
 
 
 def test_contract_violation_accepts_string_or_enum() -> None:
-    for exc in (ContractViolation("MD-2", "m"), ContractViolation(Requirement.MD2, "m")):
+    for exc in (ContractViolation("min-dataset-2", "m"), ContractViolation(Requirement.MD2, "m")):
         assert exc.requirement is Requirement.MD2
-        assert exc.to_dict()["requirement"] == "MD-2"
+        assert exc.to_dict()["requirement"] == "min-dataset-2"
 
 
 def test_md1_two_preparations() -> None:
@@ -356,7 +356,7 @@ def test_md6_window_below_minimum() -> None:
         validate(units, responses, MEASURES, post_stim_window_s=0.4)
     exc = exc_info.value
     assert exc.requirement is Requirement.MD6
-    assert str(exc) == "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s."
+    assert str(exc) == "min-dataset-6 failed. Post-stimulus window 0.4 s, requires 2.0 s."
     assert exc.found == 0.4
     assert exc.required == 2.0
 
@@ -408,7 +408,7 @@ def test_conforming_level() -> None:
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == CONFORMING
     assert result["conformance"] == "conforming"
-    assert result["should_failed"] == ["MD-2", "MD-3"]
+    assert result["should_failed"] == ["min-dataset-2", "min-dataset-3"]
     assert result["best_condition"] == "A"
 
 
@@ -425,7 +425,7 @@ def test_should_partial() -> None:
     units, responses = make_tables(n_units=30, n_trials=10)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == "conforming"
-    assert result["should_failed"] == ["MD-2"]
+    assert result["should_failed"] == ["min-dataset-2"]
 
 
 def test_best_condition_skips_unevaluated() -> None:
@@ -446,10 +446,10 @@ def test_best_condition_tiebreak() -> None:
         ~((responses["condition"] == "A") & (responses["unit_id"].isin(dropped_units)))
     ].reset_index(drop=True)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
-    assert result["conditions"]["A"]["should_failed"] == ["MD-2", "MD-3"]
-    assert result["conditions"]["B"]["should_failed"] == ["MD-2"]
+    assert result["conditions"]["A"]["should_failed"] == ["min-dataset-2", "min-dataset-3"]
+    assert result["conditions"]["B"]["should_failed"] == ["min-dataset-2"]
     assert result["best_condition"] == "B"
-    assert result["should_failed"] == ["MD-2"]
+    assert result["should_failed"] == ["min-dataset-2"]
     assert result["conformance"] == "conforming"
 
 

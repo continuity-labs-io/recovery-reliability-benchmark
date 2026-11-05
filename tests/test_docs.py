@@ -34,7 +34,7 @@ def test_spec_version_matches_code() -> None:
 
 
 def test_spec_documents_example_message() -> None:
-    expected = "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s."
+    expected = "min-dataset-6 failed. Post-stimulus window 0.4 s, requires 2.0 s."
     spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
     assert expected in spec_text
 

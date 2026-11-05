@@ -52,7 +52,10 @@ def test_cli_violation_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     )
     captured = capsys.readouterr()
     assert rc == 1
-    assert captured.out == "MD-2 failed. At most 6 trials in any condition (condition 'A'), requires 10.\n"
+    assert (
+        captured.out
+        == "min-dataset-2 failed. At most 6 trials in any condition (condition 'A'), requires 10.\n"
+    )
 
 
 def test_cli_window_violation_message(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -62,7 +65,7 @@ def test_cli_window_violation_message(tmp_path: Path, capsys: pytest.CaptureFixt
     )
     captured = capsys.readouterr()
     assert rc == 1
-    assert captured.out == "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.\n"
+    assert captured.out == "min-dataset-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.\n"
 
 
 @pytest.mark.parametrize("bad_window", ["-0.1", "0", "nan"])
@@ -139,7 +142,7 @@ def test_cli_json_violation(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     assert rc == 1
     doc = json.loads(captured.out)
     assert doc["status"] == "violation"
-    assert doc["violation"]["requirement"] == "MD-2"
+    assert doc["violation"]["requirement"] == "min-dataset-2"
     assert doc["violation"]["found"] == 6
     assert "result" not in doc
 
