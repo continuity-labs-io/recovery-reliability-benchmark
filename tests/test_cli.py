@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from recovery_reliability_benchmark.contract import main
+from recovery_reliability_benchmark.evaluate import main as evaluate_main
 from recovery_reliability_benchmark.synthetic import make_tables
+from recovery_reliability_benchmark.thresholds import main as thresholds_main
 
 
 def _write_csvs(tmp_path: Path, **kwargs: object) -> tuple[Path, Path]:
@@ -123,3 +127,33 @@ def test_examples_are_fully_conforming(capsys: pytest.CaptureFixture[str]) -> No
     captured = capsys.readouterr()
     assert rc == 0
     assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.0)"
+
+
+def test_module_invocation() -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "recovery_reliability_benchmark.contract",
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "responses.csv"),
+            "--measures",
+            "tau,amplitude",
+            "--post-stim-window-s",
+            "2.0",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    assert proc.stdout.splitlines()[0] == "fully_conforming (SPEC v1.0)"
+
+
+def test_help_flags() -> None:
+    for entry in (main, evaluate_main, thresholds_main):
+        with pytest.raises(SystemExit) as exc_info:
+            entry(["--help"])
+        assert exc_info.value.code == 0
+

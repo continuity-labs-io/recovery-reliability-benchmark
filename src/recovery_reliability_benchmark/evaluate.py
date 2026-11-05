@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from . import __version__
 from .contract import (
     SPEC_VERSION,
     ContractViolation,
@@ -343,6 +342,8 @@ def run(
             "pooled": pooled,
             "null": null,
         }
+
+    from . import __version__
 
     return {
         "status": "ok",

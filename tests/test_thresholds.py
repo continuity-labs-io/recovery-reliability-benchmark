@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.thresholds import format_interval, main
+from recovery_reliability_benchmark.thresholds import format_interval, main
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -34,6 +34,18 @@ def test_fast_grid_runs(tmp_path: Path) -> None:
     out_md = tmp_path / "thresholds.md"
     assert out_json.is_file()
     assert out_md.is_file()
+
+    md_text = out_md.read_text(encoding="utf-8")
+    assert (
+        "The simulation assumes Gaussian unit effects and independent trial errors with no "
+        "drift and no unit dropout, so intervals on real data are at least this wide."
+        in md_text
+    )
+    assert (
+        "For the pooled estimate the interval uses n_eff = units and is conservative; "
+        "observed coverage is 0.99 or higher."
+        in md_text
+    )
 
     doc = json.loads(out_json.read_text(encoding="utf-8"))
     assert doc["seeds"] == 50

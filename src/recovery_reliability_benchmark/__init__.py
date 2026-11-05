@@ -11,6 +11,15 @@ from .contract import (
     read_tables,
     validate,
 )
+from .evaluate import (
+    ceiling,
+    run,
+    split_halves,
+)
+from .metadata import (
+    Condition,
+    Preparation,
+)
 from .protocol import (
     Burst,
     Protocol,
@@ -27,14 +36,18 @@ except PackageNotFoundError:
 __all__ = [
     "SPEC_VERSION",
     "Burst",
+    "Condition",
     "ContractViolation",
+    "Preparation",
     "Protocol",
     "Pulse",
     "Requirement",
     "Train",
     "__version__",
+    "ceiling",
     "default_pulse",
     "read_tables",
+    "run",
+    "split_halves",
     "validate",
 ]
-

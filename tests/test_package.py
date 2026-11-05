@@ -6,15 +6,20 @@ import recovery_reliability_benchmark
 from recovery_reliability_benchmark import (
     SPEC_VERSION,
     Burst,
+    Condition,
     ContractViolation,
+    Preparation,
     Protocol,
     Pulse,
     Requirement,
     Train,
     __all__,
     __version__,
+    ceiling,
     default_pulse,
     read_tables,
+    run,
+    split_halves,
     validate,
 )
 
@@ -31,6 +36,11 @@ def test_exports() -> None:
         "Train": Train,
         "Protocol": Protocol,
         "default_pulse": default_pulse,
+        "split_halves": split_halves,
+        "ceiling": ceiling,
+        "run": run,
+        "Preparation": Preparation,
+        "Condition": Condition,
         "__version__": __version__,
     }
     assert isinstance(__version__, str) and len(__version__) > 0
