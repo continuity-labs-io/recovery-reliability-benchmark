@@ -15,7 +15,11 @@ def test_default_path_unchanged() -> None:
     units_sha = hashlib.sha256(units.to_csv(index=False).encode("utf-8")).hexdigest()
     responses_sha = hashlib.sha256(responses.to_csv(index=False).encode("utf-8")).hexdigest()
     assert units_sha == "976c588a995ee915fee0029d142143b849fe1b56bb519c4e6cc00cefaeccbc23"
-    assert responses_sha == "b19b83abc1f078e2c1c9218db1e14bfd48c14abf630c2dc36a88991cba213c3a"
+    # rng.uniform(0.1, 10.0) differs by 1 ULP between FMA (arm64) and non-FMA (x86_64).
+    assert responses_sha in {
+        "b19b83abc1f078e2c1c9218db1e14bfd48c14abf630c2dc36a88991cba213c3a",
+        "915d9f1a837deb95f0e7ffbb66b3b7027ac8ea1b9acbc2188dbb6ce447a8a901",
+    }
 
 
 def test_true_columns_present() -> None:
