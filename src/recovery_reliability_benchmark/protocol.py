@@ -31,7 +31,9 @@ class Pulse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     waveform_shape: Literal["biphasic_square", "monophasic_square"] = "biphasic_square"
-    polarity_order: Literal["cathodic_first", "anodic_first"] = "cathodic_first"  # for monophasic, the polarity of the single phase
+    polarity_order: Literal["cathodic_first", "anodic_first"] = (
+        "cathodic_first"  # for monophasic, the polarity of the single phase
+    )
     mode: Literal["current", "voltage"] = "current"
     phase_1_duration_us: float = Field(gt=0)
     inter_phase_gap_us: float = Field(default=0.0, ge=0)
@@ -109,26 +111,18 @@ class Pulse(BaseModel):
 
         if self.waveform_shape == "monophasic_square":
             if self.phase_2_duration_us != 0:
-                raise ValueError(
-                    "waveform_shape='monophasic_square' requires phase_2_duration_us == 0."
-                )
+                raise ValueError("waveform_shape='monophasic_square' requires phase_2_duration_us == 0.")
             if self.inter_phase_gap_us != 0:
-                raise ValueError(
-                    "waveform_shape='monophasic_square' requires inter_phase_gap_us == 0."
-                )
+                raise ValueError("waveform_shape='monophasic_square' requires inter_phase_gap_us == 0.")
             if p2_amp not in (None, 0.0):
                 raise ValueError(
                     f"waveform_shape='monophasic_square' requires {p2_amp_field} to be None or 0."
                 )
         else:
             if self.phase_2_duration_us <= 0:
-                raise ValueError(
-                    "waveform_shape='biphasic_square' requires phase_2_duration_us > 0."
-                )
+                raise ValueError("waveform_shape='biphasic_square' requires phase_2_duration_us > 0.")
             if p2_amp is None or p2_amp <= 0:
-                raise ValueError(
-                    f"waveform_shape='biphasic_square' requires {p2_amp_field} > 0."
-                )
+                raise ValueError(f"waveform_shape='biphasic_square' requires {p2_amp_field} > 0.")
 
             if self.mode == "current":
                 assert self.phase_1_amplitude_ua is not None and self.phase_2_amplitude_ua is not None
@@ -173,10 +167,9 @@ class Burst(BaseModel):
     @property
     def active_burst_duration_ms(self) -> float:
         """Return the duration from the first pulse onset to the last pulse end in milliseconds."""
-        return (
-            (self.pulses_per_burst - 1) * (1000.0 / self.intra_burst_frequency_hz)
-            + self.pulse.total_pulse_duration_us * 1e-3
-        )
+        return (self.pulses_per_burst - 1) * (
+            1000.0 / self.intra_burst_frequency_hz
+        ) + self.pulse.total_pulse_duration_us * 1e-3
 
     @property
     def n_pulses(self) -> int:
@@ -186,10 +179,7 @@ class Burst(BaseModel):
     @model_validator(mode="after")
     def _validate_burst(self) -> Burst:
         """Validate that consecutive pulses in the burst do not overlap."""
-        if (
-            self.pulses_per_burst > 1
-            and self.pulse.total_pulse_duration_us >= self.intra_burst_interval_us
-        ):
+        if self.pulses_per_burst > 1 and self.pulse.total_pulse_duration_us >= self.intra_burst_interval_us:
             raise ValueError(
                 f"Pulses in burst overlap: total_pulse_duration_us ({self.pulse.total_pulse_duration_us}) "
                 f"must be < intra_burst_interval_us ({self.intra_burst_interval_us})."
@@ -215,8 +205,7 @@ class Train(BaseModel):
     def train_duration_s(self) -> float:
         """Return the duration from the first burst onset to the last burst end in seconds."""
         return (
-            (self.bursts_per_train - 1) * self.inter_burst_interval_ms
-            + self.burst.active_burst_duration_ms
+            (self.bursts_per_train - 1) * self.inter_burst_interval_ms + self.burst.active_burst_duration_ms
         ) * 1e-3
 
     @property
@@ -280,8 +269,7 @@ class Protocol(BaseModel):
         """Validate inter-train gap when multiple trains are present."""
         if self.trains_per_protocol > 1 and self.inter_train_gap_s <= 0:
             raise ValueError(
-                "trains_per_protocol > 1 requires inter_train_gap_s > 0 "
-                f"(got {self.inter_train_gap_s})."
+                f"trains_per_protocol > 1 requires inter_train_gap_s > 0 (got {self.inter_train_gap_s})."
             )
         return self
 

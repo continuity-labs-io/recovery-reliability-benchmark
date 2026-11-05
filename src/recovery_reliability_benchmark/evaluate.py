@@ -309,10 +309,7 @@ def run(
 
     measures_out: dict[str, Any] = {}
     for m in measure_list:
-        per_cond = {
-            c: ceiling(halves[cond_level == c], m, False)
-            for c in evaluated_conditions
-        }
+        per_cond = {c: ceiling(halves[cond_level == c], m, False) for c in evaluated_conditions}
         pooled = {
             "uncentered": ceiling(halves, m, False),
             "centered": ceiling(halves, m, True),
@@ -367,9 +364,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("units_csv", help="Path to units CSV file.")
     parser.add_argument("responses_csv", help="Path to responses CSV file.")
     parser.add_argument("--measures", required=True, help="Comma-separated measure column names.")
-    parser.add_argument("--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds.")
-    parser.add_argument("--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds.")
-    parser.add_argument("--n-perm", type=int, default=1000, help="Permutations for the label-permutation null.")
+    parser.add_argument(
+        "--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds."
+    )
+    parser.add_argument(
+        "--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds."
+    )
+    parser.add_argument(
+        "--n-perm", type=int, default=1000, help="Permutations for the label-permutation null."
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument("--preparation", default=None, help="Path to preparation.json metadata sidecar.")
     parser.add_argument("--conditions", default=None, help="Path to conditions.json metadata sidecar.")

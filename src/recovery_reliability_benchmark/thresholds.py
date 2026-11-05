@@ -67,9 +67,7 @@ def simulate_cell(
         r_nonpositive[seed] = bool(est["r_nonpositive"])
         ci_lo = est["rho_ci_low"]
         ci_hi = est["rho_ci_high"]
-        covered[seed] = bool(
-            ci_lo is not None and ci_hi is not None and (ci_lo <= reliability <= ci_hi)
-        )
+        covered[seed] = bool(ci_lo is not None and ci_hi is not None and (ci_lo <= reliability <= ci_hi))
 
     p2_5 = float(np.percentile(rhos, 2.5))
     p97_5 = float(np.percentile(rhos, 97.5))

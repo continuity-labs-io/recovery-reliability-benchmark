@@ -270,4 +270,3 @@ def test_single_trial_conversion() -> None:
     assert est_zero["rho"] == 0.0
     assert est_zero["rho_single_trial"] == 0.0
     assert est_zero["rho_at_20"] == 0.0
-

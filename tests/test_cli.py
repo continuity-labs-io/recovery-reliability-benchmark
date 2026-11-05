@@ -27,7 +27,9 @@ def _write_csvs(tmp_path: Path, **kwargs: object) -> tuple[Path, Path]:
 
 def test_cli_conforming_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     units_csv, responses_csv = _write_csvs(tmp_path)
-    rc = main([str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"])
+    rc = main(
+        [str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"]
+    )
     captured = capsys.readouterr()
     assert rc == 0
     assert captured.out.splitlines()[0] == "conforming (SPEC v1.0)"
@@ -35,7 +37,9 @@ def test_cli_conforming_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 def test_cli_fully_conforming(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     units_csv, responses_csv = _write_csvs(tmp_path, n_units=30, n_trials=20)
-    rc = main([str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"])
+    rc = main(
+        [str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"]
+    )
     captured = capsys.readouterr()
     assert rc == 0
     assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.0)"
@@ -43,7 +47,9 @@ def test_cli_fully_conforming(tmp_path: Path, capsys: pytest.CaptureFixture[str]
 
 def test_cli_violation_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     units_csv, responses_csv = _write_csvs(tmp_path, n_trials=6)
-    rc = main([str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"])
+    rc = main(
+        [str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"]
+    )
     captured = capsys.readouterr()
     assert rc == 1
     assert captured.out == "MD-2 failed. At most 6 trials in any condition (condition 'A'), requires 10.\n"
@@ -51,7 +57,9 @@ def test_cli_violation_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]
 
 def test_cli_window_violation_message(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     units_csv, responses_csv = _write_csvs(tmp_path)
-    rc = main([str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "0.4"])
+    rc = main(
+        [str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "0.4"]
+    )
     captured = capsys.readouterr()
     assert rc == 1
     assert captured.out == "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.\n"
@@ -60,7 +68,9 @@ def test_cli_window_violation_message(tmp_path: Path, capsys: pytest.CaptureFixt
 def test_cli_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _, responses_csv = _write_csvs(tmp_path)
     missing_units = tmp_path / "does_not_exist.csv"
-    rc = main([str(missing_units), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"])
+    rc = main(
+        [str(missing_units), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"]
+    )
     captured = capsys.readouterr()
     assert rc == 2
     assert "error:" in captured.err
@@ -156,4 +166,3 @@ def test_help_flags() -> None:
         with pytest.raises(SystemExit) as exc_info:
             entry(["--help"])
         assert exc_info.value.code == 0
-

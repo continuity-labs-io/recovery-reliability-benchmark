@@ -38,13 +38,11 @@ def test_fast_grid_runs(tmp_path: Path) -> None:
     md_text = out_md.read_text(encoding="utf-8")
     assert (
         "The simulation assumes Gaussian unit effects and independent trial errors with no "
-        "drift and no unit dropout, so intervals on real data are at least this wide."
-        in md_text
+        "drift and no unit dropout, so intervals on real data are at least this wide." in md_text
     )
     assert (
         "For the pooled estimate the interval uses n_eff = units and is conservative; "
-        "observed coverage is 0.99 or higher."
-        in md_text
+        "observed coverage is 0.99 or higher." in md_text
     )
 
     doc = json.loads(out_json.read_text(encoding="utf-8"))
@@ -61,10 +59,7 @@ def test_spec_numbers_match_json() -> None:
     doc = json.loads((ROOT / "docs" / "thresholds.json").read_text(encoding="utf-8"))
     spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
 
-    by_key = {
-        (c["rho1"], c["n_conditions"], c["n_trials"], c["n_units"]): c
-        for c in doc["cells"]
-    }
+    by_key = {(c["rho1"], c["n_conditions"], c["n_trials"], c["n_units"]): c for c in doc["cells"]}
 
     four_cells = [
         (0.2, 1, 10, 8),
@@ -83,14 +78,12 @@ def test_spec_numbers_match_json() -> None:
     should_interval = format_interval(should_cell["p2_5"], should_cell["p97_5"])
     assert (
         f"narrows from {must_interval} at the MUST thresholds to {should_interval} "
-        "at the SHOULD thresholds (single-trial reliability 0.2)"
-        in spec_text
+        "at the SHOULD thresholds (single-trial reliability 0.2)" in spec_text
     )
 
     p_zero_02 = f"{must_cell['p_zero']:.0%}"
     p_zero_01 = f"{by_key[(0.1, 1, 10, 8)]['p_zero']:.0%}"
     assert (
         f"and {p_zero_02} of such runs report exactly 0 "
-        f"({p_zero_01} when the single-trial reliability is 0.1)"
-        in spec_text
+        f"({p_zero_01} when the single-trial reliability is 0.1)" in spec_text
     )

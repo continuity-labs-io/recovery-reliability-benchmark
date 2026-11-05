@@ -6,7 +6,7 @@ import argparse
 import hashlib
 import json
 import sys
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -33,7 +33,7 @@ CONFORMING = "conforming"
 FULLY_CONFORMING = "fully_conforming"
 
 
-class Requirement(str, Enum):
+class Requirement(StrEnum):
     """Minimum Dataset (MD) requirements from SPEC.md.
 
     A dataset must satisfy every MD requirement's MUST threshold to be
@@ -301,7 +301,9 @@ def validate(
         )
 
     evaluated_conditions = sorted(
-        c for c, info in conditions_info.items() if info["n_trials"] >= MD2_MUST and info["n_units_active"] >= MD3_MUST
+        c
+        for c, info in conditions_info.items()
+        if info["n_trials"] >= MD2_MUST and info["n_units_active"] >= MD3_MUST
     )
     n_units_active = max(conditions_info[c]["n_units_active"] for c in evaluated_conditions)
 
@@ -478,9 +480,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("units_csv", help="Path to units CSV file.")
     parser.add_argument("responses_csv", help="Path to responses CSV file.")
     parser.add_argument("--measures", required=True, help="Comma-separated measure column names.")
-    parser.add_argument("--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds.")
-    parser.add_argument("--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds.")
-    parser.add_argument("--extra-forbidden", default="", help="Comma-separated extra forbidden measure names.")
+    parser.add_argument(
+        "--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds."
+    )
+    parser.add_argument(
+        "--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds."
+    )
+    parser.add_argument(
+        "--extra-forbidden", default="", help="Comma-separated extra forbidden measure names."
+    )
     parser.add_argument("--preparation", default=None, help="Path to preparation.json metadata sidecar.")
     parser.add_argument("--conditions", default=None, help="Path to conditions.json metadata sidecar.")
     parser.add_argument("--spikes", default=None, help="Path to spikes.csv table.")
@@ -564,10 +572,11 @@ def main(argv: list[str] | None = None) -> int:
         print("conditions:")
         for name, info in result["conditions"].items():
             sf = info["should_failed"] or "none"
-            print(f"  {name}: n_trials={info['n_trials']} n_units_active={info['n_units_active']} should_failed={sf}")
+            print(
+                f"  {name}: n_trials={info['n_trials']} n_units_active={info['n_units_active']} should_failed={sf}"
+            )
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

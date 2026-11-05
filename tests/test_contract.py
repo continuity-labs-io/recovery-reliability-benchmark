@@ -9,7 +9,6 @@ import pandas as pd
 import pytest
 from pandas.api.types import is_integer_dtype
 
-from tests.conftest import make_tables
 from recovery_reliability_benchmark.contract import (
     CONFORMING,
     FULLY_CONFORMING,
@@ -22,6 +21,7 @@ from recovery_reliability_benchmark.contract import (
 )
 from recovery_reliability_benchmark.metadata import Condition, Preparation
 from recovery_reliability_benchmark.protocol import Protocol
+from tests.conftest import make_tables
 
 MEASURES = ["tau", "amplitude"]
 
@@ -223,7 +223,9 @@ def test_md2_too_few_trials() -> None:
 
 def test_md2_passes_if_any_condition_has_enough() -> None:
     units, responses = make_tables(n_trials=10, conditions=("A", "B"))
-    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 15))].reset_index(drop=True)
+    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 15))].reset_index(
+        drop=True
+    )
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conditions"]["B"]["n_trials"] == 5
     assert result["evaluated_conditions"] == ["A"]
@@ -414,7 +416,9 @@ def test_should_partial() -> None:
 
 def test_best_condition_skips_unevaluated() -> None:
     units, responses = make_tables(n_units=30, n_trials=20, conditions=("A", "B"))
-    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 25))].reset_index(drop=True)
+    responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 25))].reset_index(
+        drop=True
+    )
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == "fully_conforming"
     assert result["best_condition"] == "A"
@@ -424,9 +428,9 @@ def test_best_condition_skips_unevaluated() -> None:
 def test_best_condition_tiebreak() -> None:
     units, responses = make_tables(n_units=30, n_trials=10, conditions=("A", "B"))
     dropped_units = {f"u{i:02d}" for i in range(8, 30)}
-    responses = responses[~((responses["condition"] == "A") & (responses["unit_id"].isin(dropped_units)))].reset_index(
-        drop=True
-    )
+    responses = responses[
+        ~((responses["condition"] == "A") & (responses["unit_id"].isin(dropped_units)))
+    ].reset_index(drop=True)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conditions"]["A"]["should_failed"] == ["MD-2", "MD-3"]
     assert result["conditions"]["B"]["should_failed"] == ["MD-2"]
@@ -568,5 +572,3 @@ def test_examples_with_sidecars(capsys: pytest.CaptureFixture[str]) -> None:
     doc = json.loads(captured.out)
     metadata = doc["result"]["metadata"]
     assert metadata["conditions"]["A"]["fingerprint"] == Protocol.standard_hfs().fingerprint()
-
-

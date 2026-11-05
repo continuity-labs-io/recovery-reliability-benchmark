@@ -12,4 +12,3 @@ from recovery_reliability_benchmark.synthetic import make_tables
 def tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return a fresh conforming (units, responses) pair."""
     return make_tables()
-
