@@ -1,6 +1,10 @@
 # recovery-reliability-benchmark
 [![test](https://github.com/continuity-labs-io/recovery-reliability-benchmark/actions/workflows/test.yml/badge.svg)](https://github.com/continuity-labs-io/recovery-reliability-benchmark/actions/workflows/test.yml)
 
+## Status
+
+v0.1.0: conformance checking and reliability ceilings on per-trial measures, validated on synthetic data. Reproduction of the pilot dataset and PSTH-based recovery measures follow in v0.2.0.
+
 A public benchmark testing whether recovery kinetics after a standardized conditioning load are reliable enough to serve as a functional endpoint.
 
 Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported.
@@ -25,6 +29,26 @@ rrb-evaluate examples/units.csv examples/responses.csv --measures tau,amplitude 
 ```
 
 The first line of output is the conformance level (`conforming` or `fully_conforming`). The example data are synthetic with a true reliability of 0.8; the reported ceiling and its interval should bracket it. Passing `--json` produces a shareable report containing the verdict, counts, and SHA-256 digests of the inputs; no data leaves the machine. You can also run `python -m recovery_reliability_benchmark.contract` as the equivalent without the console script.
+
+## Repository layout
+
+- `src/recovery_reliability_benchmark/contract.py` — Conformance checker for `units.csv`, `responses.csv`, and optional sidecars (`rrb-check`).
+- `src/recovery_reliability_benchmark/protocol.py` — Stimulation-protocol hierarchy (`Pulse`, `Burst`, `Train`, `Protocol`) and SHA-256 fingerprinting.
+- `src/recovery_reliability_benchmark/metadata.py` — Pydantic schemas and loaders for `preparation.json` and `conditions.json` sidecars.
+- `src/recovery_reliability_benchmark/synthetic.py` — Synthetic dataset generator with configurable single-session reliability and condition offsets.
+- `src/recovery_reliability_benchmark/evaluate.py` — Odd/even split-half reliability ceiling, Fisher-z interval, permutation null, and positive control (`rrb-evaluate`).
+- `src/recovery_reliability_benchmark/thresholds.py` — Monte Carlo simulation of the reliability ceiling across MD-2/MD-3 thresholds (`rrb-thresholds`).
+- `examples/` — Conforming synthetic example tables (`units.csv`, `responses.csv`), metadata sidecars (`preparation.json`, `conditions.json`), and generator script.
+- `scripts/` — CLI wrapper script (`scripts/thresholds.py`) for regenerating threshold simulation outputs.
+- `docs/` — Maintainer terms (`docs/terms.md`) and generated threshold simulation tables (`docs/thresholds.md`, `docs/thresholds.json`).
+- [SPEC.md](SPEC.md) — Normative dataset conformance specification (v1.0).
+- [METHOD.md](METHOD.md) — Normative within-session reliability ceiling method and positive control specification.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Normative dataset contribution workflow, CC0 data licensing, and withdrawal terms.
+- [docs/terms.md](docs/terms.md) — Normative maintainer position, paid-engagement derived-data clause, and archive governance.
+
+## Citing
+
+If you use this benchmark, please cite it using the metadata in [CITATION.cff](CITATION.cff).
 
 ## Licensing
 

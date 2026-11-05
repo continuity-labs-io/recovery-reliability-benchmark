@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -116,5 +117,36 @@ def test_thresholds_doc_referenced_in_spec() -> None:
     assert "docs/thresholds.md" in spec_text
 
 
+def test_citation_cff() -> None:
+    cff_path = ROOT / "CITATION.cff"
+    assert cff_path.is_file()
+    cff_text = cff_path.read_text(encoding="utf-8")
+    pyproject_data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject_version = pyproject_data["project"]["version"]
 
+    try:
+        import yaml  # type: ignore[import-not-found]
+    except ImportError:
+        assert "version: 0.1.0" in cff_text
+        cff_version = next(
+            line.split(":", 1)[1].strip().strip('"').strip("'")
+            for line in cff_text.splitlines()
+            if line.startswith("version:")
+        )
+    else:
+        parsed = yaml.safe_load(cff_text)
+        assert isinstance(parsed, dict)
+        cff_version = str(parsed["version"])
+
+    assert cff_version == pyproject_version
+
+
+def test_release_docs_sections() -> None:
+    changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "## [0.1.0]" in changelog_text
+
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "## Status" in readme_text
+    assert "## Repository layout" in readme_text
+    assert "CITATION.cff" in readme_text
 
