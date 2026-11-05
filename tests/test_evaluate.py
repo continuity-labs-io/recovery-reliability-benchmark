@@ -203,3 +203,58 @@ def test_cli_evaluate_violation(tmp_path: Path, capsys: pytest.CaptureFixture[st
     captured = capsys.readouterr()
     assert rc == 1
     assert captured.out.startswith("MD-2 failed.")
+
+
+def test_ci_contains_truth_at_scale() -> None:
+    _, responses = make_tables(n_units=2000, n_trials=20, reliability=0.8, seed=0)
+    halves = split_halves(responses, ["amplitude"], ["A"])
+    est = ceiling(halves, "amplitude", center=False)
+    assert est["rho_ci_low"] is not None
+    assert est["rho_ci_high"] is not None
+    assert est["rho_ci_low"] <= 0.8 <= est["rho_ci_high"]
+    assert (est["rho_ci_high"] - est["rho_ci_low"]) < 0.05
+
+
+def test_ci_coverage_small_n() -> None:
+    covered = 0
+    n_seeds = 200
+    for seed in range(n_seeds):
+        _, responses = make_tables(n_units=15, n_trials=20, reliability=0.8, seed=seed)
+        halves = split_halves(responses, ["tau"], ["A"])
+        est = ceiling(halves, "tau", center=False)
+        if est["rho_ci_low"] <= 0.8 <= est["rho_ci_high"]:
+            covered += 1
+    coverage = covered / n_seeds
+    assert 0.90 <= coverage <= 0.99
+
+
+def test_single_trial_conversion() -> None:
+    idx = pd.MultiIndex.from_arrays(
+        [[f"u{i:02d}" for i in range(4)], ["A"] * 4],
+        names=["unit_id", "condition"],
+    )
+    u = np.array([1.0, -1.0, 1.0, -1.0])
+    v = np.array([1.0, 1.0, -1.0, -1.0])
+    r_target = 0.8 / (2.0 - 0.8)
+    halves = pd.DataFrame(
+        {
+            "tau_A": u,
+            "tau_B": r_target * u + np.sqrt(1.0 - r_target**2) * v,
+            "n_A": 10,
+            "n_B": 10,
+        },
+        index=idx,
+    )
+    est = ceiling(halves, "tau", center=False)
+    assert est["rho"] == pytest.approx(0.8)
+    assert est["n_trials_group"] == pytest.approx(20.0)
+    assert est["rho_single_trial"] == pytest.approx(0.8 / (20.0 - 19.0 * 0.8))
+    assert est["rho_at_20"] == pytest.approx(0.8)
+
+    halves_zero = halves.copy()
+    halves_zero["tau_B"] = -u
+    est_zero = ceiling(halves_zero, "tau", center=False)
+    assert est_zero["rho"] == 0.0
+    assert est_zero["rho_single_trial"] == 0.0
+    assert est_zero["rho_at_20"] == 0.0
+

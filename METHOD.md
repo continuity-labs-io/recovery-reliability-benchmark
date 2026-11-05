@@ -60,7 +60,24 @@ Groups where either half is empty are dropped.
 
     rho = 2r / (1 + r)
 
-**Step 5. Headline rule.** When there are two or more evaluated conditions, the headline ceiling is the pooled condition-centered estimate (`pooled_centered`). When there is a single evaluated condition, the pooled and per-condition estimates coincide (Pearson correlation is shift-invariant) and the headline is the per-condition estimate of `validate()`'s `best_condition` (`per_condition`).
+**Step 5. Confidence interval.** Apply the Fisher `z` transform to `r_half` using `n_eff = n_units` (not `n_pairs`: pooled pairs share units across conditions, so `n_units` is the conservative count):
+
+    z = atanh(r)
+    se = 1 / sqrt(n_eff - 3)
+    r_lo = tanh(z - 1.96 * se),  r_hi = tanh(z + 1.96 * se)
+    rho_ci_low  = 2 * r_lo / (1 + r_lo)  if r_lo > 0 else 0.0
+    rho_ci_high = 2 * r_hi / (1 + r_hi)  if r_hi > 0 else 0.0
+
+When `n_eff < 4` or `r` is `NaN`, both bounds are reported as `None`.
+
+**Step 6. Trial-count standardization.** Let `n = n_trials_group` be the median over the frame's `(unit_id, condition)` groups of `n_A + n_B`. Invert Spearman-Brown to obtain the single-trial reliability `rho_1 = rho_single_trial` (`0.0` when `rho == 0`) and project it to a standard 20-trial session:
+
+    rho_single_trial = rho / (n - (n - 1) * rho)
+    rho_at_20 = 20 * rho_single_trial / (1 + 19 * rho_single_trial)
+
+Ceilings from sessions with different trial counts are compared through `rho_single_trial` or `rho_at_20`, not through `rho`.
+
+**Step 7. Headline rule.** When there are two or more evaluated conditions, the headline ceiling is the pooled condition-centered estimate (`pooled_centered`). When there is a single evaluated condition, the pooled and per-condition estimates coincide (Pearson correlation is shift-invariant) and the headline is the per-condition estimate of `validate()`'s `best_condition` (`per_condition`).
 
 **Edge cases.** With an odd trial count one half carries one extra trial; record it (`odd_trials`). If `r <= 0` (or `NaN`) the Spearman-Brown correction is not meaningful and diverges as `r` approaches -1, so report the ceiling as `0.0` with the raw `r` alongside and a flag (`r_nonpositive`). A non-positive split-half correlation means there is no reliable between-unit variance to measure.
 

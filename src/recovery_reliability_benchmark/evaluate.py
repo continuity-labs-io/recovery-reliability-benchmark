@@ -80,7 +80,11 @@ def ceiling(
     measure: str,
     center: bool = False,
 ) -> dict[str, Any]:
-    """Compute the split-half Pearson correlation and Spearman-Brown reliability ceiling."""
+    """Compute the split-half Pearson correlation and Spearman-Brown reliability ceiling.
+
+    Ceilings from sessions with different trial counts are compared through
+    ``rho_single_trial`` or ``rho_at_20``, not through ``rho``.
+    """
     col_a = f"{measure}_A"
     col_b = f"{measure}_B"
     valid_mask = halves[col_a].notna() & halves[col_b].notna()
@@ -97,8 +101,10 @@ def ceiling(
     n_conditions = int(sub.index.get_level_values(cond_level).nunique()) if n_pairs > 0 else 0
     if "n_A" in sub.columns and "n_B" in sub.columns and n_pairs > 0:
         odd_trials = bool((sub["n_A"] != sub["n_B"]).any())
+        n_trials_group = float(np.median((sub["n_A"] + sub["n_B"]).to_numpy(dtype=float)))
     else:
         odd_trials = False
+        n_trials_group = 0.0
 
     if center and n_pairs > 0:
         x = x - x.groupby(level=cond_level).transform("mean")
@@ -122,9 +128,37 @@ def ceiling(
             r = float(np.clip(np.dot(dx, dy) / denom, -1.0, 1.0))
 
     rho = float(2.0 * r / (1.0 + r)) if r > 0 else 0.0
+
+    n_eff = n_units
+    if n_eff < 4 or np.isnan(r):
+        rho_ci_low: float | None = None
+        rho_ci_high: float | None = None
+    else:
+        with np.errstate(divide="ignore"):
+            z = float(np.arctanh(r))
+        se = 1.0 / float(np.sqrt(n_eff - 3))
+        r_lo = float(np.tanh(z - 1.96 * se))
+        r_hi = float(np.tanh(z + 1.96 * se))
+        rho_ci_low = float(2.0 * r_lo / (1.0 + r_lo)) if r_lo > 0 else 0.0
+        rho_ci_high = float(2.0 * r_hi / (1.0 + r_hi)) if r_hi > 0 else 0.0
+
+    if rho == 0.0 or n_trials_group <= 0.0:
+        rho_single_trial = 0.0
+        rho_at_20 = 0.0
+    else:
+        denom_single = n_trials_group - (n_trials_group - 1.0) * rho
+        rho_single_trial = float(rho / denom_single) if denom_single > 0.0 else 1.0
+        rho_at_20 = float(20.0 * rho_single_trial / (1.0 + 19.0 * rho_single_trial))
+
     return {
         "r_half": r,
         "rho": rho,
+        "rho_ci_low": rho_ci_low,
+        "rho_ci_high": rho_ci_high,
+        "n_eff": n_eff,
+        "n_trials_group": n_trials_group,
+        "rho_single_trial": rho_single_trial,
+        "rho_at_20": rho_at_20,
         "n_pairs": n_pairs,
         "n_units": n_units,
         "n_conditions": n_conditions,
@@ -433,8 +467,13 @@ def main(argv: list[str] | None = None) -> int:
             h = m_res["headline"]
             kind = m_res["headline_kind"]
             null = m_res["null"]
+            ci_str = (
+                f"[{h['rho_ci_low']:.3f}, {h['rho_ci_high']:.3f}]"
+                if h["rho_ci_low"] is not None and h["rho_ci_high"] is not None
+                else "[None, None]"
+            )
             print(
-                f"{m}: rho={h['rho']:.3f} "
+                f"{m}: rho={h['rho']:.3f} ci={ci_str} rho_at_20={h['rho_at_20']:.3f} "
                 f"({kind}; r_half={h['r_half']:.3f}, n_units={h['n_units']}, n_pairs={h['n_pairs']}) "
                 f"null_p95_rho={null['p95_rho']:.3f}"
             )

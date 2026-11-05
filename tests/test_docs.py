@@ -110,4 +110,11 @@ def test_scope_atlas_and_sidecar_docs() -> None:
     assert "Scope" in changelog_text
 
 
+def test_thresholds_doc_referenced_in_spec() -> None:
+    assert (ROOT / "docs" / "thresholds.md").is_file()
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    assert "docs/thresholds.md" in spec_text
+
+
+
 
