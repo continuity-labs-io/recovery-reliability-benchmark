@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -15,9 +16,12 @@ from recovery_reliability_benchmark.contract import (
     SPEC_VERSION,
     ContractViolation,
     Requirement,
+    main,
     read_tables,
     validate,
 )
+from recovery_reliability_benchmark.metadata import Condition, Preparation
+from recovery_reliability_benchmark.protocol import Protocol
 
 MEASURES = ["tau", "amplitude"]
 
@@ -471,4 +475,98 @@ def test_md3_vectorized_matches_original() -> None:
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conditions"]["A"]["n_units_active"] == 11
     assert result["conditions"]["B"]["n_units_active"] == 11
+
+
+def test_preparation_id_mismatch() -> None:
+    units, responses = make_tables()
+    prep = Preparation(
+        preparation_id="other_prep",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+    )
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, preparation=prep)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert exc.message == "preparation.json preparation_id 'other_prep' does not match units ('prep0')."
+
+
+def test_condition_missing_from_sidecar() -> None:
+    units, responses = make_tables(conditions=("A", "B"))
+    conds = {"A": Condition()}
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, conditions=conds)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert exc.message == "condition 'B' in responses has no entry in conditions.json."
+
+
+def test_spikes_orphan_unit() -> None:
+    units, responses = make_tables()
+    spikes = pd.DataFrame({"unit_id": ["u00", "ghost"], "spike_time_ns": [100, 200]})
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, spikes=spikes)
+    exc = exc_info.value
+    assert exc.requirement is Requirement.SCHEMA
+    assert "ghost" in str(exc)
+
+
+def test_sidecars_absent_unchanged() -> None:
+    units, responses = make_tables()
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    expected_keys = {
+        "spec_version",
+        "n_preparations",
+        "n_sessions",
+        "n_recordings",
+        "n_units",
+        "n_units_active",
+        "n_conditions",
+        "n_trials",
+        "trials_per_unit_condition",
+        "conditions",
+        "evaluated_conditions",
+        "best_condition",
+        "should_failed",
+        "conformance",
+        "post_stim_window_s",
+        "load_duration_s",
+        "min_inter_stimulus_s",
+        "metadata",
+    }
+    assert set(result.keys()) == expected_keys
+    assert result["metadata"] == {
+        "preparation": None,
+        "conditions": None,
+        "n_spikes": None,
+    }
+
+
+def test_examples_with_sidecars(capsys: pytest.CaptureFixture[str]) -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    rc = main(
+        [
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "responses.csv"),
+            "--measures",
+            "tau,amplitude",
+            "--post-stim-window-s",
+            "2.0",
+            "--preparation",
+            str(examples_dir / "preparation.json"),
+            "--conditions",
+            str(examples_dir / "conditions.json"),
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0
+    doc = json.loads(captured.out)
+    metadata = doc["result"]["metadata"]
+    assert metadata["conditions"]["A"]["fingerprint"] == Protocol.standard_hfs().fingerprint()
+
 

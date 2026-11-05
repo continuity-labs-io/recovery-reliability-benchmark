@@ -8,5 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Scope: v0.x covers neural preparations only.
+- Atlas framing: a dataset contributes rows keyed by (protocol fingerprint, condition, preparation).
+- Optional sidecars preparation.json, conditions.json and spikes.csv are validated when provided; fate.csv is defined.
 - Data license: contributed datasets are accepted under CC0 1.0 only (DATA_LICENSE, CONTRIBUTING.md §5); report-then-deposit sequence and withdrawal terms updated to match.
 - docs/terms.md: maintainer position, paid-engagement derived-data clause, governance intent.

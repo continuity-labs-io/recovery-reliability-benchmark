@@ -10,11 +10,19 @@ The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as in RFC 211
 
 ---
 
+## 0. Scope
+
+Version 0.x of the benchmark covers neural preparations: dissociated cultures, organotypic slices, organoids and engineered neural tissue, on any recording modality. Other tissue types are a later major version.
+
+---
+
 ## 1. What the benchmark asks
 
 Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported. If you know of a counterexample, open an issue. The claim is meant to be checked.
 
 The benchmark asks whether they can be. The first question, which gates every other one, is whether a recovery measure is reliable enough to distinguish a preparation from a repeat of itself.
+
+A conforming dataset contributes rows to a public atlas. A row is keyed by (protocol fingerprint, condition, preparation): the commanded load, the condition label with its pharmacology, and the specimen. Reliability is computed per row set, and rows accumulate across laboratories.
 
 This document defines the smallest dataset from which that question can be answered.
 
@@ -70,7 +78,7 @@ The dataset MUST contain exactly one session from exactly one preparation, in ex
 At least one condition MUST contain 10 or more trials, and SHOULD contain 20 or more. A trial is counted once per distinct trial index. Below 10, the two halves are too short for the correlation to be stable.
 
 **MD-3 — Multiple recording units.**
-At least one condition that satisfies MD-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 15 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 12 says what a null is allowed to mean.
+At least one condition that satisfies MD-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 15 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 15 says what a null is allowed to mean.
 
 **MD-4 — Stimulus timestamps.**
 The dataset MUST provide the onset time of every stimulus, on the same clock as the response data. Every unit on a preparation receives the same stimulus, so each trial MUST carry exactly one onset time and exactly one condition across all units. Onset times MUST be strictly increasing with trial index within a condition.
@@ -97,7 +105,7 @@ The dataset's level is the level of its best condition. The reference implementa
 
 ## 6. Not required
 
-Multiple sessions. Conditioning bursts. A probe ladder. Any particular tissue type, species or cell source. Any particular instrument. Any particular modality: calcium imaging satisfies MD-1 through MD-6 as readily as an electrode array. Any aging-related metadata.
+Multiple sessions. Conditioning bursts. A probe ladder. Any particular neural preparation type, species or cell source. Any particular instrument. Any particular modality: calcium imaging satisfies MD-1 through MD-6 as readily as an electrode array. Any aging-related metadata.
 
 ---
 
@@ -153,7 +161,66 @@ These rules are checks on the container, reported under the name SCHEMA. They ar
 
 ---
 
-## 10. Size
+## 10. Preparation and condition metadata
+
+These sidecars are optional in SPEC v1.0 (benchmark v0.1.x) and required from SPEC v1.1 (benchmark v0.2.0). When provided, they are validated under SCHEMA.
+
+`preparation.json`, describing the physical specimen and acquisition setup:
+
+| field | type | required |
+|---|---|---|
+| `preparation_id` | string, must match `units.csv` | yes |
+| `species` | string | yes |
+| `preparation_type` | `dissociated_culture` \| `organotypic_slice` \| `organoid` \| `engineered_neural_tissue` | yes |
+| `age_days` | number ≥ 0 | yes |
+| `age_basis` | `DIV` \| `days_post_plating` \| `days_post_differentiation` | yes |
+| `line_or_donor_id` | anonymized string | yes |
+| `instrument` | string | yes |
+| `raw_data_url` | string | no |
+
+`conditions.json`, mapping each condition label to its commanded protocol and pharmacology:
+
+```json
+{
+  "<condition label>": {
+    "protocol": "<Protocol JSON from protocol.py, optional>",
+    "compound": "string | null",
+    "dose": "number | null",
+    "dose_unit": "string | null",
+    "vehicle": "string | null"
+  }
+}
+```
+
+Every condition present in `responses.csv` MUST have an entry in `conditions.json` when the file is provided. The atlas row's protocol fingerprint is computed from `"protocol"`.
+
+---
+
+## 11. Raw data
+
+`spikes.csv` (`unit_id`, `spike_time_ns`; one row per spike; on the same clock as `stim_time_ns`) is requested for every contribution at benchmark v0.1.x and required from v0.2.0. When provided, `spikes.csv` is validated under SCHEMA (`unit_id` and `spike_time_ns` present, `spike_time_ns` non-null, and every `unit_id` present in `units.csv`).
+
+Raw traces SHOULD be shared by persistent link (Zenodo or DANDI DOI) when available, recorded as `raw_data_url` in `preparation.json`.
+
+---
+
+## 12. Fate
+
+`fate.csv` (optional) records later observations of the same preparation so that atlas rows can carry outcome labels:
+
+| column | type | required |
+|---|---|---|
+| `preparation_id` | string | yes |
+| `observed_at` | ISO 8601 date string | yes |
+| `status` | string | yes |
+| `measure` | string | yes |
+| `value` | number | yes |
+
+`fate.csv` is defined here and is not checked by the validator in benchmark v0.1.x.
+
+---
+
+## 13. Size
 
 A conforming dataset sent as events is on the order of megabytes: 10 trials across 20 units with 2 seconds of post-stimulus recording.
 
@@ -161,7 +228,7 @@ Raw voltage is not. At 20 kHz across 1,020 channels it is approximately 40 MB pe
 
 ---
 
-## 11. Checking conformance
+## 14. Checking conformance
 
 Run the reference implementation against your data:
 
@@ -175,25 +242,27 @@ Exit status is 0 when the dataset conforms, 1 on a violation, and 2 when the inp
 
 ---
 
-## 12. Nulls
+## 15. Nulls
 
 A null measure value means the measure was not computed for that unit and trial, and the unit is not active in that trial. A null MUST NOT be used to mean that the preparation did not recover within the window; that is a result, not a missing value, and a measure definition in `METHOD.md` MUST state how it is encoded.
 
 ---
 
-## 13. Scope of conformance
+## 16. Scope of conformance
 
 Conformance is necessary, not sufficient. A conforming dataset supports the computation. It does not guarantee that any measure computed from it clears any threshold, and it makes no claim about the tissue.
 
 ---
 
-## 14. Versioning
+## 17. Versioning
 
 Requirement IDs are stable across minor versions. Thresholds change only in a major version. The reference implementation reports the version it checked against, so a result citing "conformance to v1.0" means a fixed thing, which is the point of versioning it at all.
 
+SPEC versions (`1.0`) and benchmark package versions (`0.1.0`) are distinct; statements that an item is "required from v0.2.0" refer to the benchmark package and will appear as SPEC v1.1.
+
 ---
 
-## 15. Contributing a dataset
+## 18. Contributing a dataset
 
 Conformance is the entry point, not the commitment. Terms for contributing data, what contributors receive, and how authorship is handled are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

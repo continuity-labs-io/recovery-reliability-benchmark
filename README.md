@@ -13,11 +13,14 @@ What gets scored is the measures. A recovery measure (a time constant, an amplit
 
 Today the repository checks admissibility (`rrb-check`) and describes the conditioning load ([protocol.py](src/recovery_reliability_benchmark/protocol.py)). The ceiling computation ([METHOD.md](METHOD.md)) and the ability to submit a new measure and have it scored against the corpus come next.
 
+A conforming dataset contributes rows to a public atlas. A row is keyed by (protocol fingerprint, condition, preparation): the commanded load, the condition label with its pharmacology, and the specimen. Reliability is computed per row set, and rows accumulate across laboratories. Contributed datasets are released into the public domain under CC0; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Quickstart
 
 ```bash
 pip install -e .
 rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0
+rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0 --preparation examples/preparation.json --conditions examples/conditions.json
 ```
 
 The first line of output is the conformance level (`conforming` or `fully_conforming`). Passing `--json` produces a shareable report containing the verdict, counts, and SHA-256 digests of the inputs; no data leaves the machine. You can also run `python -m recovery_reliability_benchmark.contract` as the equivalent without the console script.

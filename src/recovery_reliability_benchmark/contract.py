@@ -8,14 +8,18 @@ import json
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
+if TYPE_CHECKING:
+    from .metadata import Condition, Preparation
+
 SPEC_VERSION = "1.0"
 UNITS_REQUIRED = ("unit_id", "recording_id", "session_id", "preparation_id")
 RESPONSES_REQUIRED = ("unit_id", "trial_index", "stim_time_ns", "condition")
+SPIKES_REQUIRED = ("unit_id", "spike_time_ns")
 ID_COLUMNS = UNITS_REQUIRED
 FORBIDDEN_MEASURES = frozenset(RESPONSES_REQUIRED)
 
@@ -101,6 +105,11 @@ def read_tables(units_path: str | Path, responses_path: str | Path) -> tuple[pd.
     return units, responses
 
 
+def read_spikes(spikes_path: str | Path) -> pd.DataFrame:
+    """Read spikes CSV table with contract-enforced column dtypes."""
+    return pd.read_csv(spikes_path, dtype={"unit_id": str, "spike_time_ns": "Int64"})
+
+
 def validate(
     units: pd.DataFrame,
     responses: pd.DataFrame,
@@ -108,6 +117,9 @@ def validate(
     post_stim_window_s: float,
     load_duration_s: float = 0.0,
     extra_forbidden: set[str] | None = None,
+    preparation: Preparation | None = None,
+    conditions: dict[str, Condition] | None = None,
+    spikes: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Validate units and responses against SCHEMA and MD-1 through MD-6.
 
@@ -193,6 +205,50 @@ def validate(
                 Requirement.SCHEMA,
                 f"measure '{measure}' is constant within every (unit_id, condition) group "
                 "and carries no trial-to-trial information, requires variation in at least one group.",
+            )
+
+    if preparation is not None:
+        units_prep_id = str(units["preparation_id"].iloc[0]) if len(units) > 0 else ""
+        if str(preparation.preparation_id) != units_prep_id:
+            raise ContractViolation(
+                Requirement.SCHEMA,
+                f"preparation.json preparation_id '{preparation.preparation_id}' does not match units ('{units_prep_id}').",
+                found=preparation.preparation_id,
+                required=units_prep_id,
+            )
+
+    if conditions is not None:
+        for cond in responses["condition"].astype(str).unique():
+            if cond not in conditions:
+                raise ContractViolation(
+                    Requirement.SCHEMA,
+                    f"condition '{cond}' in responses has no entry in conditions.json.",
+                    found=cond,
+                )
+
+    if spikes is not None:
+        spikes = spikes.copy()
+        for col in SPIKES_REQUIRED:
+            if col not in spikes.columns:
+                raise ContractViolation(Requirement.SCHEMA, f"spikes is missing required column '{col}'.")
+        null_spike_time = int(spikes["spike_time_ns"].isna().sum())
+        if null_spike_time > 0:
+            raise ContractViolation(
+                Requirement.SCHEMA,
+                f"{null_spike_time} spikes rows have a null spike_time_ns, requires 0.",
+                found=null_spike_time,
+                required=0,
+            )
+        spikes["unit_id"] = spikes["unit_id"].astype(str)
+        orphan_spikes = ~spikes["unit_id"].isin(set(units["unit_id"]))
+        if orphan_spikes.any():
+            bad_id = spikes.loc[orphan_spikes, "unit_id"].iloc[0]
+            count = int((spikes["unit_id"] == bad_id).sum())
+            raise ContractViolation(
+                Requirement.SCHEMA,
+                f"{count} spikes rows reference unit_id '{bad_id}', which is not in units.",
+                found=count,
+                required=0,
             )
 
     for col in ("preparation_id", "session_id", "recording_id"):
@@ -363,6 +419,25 @@ def validate(
     should_failed = list(conditions_info[best_condition]["should_failed"])
     conformance = FULLY_CONFORMING if not should_failed else CONFORMING
 
+    metadata = {
+        "preparation": preparation.model_dump() if preparation is not None else None,
+        "conditions": (
+            {
+                label: {
+                    "fingerprint": cond.fingerprint,
+                    "compound": cond.compound,
+                    "dose": cond.dose,
+                    "dose_unit": cond.dose_unit,
+                    "vehicle": cond.vehicle,
+                }
+                for label, cond in conditions.items()
+            }
+            if conditions is not None
+            else None
+        ),
+        "n_spikes": int(len(spikes)) if spikes is not None else None,
+    }
+
     return {
         "spec_version": SPEC_VERSION,
         "n_preparations": int(units["preparation_id"].nunique()),
@@ -381,6 +456,7 @@ def validate(
         "post_stim_window_s": float(post_stim_window_s),
         "load_duration_s": float(load_duration_s),
         "min_inter_stimulus_s": min_inter_stimulus_s,
+        "metadata": metadata,
     }
 
 
@@ -394,6 +470,8 @@ def main(argv: list[str] | None = None) -> int:
 
     This report is what a lab shares; the data stays on their machine.
     """
+    from .metadata import load_conditions, load_preparation
+
     parser = argparse.ArgumentParser(
         description="Validate units and responses CSV tables against the benchmark data contract."
     )
@@ -403,6 +481,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds.")
     parser.add_argument("--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds.")
     parser.add_argument("--extra-forbidden", default="", help="Comma-separated extra forbidden measure names.")
+    parser.add_argument("--preparation", default=None, help="Path to preparation.json metadata sidecar.")
+    parser.add_argument("--conditions", default=None, help="Path to conditions.json metadata sidecar.")
+    parser.add_argument("--spikes", default=None, help="Path to spikes.csv table.")
     parser.add_argument("--json", action="store_true", dest="as_json", help="Emit report as JSON.")
     args = parser.parse_args(argv)
 
@@ -411,14 +492,25 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         units, responses = read_tables(args.units_csv, args.responses_csv)
+        spikes = read_spikes(args.spikes) if args.spikes is not None else None
+        for opt_path in (args.preparation, args.conditions):
+            if opt_path is not None and not Path(opt_path).is_file():
+                raise FileNotFoundError(opt_path)
     except (FileNotFoundError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    inputs_meta = {
+    inputs_meta: dict[str, Any] = {
         "units": {"path": args.units_csv, "sha256": file_sha256(args.units_csv)},
         "responses": {"path": args.responses_csv, "sha256": file_sha256(args.responses_csv)},
     }
+    if args.preparation is not None:
+        inputs_meta["preparation"] = {"path": args.preparation, "sha256": file_sha256(args.preparation)}
+    if args.conditions is not None:
+        inputs_meta["conditions"] = {"path": args.conditions, "sha256": file_sha256(args.conditions)}
+    if args.spikes is not None:
+        inputs_meta["spikes"] = {"path": args.spikes, "sha256": file_sha256(args.spikes)}
+
     arguments_meta = {
         "measures": measures,
         "post_stim_window_s": float(args.post_stim_window_s),
@@ -427,6 +519,8 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     try:
+        preparation = load_preparation(args.preparation) if args.preparation is not None else None
+        conditions = load_conditions(args.conditions) if args.conditions is not None else None
         result = validate(
             units,
             responses,
@@ -434,6 +528,9 @@ def main(argv: list[str] | None = None) -> int:
             post_stim_window_s=args.post_stim_window_s,
             load_duration_s=args.load_duration_s,
             extra_forbidden=set(extra_forbidden) if extra_forbidden else None,
+            preparation=preparation,
+            conditions=conditions,
+            spikes=spikes,
         )
     except ContractViolation as exc:
         if args.as_json:

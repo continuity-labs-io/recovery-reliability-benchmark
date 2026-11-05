@@ -1,0 +1,10 @@
+{
+  "preparation_id": "prep0",
+  "species": "Rattus norvegicus",
+  "preparation_type": "dissociated_culture",
+  "age_days": 21.0,
+  "age_basis": "DIV",
+  "line_or_donor_id": "example",
+  "instrument": "synthetic",
+  "raw_data_url": null
+}

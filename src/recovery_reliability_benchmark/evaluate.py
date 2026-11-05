@@ -6,7 +6,8 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -16,10 +17,14 @@ from .contract import (
     SPEC_VERSION,
     ContractViolation,
     file_sha256,
+    read_spikes,
     read_tables,
     validate,
 )
 from .synthetic import make_tables
+
+if TYPE_CHECKING:
+    from .metadata import Condition, Preparation
 
 
 def split_halves(
@@ -226,6 +231,9 @@ def run(
     injected_r: float = 0.85,
     tolerance: float = 0.05,
     seed: int = 42,
+    preparation: Preparation | None = None,
+    conditions: dict[str, Condition] | None = None,
+    spikes: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Validate inputs, run the positive control, and compute within-session ceilings."""
     measure_list = list(measures)
@@ -235,6 +243,9 @@ def run(
         measures=measure_list,
         post_stim_window_s=post_stim_window_s,
         load_duration_s=load_duration_s,
+        preparation=preparation,
+        conditions=conditions,
+        spikes=spikes,
     )
     census_dict = census(val)
     parameters: dict[str, Any] = {
@@ -255,6 +266,7 @@ def run(
             "positive_control": pc,
             "census": census_dict,
             "parameters": parameters,
+            "metadata": val["metadata"],
         }
 
     evaluated_conditions = val["evaluated_conditions"]
@@ -304,6 +316,7 @@ def run(
         "package_version": __version__,
         "parameters": parameters,
         "census": census_dict,
+        "metadata": val["metadata"],
         "positive_control": pc,
         "measures": measures_out,
     }
@@ -311,6 +324,8 @@ def run(
 
 def main(argv: list[str] | None = None) -> int:
     """Run the within-session reliability ceiling CLI."""
+    from .metadata import load_conditions, load_preparation
+
     parser = argparse.ArgumentParser(
         description="Compute within-session reliability ceilings on conforming units and responses CSV tables."
     )
@@ -321,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds.")
     parser.add_argument("--n-perm", type=int, default=1000, help="Permutations for the label-permutation null.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
+    parser.add_argument("--preparation", default=None, help="Path to preparation.json metadata sidecar.")
+    parser.add_argument("--conditions", default=None, help="Path to conditions.json metadata sidecar.")
+    parser.add_argument("--spikes", default=None, help="Path to spikes.csv table.")
     parser.add_argument("--json", action="store_true", dest="as_json", help="Emit report as JSON.")
     args = parser.parse_args(argv)
 
@@ -328,14 +346,25 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         units, responses = read_tables(args.units_csv, args.responses_csv)
+        spikes = read_spikes(args.spikes) if args.spikes is not None else None
+        for opt_path in (args.preparation, args.conditions):
+            if opt_path is not None and not Path(opt_path).is_file():
+                raise FileNotFoundError(opt_path)
     except (FileNotFoundError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    inputs_meta = {
+    inputs_meta: dict[str, Any] = {
         "units": {"path": args.units_csv, "sha256": file_sha256(args.units_csv)},
         "responses": {"path": args.responses_csv, "sha256": file_sha256(args.responses_csv)},
     }
+    if args.preparation is not None:
+        inputs_meta["preparation"] = {"path": args.preparation, "sha256": file_sha256(args.preparation)}
+    if args.conditions is not None:
+        inputs_meta["conditions"] = {"path": args.conditions, "sha256": file_sha256(args.conditions)}
+    if args.spikes is not None:
+        inputs_meta["spikes"] = {"path": args.spikes, "sha256": file_sha256(args.spikes)}
+
     arguments_meta = {
         "measures": measures,
         "post_stim_window_s": float(args.post_stim_window_s),
@@ -345,6 +374,8 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     try:
+        preparation = load_preparation(args.preparation) if args.preparation is not None else None
+        conditions = load_conditions(args.conditions) if args.conditions is not None else None
         result = run(
             units,
             responses,
@@ -353,6 +384,9 @@ def main(argv: list[str] | None = None) -> int:
             load_duration_s=args.load_duration_s,
             n_perm=args.n_perm,
             seed=args.seed,
+            preparation=preparation,
+            conditions=conditions,
+            spikes=spikes,
         )
     except ContractViolation as exc:
         if args.as_json:

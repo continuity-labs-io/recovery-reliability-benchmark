@@ -93,3 +93,21 @@ def test_method_reference_implementation() -> None:
     assert "(planned; not yet in the repository)" not in text
 
 
+def test_scope_atlas_and_sidecar_docs() -> None:
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    for phrase in (
+        "## 0. Scope",
+        "Preparation and condition metadata",
+        "Raw data",
+        "Fate",
+    ):
+        assert phrase in spec_text
+
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "protocol fingerprint, condition, preparation" in readme_text
+
+    changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "Scope" in changelog_text
+
+
+
