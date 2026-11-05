@@ -1,0 +1,235 @@
+# Recovery Reliability Benchmark
+
+## Glossary
+
+Terms as this repository uses them, grouped from the physical experiment up to the benchmark's claims. Each entry says where the term is defined or implemented. Plain definitions; where a term has a narrower technical meaning elsewhere, the entry says which one applies here.
+
+---
+
+## 1. The experiment
+
+**Preparation.** One physical specimen: a dissociated culture, an organotypic slice, an organoid, or a piece of engineered neural tissue. One `preparation_id` per dataset. SPEC §2; `units.csv`.
+
+**Session.** One continuous acquisition from one preparation, with no medium change, incubator opening or handling in between. The benchmark's unit of reliability is the session: everything is computed within one. SPEC §2, min-dataset-1.
+
+**Recording.** One acquisition file. A session is continuous, so a conforming dataset has exactly one `recording_id`. A second recording is treated as a second session. SPEC §2, min-dataset-1.
+
+**Recording unit (unit).** One spatially distinct channel of measurement: an electrode, a sorted unit, a cell, a region of interest, or a pixel group. The reliability correlation runs across units, so the unit is the axis of the whole computation. On an HD-MEA a unit is usually a sorted neuron or a single electrode; the spec does not care which, but one dataset must use one definition. SPEC §2; `unit_id`.
+
+**Electrode.** A physical recording site. Not the same as a unit: one electrode may carry several sorted units, and one unit may be seen on several electrodes. The pilot analysis (gate1) used electrodes as units.
+
+**Spike sorting.** Assigning recorded voltage events to putative neurons. The benchmark accepts already-sorted output and does not sort; adapters that read instrument files will call an external sorter if the lab wants one.
+
+**MEA, HD-MEA.** Microelectrode array; high-density microelectrode array (thousands of electrodes at tens of micrometers pitch, for example MaxWell MaxOne/MaxTwo, 3Brain, Axion Synexus). The benchmark is defined independently of the instrument; MEAs are the first modality it is used on.
+
+**Modality.** How the response is recorded: extracellular electrodes, calcium imaging, voltage imaging, impedance. Conformance is defined by content, not container or modality. SPEC §6, §8.
+
+**Stimulus, stimulus onset.** One delivery of the conditioning load and the instant it starts. The onset is the time origin of a trial and is stored as `stim_time_ns` on the same clock as the response data. SPEC min-dataset-4.
+
+**Trial.** One stimulus delivery and the recorded response that follows it, identified by an integer `trial_index`. SPEC §2.
+
+**Condition.** A stimulus parameter set. Two trials share a condition only when every stimulus parameter is equal. A condition is identified by a label; the parameters behind the label are described in `conditions.json` and identified by the protocol fingerprint. SPEC §2.
+
+**Conditioning load.** The stimulus whose after-effects are measured: a defined pattern of pulses (for example 100 pulses at 100 Hz for one second) strong enough to push the tissue away from its baseline state. "Load" rather than "stimulus" to stress that it is a perturbation, not a probe. Described by `protocol.py`.
+
+**Conditioning-and-probe protocol.** The established experimental pattern: deliver a conditioning load, then probe the tissue's state afterward. Long-term potentiation induction, paired-pulse protocols and cardiac restitution are all of this form. The benchmark uses the pattern but changes the readout to the time course of recovery.
+
+**Recovery, recovery kinetics.** The return of a response variable toward its pre-load baseline after the conditioning load, and the time course of that return (how fast, how completely, with what shape). The measures in this benchmark are summaries of recovery kinetics.
+
+**Post-stimulus window (`post_stim_window_s`).** The length of recording after each stimulus onset that is available for computing measures. Declared by the submitter; MUST be at least 2.0 s and MUST fit before the next onset. SPEC min-dataset-6.
+
+**Load duration (`load_duration_s`).** The length of the conditioning load itself. When declared, the post-stimulus window is required after the load ends rather than after its onset, which only tightens min-dataset-6. Equal to `Protocol.total_duration_s`.
+
+**Inter-stimulus interval.** Onset-to-onset time between consecutive stimuli. `min_inter_stimulus_s` in the conformance report is the smallest one in the dataset.
+
+**Baseline.** The pre-load level of the response variable (for example firing rate) that recovery is measured against. Needs a pre-stimulus window, which the contract does not check yet; see Phase 2 in the plan.
+
+**Drift.** Slow change in a preparation's state across a session. Odd/even splitting exposes both halves to drift equally, which is why it is the default split.
+
+---
+
+## 2. The tables
+
+**`units.csv`.** One row per recording unit: `unit_id`, `recording_id`, `session_id`, `preparation_id`, optional `x_um`, `y_um`. SPEC §9.
+
+**`responses.csv`.** One row per unit and trial: `unit_id`, `trial_index`, `stim_time_ns`, `condition`, and one column per measure. The table the contract and the ceiling run on. SPEC §9.
+
+**`spikes.csv`.** One row per spike: `unit_id`, `spike_time_ns`, on the same clock as `stim_time_ns`. Requested now, required from v0.2.0, when the benchmark computes measures from spikes itself. SPEC "Raw data".
+
+**Sidecar.** A small JSON file beside the tables carrying metadata: `preparation.json` (species, preparation type, age, line or donor, instrument) and `conditions.json` (per condition: protocol, compound, dose, vehicle). Optional at v0.1.x, validated when present. SPEC "Preparation and condition metadata"; `metadata.py`.
+
+**Fate table (`fate.csv`).** Optional later observations of the same preparation (date, status, measure, value), so atlas rows can carry outcome labels. Defined, not yet checked. SPEC "Fate".
+
+**Measure.** A scalar computed per unit per trial from the post-stimulus response; a column of `responses.csv`. Examples: time to return to baseline, peak rate, spike count in the window. SPEC §2.
+
+**Per-trial measure.** A measure that exists for a single trial on its own, so that a unit's value over several trials is the mean of per-trial values. Spike count in the window and first-spike latency are per-trial measures. v0.1.0 handles only these.
+
+**PSTH (peri-stimulus time histogram).** Spike counts in time bins after stimulus onset, pooled over a set of trials and divided by trial count and bin width to give a rate. The pilot's recovery measures are read off a PSTH, not off single trials. `gate1.measures()`.
+
+**PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time: `t_return` (time the rate last exceeds a multiple of baseline), `t_half_peak` (time from the peak bin to half the peak), `residual` (rate over the last part of the window as a multiple of baseline), `peak_rate`, `t_peak`. These need the per-trial rows to carry binned counts so the half's PSTH can be built; that is the v0.2.0 extension.
+
+**Bin edges.** The boundaries of the PSTH time bins, log-spaced in the pilot so that early fast dynamics and late slow return are both resolved. A declared analysis parameter, recorded in the report.
+
+**Censored value.** A measure that could not be resolved inside the window (for example the rate never returned to baseline) and is reported as the window length with a flag, rather than as a missing value. SPEC "Nulls" requires this: a null means "not computed", never "did not recover".
+
+**Null (NaN).** A missing measure value. A unit with a null in any trial of a condition is not active in that condition. SPEC "Nulls".
+
+**Active (unit).** A unit is active in a condition when it has a row for every trial of that condition with every measure non-null. min-dataset-3 counts active units. SPEC min-dataset-3.
+
+**Identifier columns.** `unit_id`, `recording_id`, `session_id`, `preparation_id`, `condition`, `trial_index`, `stim_time_ns`. Compared as strings where they are labels; never allowed as measures.
+
+**Forbidden measure.** A column that cannot be scored: the identifier columns, any non-numeric or all-null column, and any column constant within every (unit, condition) group, which would score as perfectly reliable while carrying no trial-to-trial information. SCHEMA check in `contract.py`.
+
+---
+
+## 3. The computation
+
+**Reliability.** The fraction of a measure's observed variance across units that is true (reproducible) variance rather than measurement error: Var(T) / (Var(T) + Var(E)). Between 0 and 1. METHOD §1.
+
+**Within-session reliability.** Reliability estimated from a single session by comparing two halves of its trials. The quantity the benchmark reports.
+
+**Per-unit reliability.** Reliability of the vector of per-unit values, as opposed to the reproducibility of a well-level or dish-level average. The benchmark reports per-unit reliability; most published assays report well-level reproducibility or none.
+
+**Reliability ceiling (ceiling).** Reliability as an upper bound: by the attenuation theorem, no correlation between a measure and anything else can exceed the measure's correlation with itself. A low ceiling means downstream results built on the measure are uninterpretable before they are run. METHOD §1.
+
+**Attenuation theorem.** r(X, Y) ≤ sqrt(reliability(X) × reliability(Y)); the observed correlation between two noisy measures is attenuated by their reliabilities. The reason "ceiling" is the right word. METHOD §1.
+
+**Split-half.** Dividing one session's trials into two halves, computing the measure on each, and correlating the two results across units. Two measurements of the same vector from one recording. METHOD §3; `evaluate.split_halves`.
+
+**Odd/even split (`odd_even`).** Within each (unit, condition) group, trials ranked by `trial_index`; even ranks to half A, odd ranks to half B. Balanced against drift. The only split mode in v0.1.0; `random` is planned.
+
+**Half means (A, B).** For each (unit, condition) group, the mean of the measure over the half's trials; the two vectors that get correlated.
+
+**Pearson r (`r_half`).** The correlation between half-A and half-B values across the pairs being scored. Reported raw, before correction.
+
+**Spearman-Brown correction.** rho = 2r / (1 + r): converts the correlation between two half-length measurements into the reliability of the full-length measurement. METHOD §3.
+
+**rho.** The reliability ceiling after Spearman-Brown. Reported as 0.0 when r ≤ 0 (with `r_nonpositive` set), because the correction is not meaningful for non-positive correlations.
+
+**Per-condition estimate.** The ceiling computed on one condition's units only. The simplest estimate; noisy at small unit counts.
+
+**Pooled estimate.** The ceiling computed over (unit, condition) pairs across all evaluated conditions at once, as the pilot analysis did. More stable, but pairs sharing a unit are not independent.
+
+**Condition-centering (centered).** Subtracting each condition's mean over units, within each half, before correlating the pooled pairs. Removes between-condition variance (for example a dose effect) that would otherwise inflate the pooled ceiling. Has no effect on a per-condition estimate. METHOD §4.
+
+**Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `evaluate.run`.
+
+**Fisher z interval.** The 95% confidence interval on r obtained by transforming r to z = atanh(r), using standard error 1/sqrt(n − 3), and transforming back; then applied through Spearman-Brown to give `rho_ci_low`, `rho_ci_high`. METHOD §3.
+
+**n_eff.** The sample size used for the interval: the number of units, never the number of (unit, condition) pairs, because pairs sharing a unit are not independent. Conservative for pooled estimates.
+
+**Single-trial reliability (`rho_single_trial`).** The reliability one trial would have, recovered from rho and the trial count by inverting Spearman-Brown: rho1 = rho / (n − (n − 1) rho). Lets sessions with different trial counts be compared. `rho_at_20` is the same quantity re-expressed at 20 trials.
+
+**Permutation null (label-permutation null).** Shuffling which unit's half-B values are paired with which unit's half-A values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
+
+**Positive control.** A synthetic dataset with a known injected reliability run through the identical pipeline before any real data; if the pipeline does not recover the injected value within tolerance, every other number in the run is void. Fixed at 1,000 units × 20 trials, injected 0.85, tolerance 0.05. METHOD §5.1; `evaluate.positive_control`.
+
+**Injected reliability.** The reliability a synthetic dataset is generated to have: unit true values T ~ N(0, 1), per-trial errors with variance n(1 − rho)/rho, so that the n-trial mean has reliability rho. `synthetic.make_tables(reliability=...)`.
+
+**Independence census (independence accounting).** The report's explicit count at every level, preparations, sessions, recordings, units, conditions, trials, so a reader can see what was treated as one sample. Trials are not independent samples of a preparation; units are only partly so. METHOD §5.3.
+
+**Pseudo-replication.** Counting non-independent observations (trials from one preparation, pairs sharing a unit) as if they were independent samples. The census exists to make it visible.
+
+**Threshold simulation.** `scripts/thresholds.py`: synthetic sessions at the min-dataset-2/min-dataset-3 thresholds, 1,000 seeds per cell, reporting where the estimate lands. The basis for the MUST and SHOULD numbers and for the interval statements in SPEC §4–5. `docs/thresholds.md`.
+
+---
+
+## 4. Conformance
+
+**Conformance.** Whether a dataset supports the computation. Necessary, not sufficient: a conforming dataset can still yield a ceiling of zero. SPEC §11, §13.
+
+**Conformance check.** Running `rrb-check` on `units.csv` and `responses.csv`. Produces a verdict and counts, or the first violation. Runs locally; nothing leaves the machine.
+
+**Minimum dataset requirements (min-dataset-1 to min-dataset-6).** The six requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6). SPEC §4; `Requirement` enum.
+
+**MUST, SHOULD, MAY.** RFC 2119 words. MUST thresholds are admission floors: below them the computation is undefined. SHOULD thresholds are where the estimate becomes precise enough to act on. SPEC header, §4.
+
+**Conforming / fully conforming.** All MUST thresholds hold for at least one condition / all MUST and all SHOULD thresholds hold for at least one condition. Reported with the condition that achieved it and the SHOULD thresholds it misses. SPEC §5.
+
+**Evaluated condition.** A condition that meets the MUST thresholds of min-dataset-2 and min-dataset-3; the ceiling is computed on evaluated conditions only. SPEC §2.
+
+**Best condition.** Among evaluated conditions, the one missing the fewest SHOULD thresholds (ties: more active units, then more trials, then name). Determines the dataset's conformance level and the per-condition headline.
+
+**SCHEMA checks.** Checks on the container rather than the dataset: required columns present, measures numeric and allowed, `unit_id` unique, no orphan rows, sidecars consistent. Reported under the name SCHEMA; not one of the six requirements. SPEC §9.
+
+**ContractViolation.** The exception (and CLI exit code 1) raised on the first failed check, naming the requirement, the value found and the value required. SPEC §11.
+
+**Optional data (optional-dataset-1 to optional-dataset-5).** Items that add value without being required: multiple amplitudes, repeated sessions, both polarities, preparation metadata, raw signal. SPEC §7.
+
+**Specification version vs package version.** SPEC v1.0 is the normative document; the package (`recovery-reliability-benchmark`) is at 0.1.x. Requirement IDs are stable across minor spec versions; thresholds change only in a major one. "Required from v0.2.0" refers to the package and will appear as SPEC v1.1. SPEC §14.
+
+**Conformance report.** The JSON `rrb-check --json` prints: verdict, counts, spec version, arguments, SHA-256 of the input files. What a lab shares instead of data.
+
+**SHA-256.** A cryptographic digest of a file. In the report it ties a verdict to the exact files it was computed on.
+
+---
+
+## 5. The protocol schema
+
+**Pulse.** One stimulation waveform: shape (biphasic or monophasic square), polarity order, phase durations, inter-phase gap, amplitudes in µA (current mode) or mV (voltage mode). `protocol.py`.
+
+**Current mode / voltage mode.** Whether the stimulator controls current or voltage. Charge is known only in current mode; in voltage mode delivered charge depends on electrode impedance.
+
+**Charge balance.** For a biphasic pulse in current mode, equal charge in the two phases so the net injected charge is zero. Validated with a relative tolerance.
+
+**Burst.** A number of identical pulses at an intra-burst frequency. **Train.** A number of bursts at an inter-burst interval. **Protocol.** A named set of trains at an inter-train gap. The four-level hierarchy Pulse → Burst → Train → Protocol.
+
+**Interval vs gap.** An interval is onset-to-onset; a gap is end-to-onset. `intra_burst_frequency_hz` and `inter_burst_interval_ms` are intervals; `inter_train_gap_s` is a gap. Stated once in the module docstring so two labs encode the same timing the same way.
+
+**Protocol fingerprint.** SHA-256 of the protocol's canonical JSON excluding its name. Two protocols with equal parameters and different names share a fingerprint. The key that says two labs delivered the same load. `Protocol.fingerprint()`.
+
+**Commanded vs delivered.** The protocol describes what the stimulator was told to do. What the tissue received also depends on electrode count, impedance and return configuration (the planned `Delivery` model). The fingerprint identifies the command.
+
+**Factory protocols.** `standard_hfs` (100 pulses at 100 Hz), `spaced_hfs` (four such trains 20 s apart), `theta_burst` (10 bursts of 4 pulses at 100 Hz, 5 Hz between bursts). Reference loads with conventional timing; amplitude is always the lab's.
+
+---
+
+## 6. The benchmark and the atlas
+
+**Benchmark (as used here).** A fixed computation that every contributed dataset is scored by. The measures are what get scored; the datasets are the test set; the spec is the admission rule for the test set. Closer to an inter-laboratory ring trial than to an ImageNet-style benchmark. README.
+
+**Ring trial (inter-laboratory study).** Several laboratories run the same procedure on their own material and the results are compared. The benchmark's multi-lab phase is one.
+
+**Test set.** The contributed datasets. A result on one dataset and a result on another are comparable only because both passed the same conformance spec.
+
+**Submitted measure.** A proposed recovery measure, registered as a named function and scored against the whole corpus. The later form of the benchmark, with a leaderboard. Not yet built.
+
+**Atlas, atlas row.** The accumulating public collection of scored datasets. A row is keyed by (protocol fingerprint, condition, preparation): the commanded load, the condition label with its pharmacology, and the specimen. SPEC §1.
+
+**Contributor, contribution.** A laboratory that supplies a conforming dataset; the dataset once deposited. Contributions are accepted only under CC0. CONTRIBUTING §5.
+
+**Report-then-deposit.** The contribution sequence: data sent for analysis, written reliability report within two weeks, deposit in the public archive only when the lab confirms after reading it. Withdrawal is unconditional before deposit. CONTRIBUTING §6, §8.
+
+**Deposit, embargo.** Placing a dataset in the public archive under CC0; a delay before deposit, offered in paid engagements in exchange for a reduced fee. `docs/terms.md`.
+
+**Derived data.** Measures, reliability statistics, protocol metadata and models trained on them, as distinct from raw recordings. The paid-engagement clause retains rights to derived data; raw recordings stay confidential unless agreed. `docs/terms.md`.
+
+**Synthetic data.** Data generated by `synthetic.make_tables` with known properties, used for tests, the positive control, the threshold simulation and the examples. Never presented as a result about tissue.
+
+---
+
+## 7. Context: endpoints, screening and release
+
+**Endpoint.** A measured quantity used to make a decision: whether a compound is flagged, whether a batch is released. An endpoint has to be reliable before it can be anything else.
+
+**Functional endpoint.** An endpoint based on what the tissue does (fires, beats, recovers) rather than on what it is made of (markers, viability, morphology).
+
+**Surrogate endpoint.** A measurable stand-in for an outcome that is slow or hard to observe directly. The long-term aim is for a recovery measure to serve as a surrogate for tissue health and, in model organisms, for lifespan outcomes.
+
+**Pharmacology screening (safety pharmacology, neurotoxicity screening).** Testing compounds on cultured tissue for adverse functional effects. Current MEA endpoints are statistics of spontaneous activity (firing rate, bursts, synchrony, field potential duration); recovery after a standardized load is not among them. `claude/assay-landscape.md`.
+
+**Tissue release testing (release criteria, potency assay).** The tests a manufactured tissue product must pass before it is released for use: identity, purity, viability, sterility and a product-specific potency assay. Functional, non-destructive release criteria are rare. The second half of the anchor claim.
+
+**GMP.** Good Manufacturing Practice: the regulated production regime under which release testing happens. A GMP pipeline for engineered tissue is where a release-grade functional endpoint would be used.
+
+**Resilience (stress-and-recover).** In aging research, the capacity to return to baseline after a perturbation; measured in animals as recovery time after a challenge. The benchmark is the tissue-level, in-vitro version of that measurement, with reliability established first.
+
+**Anchor claim.** "Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported." README; SPEC §1.
+
+**Restitution (cardiac).** The dependence of action potential duration on the preceding diastolic interval after a conditioning drive; the nearest established recovery-kinetics measurement in cardiac electrophysiology. A research measurement, not a screening endpoint as far as found.
+
+**Recovery from short-term depression.** The time course over which a synapse regains its response after a depleting train; the nearest established recovery-kinetics measurement in synaptic physiology. Defined per lab, with time constants that vary with technique.
+
+---
+
+This document is licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS).

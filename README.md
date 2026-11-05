@@ -64,6 +64,7 @@ The first line of output is the conformance level (`conforming` or `fully_confor
 - `docs/` — Maintainer terms (`docs/terms.md`) and generated threshold simulation tables (`docs/thresholds.md`, `docs/thresholds.json`).
 - [SPEC.md](SPEC.md) — Normative dataset conformance specification (v1.0).
 - [METHOD.md](METHOD.md) — Normative within-session reliability ceiling method and positive control specification.
+- [GLOSSARY.md](GLOSSARY.md) — Plain-language definitions of experimental, computational, conformance, and protocol-schema terms.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Normative dataset contribution workflow, CC0 data licensing, and withdrawal terms.
 - [docs/terms.md](docs/terms.md) — Normative maintainer position, paid-engagement derived-data clause, and archive governance.
 
@@ -75,4 +76,4 @@ If you use this benchmark, please cite it using the metadata in [CITATION.cff](C
 
 Copyright 2026 Continuity Labs / Ryan J. McCall.
 
-Unless otherwise noted, all code, tests, and configuration in this repository (including `src/` and `tests/`) are licensed under the Apache License, Version 2.0; see [LICENSE](LICENSE). The specification and documentation files ([README.md](README.md), [SPEC.md](SPEC.md), [CONTRIBUTING.md](CONTRIBUTING.md), [METHOD.md](METHOD.md), and [docs/terms.md](docs/terms.md)) are licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS). Contributed datasets are released under CC0 1.0; see DATA_LICENSE and CONTRIBUTING.md §5. Continuity Labs' position as maintainer is in docs/terms.md.
+Unless otherwise noted, all code, tests, and configuration in this repository (including `src/` and `tests/`) are licensed under the Apache License, Version 2.0; see [LICENSE](LICENSE). The specification and documentation files ([README.md](README.md), [SPEC.md](SPEC.md), [CONTRIBUTING.md](CONTRIBUTING.md), [METHOD.md](METHOD.md), [GLOSSARY.md](GLOSSARY.md), and [docs/terms.md](docs/terms.md)) are licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS). Contributed datasets are released under CC0 1.0; see DATA_LICENSE and CONTRIBUTING.md §5. Continuity Labs' position as maintainer is in docs/terms.md.

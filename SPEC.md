@@ -115,11 +115,11 @@ Multiple sessions. Conditioning bursts. A probe ladder. Any particular neural pr
 
 | ID | Item | Why it matters |
 |---|---|---|
-| OD-1 | Multiple stimulus amplitudes | Permits direct evaluation of the dose-response curve and the titration rule, not only the ceiling |
-| OD-2 | More than one session on the same preparation | Promotes the question from "is the measure capable" to "does it repeat" |
-| OD-3 | Both stimulus polarities | Separates artifact from response |
-| OD-4 | Preparation metadata: age, cell source, DIV, medium changes, handling | Medium changes are known to be material |
-| OD-5 | Raw signal rather than detected events | Events cannot be un-thresholded; raw preserves every amplitude measure |
+| optional-dataset-1 | Multiple stimulus amplitudes | Permits direct evaluation of the dose-response curve and the titration rule, not only the ceiling |
+| optional-dataset-2 | More than one session on the same preparation | Promotes the question from "is the measure capable" to "does it repeat" |
+| optional-dataset-3 | Both stimulus polarities | Separates artifact from response |
+| optional-dataset-4 | Preparation metadata: age, cell source, DIV, medium changes, handling | Medium changes are known to be material |
+| optional-dataset-5 | Raw signal rather than detected events | Events cannot be un-thresholded; raw preserves every amplitude measure |
 
 ---
 

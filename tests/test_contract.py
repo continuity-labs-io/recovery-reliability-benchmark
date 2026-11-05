@@ -475,7 +475,7 @@ def test_schema_constant_measure_everywhere() -> None:
 
 
 def test_validate_at_scale() -> None:
-    # Took minutes before vectorization of constant-measure and MD-3 checks; should take seconds now.
+    # Took minutes before vectorization of constant-measure and min-dataset-3 checks; should take seconds now.
     units, responses = make_tables(n_units=1000, n_trials=100)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == "fully_conforming"

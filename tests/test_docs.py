@@ -56,9 +56,23 @@ def test_spec_quickstart_matches_readme() -> None:
 
 
 def test_docs_carry_license_notice() -> None:
-    for doc_name in ("SPEC.md", "CONTRIBUTING.md", "METHOD.md", "README.md"):
+    for doc_name in ("SPEC.md", "CONTRIBUTING.md", "METHOD.md", "README.md", "GLOSSARY.md"):
         text = (ROOT / doc_name).read_text(encoding="utf-8")
         assert "LICENSE-DOCS" in text, f"{doc_name} is missing LICENSE-DOCS reference"
+
+
+def test_glossary_structure() -> None:
+    glossary_path = ROOT / "GLOSSARY.md"
+    assert glossary_path.is_file()
+    text = glossary_path.read_text(encoding="utf-8")
+    assert "LICENSE-DOCS" in text
+    for heading in (
+        "## 1. The experiment",
+        "## 3. The computation",
+        "## 4. Conformance",
+        "## 5. The protocol schema",
+    ):
+        assert heading in text
 
 
 def test_doc_titles() -> None:
