@@ -22,10 +22,31 @@ A conforming dataset contributes rows to a public atlas. A row is keyed by (prot
 ## Quickstart
 
 ```bash
-pip install -e .
-rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0
-rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0 --preparation examples/preparation.json --conditions examples/conditions.json
-rrb-evaluate examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0
+# With uv:
+uv sync && source .venv/bin/activate
+
+# Or with standard Python venv:
+python3 -m venv .venv && source .venv/bin/activate && pip install -e .
+
+# minimal contract conformance check
+rrb-check examples/units.csv examples/responses.csv \
+--measures tau,amplitude \
+--post-stim-window-s 2.0
+
+# contract conformance check with sidecars
+rrb-check examples/units.csv examples/responses.csv \
+--measures tau,amplitude \
+--post-stim-window-s 2.0 \
+--preparation examples/preparation.json \
+--conditions examples/conditions.json
+
+# within-session reliability ceiling evaluator
+rrb-evaluate examples/units.csv examples/responses.csv \
+--measures tau,amplitude \
+--post-stim-window-s 2.0
+
+# threshold simulation across MD-2/MD-3 grid (writes output/thresholds.md and .json)
+rrb-thresholds --fast --out output/thresholds
 ```
 
 The first line of output is the conformance level (`conforming` or `fully_conforming`). The example data are synthetic with a true reliability of 0.8; the reported ceiling and its interval should bracket it. Passing `--json` produces a shareable report containing the verdict, counts, and SHA-256 digests of the inputs; no data leaves the machine. You can also run `python -m recovery_reliability_benchmark.contract` as the equivalent without the console script.

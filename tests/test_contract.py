@@ -361,6 +361,20 @@ def test_md6_window_below_minimum() -> None:
     assert exc.required == 2.0
 
 
+@pytest.mark.parametrize("bad_window", [-0.1, 0.0, float("nan"), float("inf")])
+def test_invalid_post_stim_window_rejected(bad_window: float) -> None:
+    units, responses = make_tables()
+    with pytest.raises(ValueError, match="post_stim_window_s"):
+        validate(units, responses, MEASURES, post_stim_window_s=bad_window)
+
+
+@pytest.mark.parametrize("bad_load", [-0.1, float("nan"), float("inf")])
+def test_invalid_load_duration_rejected(bad_load: float) -> None:
+    units, responses = make_tables()
+    with pytest.raises(ValueError, match="load_duration_s"):
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, load_duration_s=bad_load)
+
+
 def test_md6_isi_too_short() -> None:
     units, responses = make_tables(isi_s=1.5)
     with pytest.raises(ContractViolation) as exc_info:
@@ -571,4 +585,4 @@ def test_examples_with_sidecars(capsys: pytest.CaptureFixture[str]) -> None:
     assert rc == 0
     doc = json.loads(captured.out)
     metadata = doc["result"]["metadata"]
-    assert metadata["conditions"]["A"]["fingerprint"] == Protocol.standard_hfs().fingerprint()
+    assert metadata["conditions"]["baseline"]["fingerprint"] == Protocol.standard_hfs().fingerprint()

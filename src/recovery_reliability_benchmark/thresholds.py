@@ -152,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Simulate the sampling distribution of the reliability ceiling across MD-2/MD-3 thresholds."
     )
     parser.add_argument("--seeds", type=int, default=1000, help="Number of random seeds per cell.")
-    parser.add_argument("--out", default="docs/thresholds", help="Output path stem (writes .md and .json).")
+    parser.add_argument("--out", default="output/thresholds", help="Output path stem (writes .md and .json).")
     parser.add_argument("--fast", action="store_true", help="Run with 50 seeds for tests and CI.")
     args = parser.parse_args(argv)
 

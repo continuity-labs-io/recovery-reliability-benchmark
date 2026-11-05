@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from enum import StrEnum
 from pathlib import Path
@@ -110,6 +111,13 @@ def read_spikes(spikes_path: str | Path) -> pd.DataFrame:
     return pd.read_csv(spikes_path, dtype={"unit_id": str, "spike_time_ns": "Int64"})
 
 
+def _validate_durations(post_stim_window_s: float, load_duration_s: float) -> None:
+    if not math.isfinite(post_stim_window_s) or post_stim_window_s <= 0.0:
+        raise ValueError(f"post_stim_window_s must be finite and > 0, got {post_stim_window_s}.")
+    if not math.isfinite(load_duration_s) or load_duration_s < 0.0:
+        raise ValueError(f"load_duration_s must be finite and >= 0, got {load_duration_s}.")
+
+
 def validate(
     units: pd.DataFrame,
     responses: pd.DataFrame,
@@ -132,6 +140,7 @@ def validate(
     (after subtracting ``load_duration_s``). The last trial is not checked
     because the input tables do not record a recording-end timestamp.
     """
+    _validate_durations(post_stim_window_s, load_duration_s)
     units = units.copy()
     responses = responses.copy()
 
@@ -499,6 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     extra_forbidden = [m.strip() for m in args.extra_forbidden.split(",") if m.strip()]
 
     try:
+        _validate_durations(args.post_stim_window_s, args.load_duration_s)
         units, responses = read_tables(args.units_csv, args.responses_csv)
         spikes = read_spikes(args.spikes) if args.spikes is not None else None
         for opt_path in (args.preparation, args.conditions):

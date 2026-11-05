@@ -47,10 +47,11 @@ def test_spec_documents_example_message() -> None:
 def test_spec_quickstart_matches_readme() -> None:
     spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme_normalized = " ".join(readme_text.replace("\\\n", " ").split())
     assert "rrb-check units.csv responses.csv --measures tau,amplitude --post-stim-window-s 2.0" in spec_text
     assert (
         "rrb-check examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0"
-        in readme_text
+        in readme_normalized
     )
 
 

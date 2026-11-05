@@ -65,6 +65,28 @@ def test_cli_window_violation_message(tmp_path: Path, capsys: pytest.CaptureFixt
     assert captured.out == "MD-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.\n"
 
 
+@pytest.mark.parametrize("bad_window", ["-0.1", "0", "nan"])
+def test_cli_nonpositive_or_nan_window_exit_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], bad_window: str
+) -> None:
+    units_csv, responses_csv = _write_csvs(tmp_path)
+    for entry in (main, evaluate_main):
+        rc = entry(
+            [
+                str(units_csv),
+                str(responses_csv),
+                "--measures",
+                "tau,amplitude",
+                "--post-stim-window-s",
+                bad_window,
+            ]
+        )
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "error: post_stim_window_s must be finite and > 0" in captured.err
+        assert captured.out == ""
+
+
 def test_cli_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _, responses_csv = _write_csvs(tmp_path)
     missing_units = tmp_path / "does_not_exist.csv"

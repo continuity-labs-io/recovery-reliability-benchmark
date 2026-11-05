@@ -1,5 +1,5 @@
 {
-  "A": {
+  "baseline": {
     "protocol": {
       "name": "standard_hfs",
       "train": {

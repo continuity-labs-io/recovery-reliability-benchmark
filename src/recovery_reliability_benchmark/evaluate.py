@@ -15,6 +15,7 @@ import pandas as pd
 from .contract import (
     SPEC_VERSION,
     ContractViolation,
+    _validate_durations,
     file_sha256,
     read_spikes,
     read_tables,
@@ -383,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
     measures = [m.strip() for m in args.measures.split(",") if m.strip()]
 
     try:
+        _validate_durations(args.post_stim_window_s, args.load_duration_s)
         units, responses = read_tables(args.units_csv, args.responses_csv)
         spikes = read_spikes(args.spikes) if args.spikes is not None else None
         for opt_path in (args.preparation, args.conditions):
