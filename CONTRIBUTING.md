@@ -26,7 +26,7 @@ That is the whole ask. If a dataset does not conform, there is nothing to discus
 
 **A written reliability report on your own data**, within two weeks of receipt. Within-session ceiling for each measure, synthetic positive control, label-permutation null, condition-centered and uncentered figures, and an explicit independence accounting stating what was treated as one sample.
 
-**You receive this whether or not your dataset ends up in the publication, and whether or not you choose to continue.** If the report tells you something you would rather not publish, you keep it and we stop there.
+**You receive this whether or not you then choose to deposit.** If the report tells you something you would rather not publish, you keep it and we stop there.
 
 **Authorship** on the benchmark publication, under the terms in section 3.
 
@@ -52,23 +52,25 @@ This section exists because it is the part that decides whether contributing is 
 
 **Results are reported per measure and per preparation type, not per laboratory.** In the main text, datasets carry anonymized identifiers: Dataset A, Dataset B. The results table says what a given measure achieved on a given class of preparation.
 
-**Each laboratory chooses independently whether its dataset is attributed by name.** Authorship records that you contributed. It does not record which row of the results table is yours unless you say so.
+**Each laboratory chooses independently whether its dataset is attributed by name.** Authorship records that you contributed. It does not record which row of the results table is yours unless you say so. The public archive entry carries the attribution you choose, your laboratory's name or an anonymized identifier; the paper's results table uses anonymized identifiers either way.
 
 A low ceiling on your dataset is a finding about a measure, not an assessment of your laboratory. It will not be written up as one. If you believe a draft does so, say it and it gets changed before submission.
 
 ---
 
-## 5. Data handling
+## 5. Data license and use
 
-Data is analyzed and retained only for the duration of the benchmark, then deleted on request.
-
-**You decide whether your underlying data is deposited publicly.** Public deposit is encouraged and is not required. A dataset that stays private contributes its derived statistics to the benchmark and nothing else.
-
-Nothing is shared with any third party. Nothing is used for any purpose other than the analysis described here.
+Contributed datasets are released under CC0 1.0 Universal; see DATA_LICENSE. Contributions are accepted only under CC0. Datasets offered under any other terms, including non-commercial or no-derivatives conditions, are not accepted. By contributing, you confirm that you hold the rights needed to deposit the data and that the data were collected under the ethics approvals applicable to your institution. Citation of the dataset and of the benchmark is requested as a norm; it is not a condition of the license. The data may be used by anyone for any purpose, including training models and building commercial products. Continuity Labs' own position as maintainer is stated in docs/terms.md.
 
 ---
 
-## 6. Publication
+## 6. Data handling
+
+You send the dataset for analysis; the report is delivered within two weeks; the dataset is deposited in the public archive under CC0 when you confirm after reading the report. Until deposit the data are held for analysis only, shared with no third party, and deleted on request. Only deposited datasets are part of the benchmark and the publication.
+
+---
+
+## 7. Publication
 
 The benchmark is submitted once there are **at least five conforming datasets from at least three independent laboratories.** Fewer than that is a case study, not a benchmark.
 
@@ -78,15 +80,15 @@ Every contributor sees the full draft and has thirty days to comment before subm
 
 ---
 
-## 7. Withdrawal
+## 8. Withdrawal
 
-You may withdraw your dataset at any point before journal submission, for any reason or none. Your data is deleted, your authorship is removed, and you keep your reliability report.
+You may withdraw at any point before deposit, for any reason; the data are deleted and you keep the report. After deposit, CC0 is irrevocable: the record can be delisted from the archive and your authorship removed before journal submission, but copies already made under CC0 remain licensed.
 
 After publication, withdrawal is not possible, which is why the thirty-day review window exists.
 
 ---
 
-## 8. Starting
+## 9. Starting
 
 Run the conformance check locally. If it passes, get in touch. If it fails, the error names the requirement and the shortfall, and that information is useful to you regardless of whether you contribute.
 
