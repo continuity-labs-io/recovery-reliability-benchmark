@@ -15,3 +15,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - docs/terms.md: maintainer position, paid-engagement derived-data clause, governance intent.
 - Ceiling reports a Fisher-z interval (n_eff = units) and single-trial / 20-trial standardized reliabilities.
 - docs/thresholds.md: simulated sampling distribution of the estimate at the MD-2/MD-3 thresholds; SPEC.md §4 and §5 cite it.
+- MD-3 SHOULD raised from 15 to 30 units before the v1.0 spec is tagged, on the basis of docs/thresholds.md.

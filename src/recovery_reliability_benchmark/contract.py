@@ -26,7 +26,7 @@ FORBIDDEN_MEASURES = frozenset(RESPONSES_REQUIRED)
 MD2_MUST = 10
 MD2_SHOULD = 20
 MD3_MUST = 8
-MD3_SHOULD = 15
+MD3_SHOULD = 30
 MD6_MUST = 2.0
 
 CONFORMING = "conforming"
@@ -59,7 +59,7 @@ _REQUIREMENT_DESCRIPTIONS: dict[Requirement, str] = {
     Requirement.SCHEMA: "Input tables are well-formed: required columns present, measures numeric and allowed, unit_id unique, no responses rows for unknown units. A property of the CSV container, not of the dataset; not one of the six SPEC.md requirements.",
     Requirement.MD1: "Single session. Exactly one preparation_id, one session_id and one recording_id (a session is one continuous acquisition, so a second recording is a second session).",
     Requirement.MD2: "Repeated trials. At least 10 trials of at least one condition; SHOULD 20. Below 10 the two halves are too short for the correlation to be stable.",
-    Requirement.MD3: "Multiple recording units. At least 8 units active in every trial of the evaluated condition; SHOULD 15. A unit is active in a trial when it has a row for it with every measure non-null.",
+    Requirement.MD3: "Multiple recording units. At least 8 units active in every trial of the evaluated condition; SHOULD 30. A unit is active in a trial when it has a row for it with every measure non-null.",
     Requirement.MD4: "Stimulus timestamps. Onset time of every stimulus on the same clock as the responses, non-null, strictly increasing within a condition, one timestamp and one condition per trial_index across units.",
     Requirement.MD5: "Trial-level resolution. Exactly one row per (unit_id, trial_index); rows are trials, not summary statistics.",
     Requirement.MD6: "Post-stimulus window. At least 2.0 s of recording after each stimulus onset: the declared post_stim_window_s is at least 2.0 s and fits before the next onset (minus load_duration_s).",

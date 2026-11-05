@@ -12,7 +12,7 @@ from recovery_reliability_benchmark.synthetic import make_tables
 
 def main() -> None:
     examples_dir = Path(__file__).resolve().parent
-    units, responses = make_tables(n_units=15, n_trials=20, seed=0)
+    units, responses = make_tables(n_units=30, n_trials=20, reliability=0.8, seed=0)
     units.to_csv(examples_dir / "units.csv", index=False)
     responses.to_csv(examples_dir / "responses.csv", index=False)
 

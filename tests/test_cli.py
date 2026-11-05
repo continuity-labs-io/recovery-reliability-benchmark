@@ -30,7 +30,7 @@ def test_cli_conforming_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 
 def test_cli_fully_conforming(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    units_csv, responses_csv = _write_csvs(tmp_path, n_units=15, n_trials=20)
+    units_csv, responses_csv = _write_csvs(tmp_path, n_units=30, n_trials=20)
     rc = main([str(units_csv), str(responses_csv), "--measures", "tau,amplitude", "--post-stim-window-s", "2.0"])
     captured = capsys.readouterr()
     assert rc == 0
@@ -64,7 +64,7 @@ def test_cli_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
 
 def test_cli_json_pass(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    units_csv, responses_csv = _write_csvs(tmp_path, n_units=15, n_trials=20)
+    units_csv, responses_csv = _write_csvs(tmp_path, n_units=30, n_trials=20)
     rc = main(
         [
             str(units_csv),
@@ -81,7 +81,7 @@ def test_cli_json_pass(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     doc = json.loads(captured.out)
     assert doc["status"] == "fully_conforming"
     assert doc["spec_version"] == "1.0"
-    assert doc["result"]["n_units"] == 15
+    assert doc["result"]["n_units"] == 30
     assert doc["inputs"]["units"]["sha256"] == hashlib.sha256(units_csv.read_bytes()).hexdigest()
     assert doc["arguments"]["measures"] == ["tau", "amplitude"]
 

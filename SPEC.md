@@ -66,7 +66,7 @@ Every requirement in section 4 follows from this procedure.
 |---|---|---|---|
 | MD-1 | Preparations, sessions and recordings present | exactly 1 of each | |
 | MD-2 | Trials per condition | ≥ 10 in at least one condition | ≥ 20 |
-| MD-3 | Recording units active in every trial of an evaluated condition | ≥ 8 | ≥ 15 |
+| MD-3 | Recording units active in every trial of an evaluated condition | ≥ 8 | ≥ 30 |
 | MD-4 | Stimulus onset timestamps | present, one per trial across units, strictly increasing within a condition | |
 | MD-5 | Rows per unit-trial pair | exactly 1 | |
 | MD-6 | Post-stimulus window per trial | ≥ 2.0 s | |
@@ -78,9 +78,9 @@ The dataset MUST contain exactly one session from exactly one preparation, in ex
 At least one condition MUST contain 10 or more trials, and SHOULD contain 20 or more. A trial is counted once per distinct trial index. Below 10, the two halves are too short for the correlation to be stable.
 
 **MD-3 — Multiple recording units.**
-At least one condition that satisfies MD-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 15 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 15 says what a null is allowed to mean.
+At least one condition that satisfies MD-2 MUST contain 8 or more units active in every one of its trials, and SHOULD contain 30 or more. A single unit cannot produce a correlation. A unit that is missing a trial, or carries a null measure in one, is not counted; section 15 says what a null is allowed to mean.
 
-The MUST thresholds define when the computation is possible. They do not make a single-dataset estimate precise. For a measure with single-trial reliability 0.2, the ceiling of a 10-trial session is 0.71 and of a 20-trial session 0.83. Simulated 95% intervals of the estimate (1,000 seeds, one condition): 8 units and 10 trials, [0.00, 0.95]; 15 units and 20 trials, [0.49, 0.95]; 30 units and 20 trials, [0.67, 0.92]. Pooling three conditions at 8 units and 10 trials gives [0.10, 0.90]. Every estimate is reported with its interval and converted to a single-trial reliability so sessions with different trial counts can be compared. Full table: docs/thresholds.md.
+The MUST thresholds define when the computation is possible. They do not make a single-dataset estimate precise. For a measure with single-trial reliability 0.2, the ceiling of a 10-trial session is 0.71 and of a 20-trial session 0.83. Simulated 95% intervals of the estimate (1,000 seeds, one condition): 8 units and 10 trials, [0.00, 0.95], and 7% of such runs report exactly 0 (19% when the single-trial reliability is 0.1); 15 units and 20 trials, [0.49, 0.95]; 30 units and 20 trials, [0.67, 0.92]. Pooling three conditions at 8 units and 10 trials gives [0.10, 0.90]. Every estimate is reported with its interval and converted to a single-trial reliability so sessions with different trial counts can be compared. Full table: docs/thresholds.md.
 
 **MD-4 — Stimulus timestamps.**
 The dataset MUST provide the onset time of every stimulus, on the same clock as the response data. Every unit on a preparation receives the same stimulus, so each trial MUST carry exactly one onset time and exactly one condition across all units. Onset times MUST be strictly increasing with trial index within a condition.
@@ -99,7 +99,7 @@ Levels are evaluated per condition.
 
 **Conforming.** All six MUST conditions hold for at least one condition. The dataset supports the computation.
 
-**Fully conforming.** All MUST and all SHOULD conditions hold for at least one condition. The simulated 95% interval of the estimate narrows from [0.00, 0.95] at the MUST thresholds to [0.49, 0.95] at the SHOULD thresholds (single-trial reliability 0.2); see docs/thresholds.md.
+**Fully conforming.** All MUST and all SHOULD conditions hold for at least one condition. The simulated 95% interval of the estimate narrows from [0.00, 0.95] at the MUST thresholds to [0.67, 0.92] at the SHOULD thresholds (single-trial reliability 0.2); see docs/thresholds.md.
 
 The dataset's level is the level of its best condition. The reference implementation names that condition and lists the SHOULD thresholds it misses. A conforming dataset that is not fully conforming is still usable, and the shortfall is reported alongside the result rather than treated as disqualifying.
 

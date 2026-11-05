@@ -2,29 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import hashlib
 
-import pandas as pd
 import pytest
 
-from recovery_reliability_benchmark.contract import read_tables, validate
+from recovery_reliability_benchmark.contract import validate
 from recovery_reliability_benchmark.synthetic import make_tables
 
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
-
-def test_default_matches_committed_examples() -> None:
+def test_default_path_unchanged() -> None:
     units, responses = make_tables(n_units=15, n_trials=20, seed=0)
-    expected_units, expected_responses = read_tables(
-        EXAMPLES_DIR / "units.csv",
-        EXAMPLES_DIR / "responses.csv",
-    )
-    for df in (responses, expected_responses):
-        df["trial_index"] = df["trial_index"].astype("int64")
-        df["stim_time_ns"] = df["stim_time_ns"].astype("int64")
-
-    pd.testing.assert_frame_equal(units, expected_units, check_dtype=False)
-    pd.testing.assert_frame_equal(responses, expected_responses, check_dtype=False)
+    units_sha = hashlib.sha256(units.to_csv(index=False).encode("utf-8")).hexdigest()
+    responses_sha = hashlib.sha256(responses.to_csv(index=False).encode("utf-8")).hexdigest()
+    assert units_sha == "976c588a995ee915fee0029d142143b849fe1b56bb519c4e6cc00cefaeccbc23"
+    assert responses_sha == "b19b83abc1f078e2c1c9218db1e14bfd48c14abf630c2dc36a88991cba213c3a"
 
 
 def test_true_columns_present() -> None:
@@ -61,7 +52,7 @@ def test_condition_offsets_shift_means() -> None:
 
 
 def test_reliability_dataset_conforms() -> None:
-    units, responses = make_tables(n_units=15, n_trials=20, reliability=0.8)
+    units, responses = make_tables(n_units=30, n_trials=20, reliability=0.8)
     result = validate(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0)
     assert result["conformance"] == "fully_conforming"
 

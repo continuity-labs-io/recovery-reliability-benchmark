@@ -64,3 +64,21 @@ def test_spec_numbers_match_json() -> None:
         cell = by_key[key]
         interval_str = format_interval(cell["p2_5"], cell["p97_5"])
         assert interval_str in spec_text
+
+    must_cell = by_key[(0.2, 1, 10, 8)]
+    should_cell = by_key[(0.2, 1, 20, 30)]
+    must_interval = format_interval(must_cell["p2_5"], must_cell["p97_5"])
+    should_interval = format_interval(should_cell["p2_5"], should_cell["p97_5"])
+    assert (
+        f"narrows from {must_interval} at the MUST thresholds to {should_interval} "
+        "at the SHOULD thresholds (single-trial reliability 0.2)"
+        in spec_text
+    )
+
+    p_zero_02 = f"{must_cell['p_zero']:.0%}"
+    p_zero_01 = f"{by_key[(0.1, 1, 10, 8)]['p_zero']:.0%}"
+    assert (
+        f"and {p_zero_02} of such runs report exactly 0 "
+        f"({p_zero_01} when the single-trial reliability is 0.1)"
+        in spec_text
+    )

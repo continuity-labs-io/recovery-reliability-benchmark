@@ -397,7 +397,7 @@ def test_conforming_level() -> None:
 
 
 def test_fully_conforming() -> None:
-    units, responses = make_tables(n_units=15, n_trials=20)
+    units, responses = make_tables(n_units=30, n_trials=20)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == FULLY_CONFORMING
     assert result["conformance"] == "fully_conforming"
@@ -406,14 +406,14 @@ def test_fully_conforming() -> None:
 
 
 def test_should_partial() -> None:
-    units, responses = make_tables(n_units=15, n_trials=10)
+    units, responses = make_tables(n_units=30, n_trials=10)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == "conforming"
     assert result["should_failed"] == ["MD-2"]
 
 
 def test_best_condition_skips_unevaluated() -> None:
-    units, responses = make_tables(n_units=15, n_trials=20, conditions=("A", "B"))
+    units, responses = make_tables(n_units=30, n_trials=20, conditions=("A", "B"))
     responses = responses[~((responses["condition"] == "B") & (responses["trial_index"] >= 25))].reset_index(drop=True)
     result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
     assert result["conformance"] == "fully_conforming"
@@ -422,8 +422,8 @@ def test_best_condition_skips_unevaluated() -> None:
 
 
 def test_best_condition_tiebreak() -> None:
-    units, responses = make_tables(n_units=15, n_trials=10, conditions=("A", "B"))
-    dropped_units = {f"u{i:02d}" for i in range(8, 15)}
+    units, responses = make_tables(n_units=30, n_trials=10, conditions=("A", "B"))
+    dropped_units = {f"u{i:02d}" for i in range(8, 30)}
     responses = responses[~((responses["condition"] == "A") & (responses["unit_id"].isin(dropped_units)))].reset_index(
         drop=True
     )

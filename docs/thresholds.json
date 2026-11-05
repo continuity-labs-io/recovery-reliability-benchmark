@@ -70,7 +70,7 @@
       "width": 0.9048431178902931,
       "p_zero": 0.027,
       "ci_coverage": 0.942,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.1,
@@ -154,7 +154,7 @@
       "width": 0.49082631607680804,
       "p_zero": 0.001,
       "ci_coverage": 0.997,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.1,
@@ -238,7 +238,7 @@
       "width": 0.4558687268386277,
       "p_zero": 0.0,
       "ci_coverage": 0.95,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.2,
@@ -322,7 +322,7 @@
       "width": 0.2968648957820902,
       "p_zero": 0.0,
       "ci_coverage": 0.995,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.2,
@@ -406,7 +406,7 @@
       "width": 0.18094517668256638,
       "p_zero": 0.0,
       "ci_coverage": 0.963,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.4,
@@ -490,7 +490,7 @@
       "width": 0.1340939212848976,
       "p_zero": 0.0,
       "ci_coverage": 0.994,
-      "conformance": "fully_conforming"
+      "conformance": "conforming"
     },
     {
       "rho1": 0.4,
