@@ -19,6 +19,7 @@ from recovery_reliability_benchmark.evaluate import (
     positive_control,
     run,
     split_halves,
+    variance_components,
 )
 from recovery_reliability_benchmark.synthetic import make_tables
 
@@ -119,6 +120,11 @@ def test_census_matches_validate() -> None:
         "recordings",
         "units",
         "units_active",
+        "units_in_tables",
+        "units_included",
+        "units_excluded_by_rule",
+        "rows_missing",
+        "declared_exclusions",
         "conditions",
         "evaluated_conditions",
         "trials",
@@ -129,6 +135,11 @@ def test_census_matches_validate() -> None:
     assert c["recordings"] == val["n_recordings"]
     assert c["units"] == val["n_units"]
     assert c["units_active"] == val["n_units_active"]
+    assert c["units_in_tables"] == val["n_units"]
+    assert c["units_included"] == val["n_units_active"]
+    assert c["units_excluded_by_rule"] == 0
+    assert c["rows_missing"] == 0
+    assert c["declared_exclusions"] == {"units": 0, "trials": 0}
     assert c["conditions"] == val["n_conditions"]
     assert c["evaluated_conditions"] == val["evaluated_conditions"]
     assert c["trials"] == val["n_trials"]
@@ -270,3 +281,52 @@ def test_single_trial_conversion() -> None:
     assert est_zero["rho"] == 0.0
     assert est_zero["rho_single_trial"] == 0.0
     assert est_zero["rho_at_20"] == 0.0
+
+
+def test_inactive_unit_not_in_halves() -> None:
+    units, responses = make_tables(n_units=12, n_trials=10)
+    drop_idx = responses.index[responses["unit_id"] == "u00"][0]
+    responses = responses.drop(index=drop_idx).reset_index(drop=True)
+    result = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=20)
+    assert result["measures"]["tau"]["per_condition"]["A"]["n_units"] == 11
+    assert result["inclusion"]["per_condition"]["A"]["n_units_excluded_by_rule"] == 1
+
+
+def test_variance_components_match_generator() -> None:
+    units, responses = make_tables(n_units=2000, n_trials=20, reliability=0.8, seed=0)
+    active = set(units["unit_id"])
+    vc = variance_components(responses, "tau", "A", active)
+    halves = split_halves(responses, ["tau"], ["A"], active_units={"A": active})
+    est = ceiling(halves, "tau", center=False)
+
+    assert abs(vc["var_within"] - 5.0) / 5.0 <= 0.05
+    assert abs(vc["var_between"] - 1.25) / 1.25 <= 0.05
+    assert vc["moments_reliability"] is not None
+    assert abs(vc["moments_reliability"] - 0.8) <= 0.03
+    assert abs(vc["moments_reliability"] - est["rho"]) <= 0.03
+
+
+def test_cli_prints_inclusion(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    units, responses = make_tables(n_units=15, n_trials=20, reliability=0.8, seed=2)
+    units_csv = tmp_path / "units.csv"
+    responses_csv = tmp_path / "responses.csv"
+    units.to_csv(units_csv, index=False)
+    responses.to_csv(responses_csv, index=False)
+
+    rc = main(
+        [
+            str(units_csv),
+            str(responses_csv),
+            "--measures",
+            "tau,amplitude",
+            "--post-stim-window-s",
+            "2.0",
+            "--n-perm",
+            "20",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "units included" in captured.out
+    assert "between=" in captured.out
+    assert "within=" in captured.out

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -31,6 +31,7 @@ def split_halves(
     responses: pd.DataFrame,
     measures: Sequence[str],
     conditions: Sequence[str],
+    active_units: dict[str, set[str]] | None = None,
 ) -> pd.DataFrame:
     """Partition trials into odd/even halves ranked within each (unit_id, condition) group.
 
@@ -48,6 +49,17 @@ def split_halves(
 
     sub["unit_id"] = sub["unit_id"].astype(str)
     sub["condition"] = sub["condition"].astype(str)
+    if active_units is not None:
+        active_sets = {str(c): {str(u) for u in us} for c, us in active_units.items()}
+        keep = [
+            u in active_sets.get(c, set()) for u, c in zip(sub["unit_id"], sub["condition"], strict=False)
+        ]
+        sub = sub[keep]
+        if sub.empty:
+            empty_index = pd.MultiIndex.from_arrays([[], []], names=["unit_id", "condition"])
+            cols = [*(f"{m}_{h}" for m in measure_list for h in ("A", "B")), "n_A", "n_B"]
+            return pd.DataFrame(columns=cols, index=empty_index)
+
     sub = sub.sort_values(["unit_id", "condition", "trial_index"], kind="mergesort")
 
     rank = sub.groupby(["unit_id", "condition"], sort=False).cumcount()
@@ -211,6 +223,51 @@ def permutation_null(
     }
 
 
+def variance_components(
+    responses: pd.DataFrame,
+    measure: str,
+    condition: str,
+    active_units: Iterable[str] | dict[str, Iterable[str]] | None = None,
+) -> dict[str, Any]:
+    """Compute between-unit and within-unit variance components and moments reliability.
+
+    A ceiling driven by between-unit heterogeneity shows up as large var_between
+    relative to var_within; moments_reliability is the ANOVA-style estimate of
+    the same quantity the split-half ceiling estimates, and the two should agree.
+    """
+    cond_mask = responses["condition"].astype(str) == str(condition)
+    sub = responses.loc[cond_mask]
+    if active_units is not None:
+        if isinstance(active_units, dict):
+            unit_set = {str(u) for u in active_units.get(str(condition), ())}
+        else:
+            unit_set = {str(u) for u in active_units}
+        sub = sub.loc[sub["unit_id"].astype(str).isin(unit_set)]
+
+    g = sub.groupby(sub["unit_id"].astype(str), sort=False)[measure]
+    unit_means = g.mean()
+    unit_vars = g.var(ddof=1)
+    unit_counts = g.count()
+
+    var_between = float(unit_means.var(ddof=1)) if len(unit_means) >= 2 else 0.0
+    var_within = float(unit_vars.mean()) if len(unit_vars) >= 1 else 0.0
+    n_trials = float(unit_counts.median()) if len(unit_counts) >= 1 else 0.0
+
+    if var_between > 0.0 and n_trials > 0.0:
+        moments_reliability: float | None = float(
+            max(0.0, (var_between - var_within / n_trials) / var_between)
+        )
+    else:
+        moments_reliability = None
+
+    return {
+        "var_between": var_between,
+        "var_within": var_within,
+        "n_trials": n_trials,
+        "moments_reliability": moments_reliability,
+    }
+
+
 def positive_control(
     reliability: float = 0.85,
     n_units: int = 1000,
@@ -226,7 +283,13 @@ def positive_control(
         seed=seed,
     )
     val = validate(units, responses, measures=["tau"], post_stim_window_s=2.0)
-    halves = split_halves(responses, measures=["tau"], conditions=val["evaluated_conditions"])
+    active_units = {c: set(val["conditions"][c]["active_units"]) for c in val["evaluated_conditions"]}
+    halves = split_halves(
+        responses,
+        measures=["tau"],
+        conditions=val["evaluated_conditions"],
+        active_units=active_units,
+    )
     ceil = ceiling(halves, "tau", center=False)
     injected = float(reliability)
     recovered = float(ceil["rho"])
@@ -242,14 +305,23 @@ def positive_control(
 
 def census(validate_result: dict[str, Any]) -> dict[str, Any]:
     """Extract the independence-accounting census from validate()'s return dict."""
+    evaluated_conditions = list(validate_result["evaluated_conditions"])
+    inc = validate_result["inclusion"]
+    units_in_tables = int(validate_result["n_units"])
+    units_included = int(max(inc["per_condition"][c]["n_units_included"] for c in evaluated_conditions))
     return {
         "preparations": int(validate_result["n_preparations"]),
         "sessions": int(validate_result["n_sessions"]),
         "recordings": int(validate_result["n_recordings"]),
         "units": int(validate_result["n_units"]),
         "units_active": int(validate_result["n_units_active"]),
+        "units_in_tables": units_in_tables,
+        "units_included": units_included,
+        "units_excluded_by_rule": units_in_tables - units_included,
+        "rows_missing": int(sum(inc["per_condition"][c]["n_rows_missing"] for c in evaluated_conditions)),
+        "declared_exclusions": dict(inc["declared"]),
         "conditions": int(validate_result["n_conditions"]),
-        "evaluated_conditions": list(validate_result["evaluated_conditions"]),
+        "evaluated_conditions": evaluated_conditions,
         "trials": int(validate_result["n_trials"]),
         "trials_per_unit_condition": float(validate_result["trials_per_unit_condition"]),
     }
@@ -299,24 +371,33 @@ def run(
             "status": "positive_control_failed",
             "positive_control": pc,
             "census": census_dict,
+            "inclusion": val["inclusion"],
             "parameters": parameters,
             "metadata": val["metadata"],
         }
 
     evaluated_conditions = val["evaluated_conditions"]
     best_condition = val["best_condition"]
-    halves = split_halves(responses, measure_list, evaluated_conditions)
+    active_units = {c: set(val["conditions"][c]["active_units"]) for c in evaluated_conditions}
+    halves = split_halves(responses, measure_list, evaluated_conditions, active_units=active_units)
     cond_level = halves.index.get_level_values("condition")
 
     measures_out: dict[str, Any] = {}
     for m in measure_list:
-        per_cond = {c: ceiling(halves[cond_level == c], m, False) for c in evaluated_conditions}
+        per_cond: dict[str, Any] = {}
+        for c in evaluated_conditions:
+            cond_ceil = ceiling(halves[cond_level == c], m, False)
+            cond_ceil["variance"] = variance_components(responses, m, c, active_units[c])
+            per_cond[c] = cond_ceil
         pooled = {
             "uncentered": ceiling(halves, m, False),
             "centered": ceiling(halves, m, True),
         }
         if len(evaluated_conditions) >= 2:
-            headline = pooled["centered"]
+            headline = {
+                **pooled["centered"],
+                "variance": per_cond[best_condition]["variance"],
+            }
             headline_kind = "pooled_centered"
             headline_frame = halves
             headline_center = True
@@ -349,6 +430,7 @@ def run(
         "package_version": __version__,
         "parameters": parameters,
         "census": census_dict,
+        "inclusion": val["inclusion"],
         "metadata": val["metadata"],
         "positive_control": pc,
         "measures": measures_out,
@@ -469,10 +551,19 @@ def main(argv: list[str] | None = None) -> int:
         print("census:")
         for key, value in result["census"].items():
             print(f"  {key}: {value}")
+        decl = result["inclusion"]["declared"]
+        for cond in result["census"]["evaluated_conditions"]:
+            inc = result["inclusion"]["per_condition"][cond]
+            print(
+                f"{cond}: units included {inc['n_units_included']} of {inc['n_units_in_tables']} "
+                f"(excluded by rule {inc['n_units_excluded_by_rule']}, rows missing {inc['n_rows_missing']}); "
+                f"declared exclusions units {decl['units']} trials {decl['trials']}"
+            )
         for m, m_res in result["measures"].items():
             h = m_res["headline"]
             kind = m_res["headline_kind"]
             null = m_res["null"]
+            var = h["variance"]
             ci_str = (
                 f"[{h['rho_ci_low']:.3f}, {h['rho_ci_high']:.3f}]"
                 if h["rho_ci_low"] is not None and h["rho_ci_high"] is not None
@@ -481,7 +572,8 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"{m}: rho={h['rho']:.3f} ci={ci_str} rho_at_20={h['rho_at_20']:.3f} "
                 f"({kind}; r_half={h['r_half']:.3f}, n_units={h['n_units']}, n_pairs={h['n_pairs']}) "
-                f"null_p95_rho={null['p95_rho']:.3f}"
+                f"null_p95_rho={null['p95_rho']:.3f} "
+                f"between={var['var_between']:.3g} within={var['var_within']:.3g}"
             )
     return 0
 

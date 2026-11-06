@@ -24,6 +24,16 @@ AgeBasis = Literal[
 ]
 
 
+class Exclusion(BaseModel):
+    """Contributor-declared unit or trial exclusion in preparation.json."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["unit", "trial"]
+    id: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
 class Preparation(BaseModel):
     """Preparation metadata sidecar (preparation.json)."""
 
@@ -37,6 +47,7 @@ class Preparation(BaseModel):
     line_or_donor_id: str
     instrument: str
     raw_data_url: str | None = None
+    exclusions: list[Exclusion] = Field(default_factory=list)
 
 
 class Condition(BaseModel):

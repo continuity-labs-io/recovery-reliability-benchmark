@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from recovery_reliability_benchmark.contract import ContractViolation, Requirement
 from recovery_reliability_benchmark.metadata import (
     Condition,
+    Exclusion,
     Preparation,
     load_conditions,
     load_preparation,
@@ -76,3 +77,43 @@ def test_load_conditions_malformed_json_raises_contract_violation(tmp_path: Path
         load_conditions(bad_path)
     assert exc_info.value.requirement is Requirement.SCHEMA
     assert "conditions.json" in str(exc_info.value)
+
+
+def test_exclusion_round_trip(tmp_path: Path) -> None:
+    excl = Exclusion(kind="unit", id="u99", reason="saturated")
+    restored = Exclusion.model_validate_json(excl.model_dump_json())
+    assert restored == excl
+
+    prep = Preparation(
+        preparation_id="prep0",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+        exclusions=[
+            excl,
+            Exclusion(kind="trial", id="10", reason="artifact"),
+        ],
+    )
+    path = tmp_path / "preparation.json"
+    path.write_text(prep.model_dump_json(indent=2), encoding="utf-8")
+    loaded = load_preparation(path)
+    assert loaded == prep
+    assert len(loaded.exclusions) == 2
+
+
+def test_load_preparation_malformed_exclusion_raises_schema(tmp_path: Path) -> None:
+    bad_path = tmp_path / "preparation.json"
+    bad_path.write_text(
+        '{"preparation_id":"prep0","species":"Rattus norvegicus",'
+        '"preparation_type":"dissociated_culture","age_days":21,"age_basis":"DIV",'
+        '"line_or_donor_id":"example","instrument":"synthetic",'
+        '"exclusions":[{"kind":"unit","id":"u99","reason":""}]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ContractViolation) as exc_info:
+        load_preparation(bad_path)
+    assert exc_info.value.requirement is Requirement.SCHEMA
+    assert "exclusions" in str(exc_info.value)

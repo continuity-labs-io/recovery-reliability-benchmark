@@ -50,6 +50,24 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 ## 2. The tables
 
+**`unit_id`.** A single physical recording channel (an electrode on an array, a spike-sorted neuron, or an imaged region of interest) tracked across every trial of the session. The benchmark correlates recovery measures across `unit_id`s to test whether different channels on the same tissue consistently respond the same way from trial to trial.
+
+**`recording_id`.** The single continuous acquisition file written by the instrument during a run. Because stopping and restarting acquisition breaks continuity, a conforming dataset has one `recording_id` matching its single session.
+
+**`session_id`.** One uninterrupted experimental run on the tissue, during which the preparation stays on the rig without medium changes, incubator openings, or physical handling. All trials that get split into halves and compared come from a single `session_id`.
+
+**`preparation_id`.** The physical piece of neural tissue under test: a single culture well, brain slice, organoid, or engineered construct. Every row in a conforming dataset shares one `preparation_id` because the benchmark scores reliability within one specimen at a time.
+
+**`x_um`, `y_um`.** The physical coordinates of a recording unit on the array or imaging field of view, in micrometers. Optional and unused by the core reliability calculation, they record where each unit sits on the tissue so spatial patterns or distance from the stimulating electrode can be inspected.
+
+**`trial_index`.** The sequential number of a single stimulus delivery and its subsequent recovery window within the session. In execution, `trial_index` orders the repeated deliveries of a condition so they can be dealt into even and odd halves for split-half correlation.
+
+**`stim_time_ns`.** The timestamp, in nanoseconds on the recording clock, at the instant a conditioning stimulus begins on the tissue. It anchors the time origin of each trial and lets the validator verify that enough recovery time elapsed before the next stimulus was delivered.
+
+**`condition`.** A label naming the exact experimental regime applied on a trial: the stimulation protocol together with any active compound and dose. Trials sharing a `condition` are physical repeats of the same perturbation and are grouped together when splitting trials into halves.
+
+**`spike_time_ns`.** The timestamp, in nanoseconds on the same recording clock as `stim_time_ns`, of a single detected action potential on a unit. Subtracting a trial's `stim_time_ns` gives each spike's latency after stimulation, from which post-stimulus recovery curves and measures are built.
+
 **`units.csv`.** One row per recording unit: `unit_id`, `recording_id`, `session_id`, `preparation_id`, optional `x_um`, `y_um`. SPEC §9.
 
 **`responses.csv`.** One row per unit and trial: `unit_id`, `trial_index`, `stim_time_ns`, `condition`, and one column per measure. The table the contract and the ceiling run on. SPEC §9.
@@ -75,6 +93,10 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 **Null (NaN).** A missing measure value. A unit with a null in any trial of a condition is not active in that condition. SPEC "Nulls".
 
 **Active (unit).** A unit is active in a condition when it has a row for every trial of that condition with every measure non-null. min-dataset-3 counts active units. SPEC min-dataset-3.
+
+**Inclusion rule (`INCLUSION_RULE`).** The pre-registered rule applied identically by `validate()` and `evaluate()`: a unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x. `contract.py`; `evaluate.split_halves`.
+
+**Declared exclusion (`exclusions`).** A unit or trial removed by the contributor before submission (for example a dead electrode, stimulation-artifact saturation, or a dropped trial), recorded in `preparation.json` under `exclusions` with `kind` (`"unit"` or `"trial"`), `id`, and a non-empty `reason`. Declaring a unit or trial ID that is still present in `units.csv` or `responses.csv` is a `SCHEMA` contradiction. `metadata.Exclusion`; `contract.validate`.
 
 **Identifier columns.** `unit_id`, `recording_id`, `session_id`, `preparation_id`, `condition`, `trial_index`, `stim_time_ns`. Compared as strings where they are labels; never allowed as measures.
 
@@ -119,6 +141,8 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 **n_eff.** The sample size used for the interval: the number of units, never the number of (unit, condition) pairs, because pairs sharing a unit are not independent. Conservative for pooled estimates.
 
 **Single-trial reliability (`rho_single_trial`).** The reliability one trial would have, recovered from rho and the trial count by inverting Spearman-Brown: rho1 = rho / (n − (n − 1) rho). Lets sessions with different trial counts be compared. `rho_at_20` is the same quantity re-expressed at 20 trials.
+
+**Variance components (`var_between`, `var_within`, `moments_reliability`).** Over the units included in a condition, the variance across units of per-unit trial means (`var_between`, `ddof=1`), the mean across units of per-unit trial variances (`var_within`, `ddof=1`), and the ANOVA-style moments reliability estimate `max(0, (var_between - var_within / n_trials) / var_between)`. Reported next to each split-half ceiling: a ceiling driven by between-unit heterogeneity shows up as large `var_between` relative to `var_within`, and `moments_reliability` estimates the same quantity as `ceiling()`'s `rho`. `evaluate.variance_components`.
 
 **Permutation null (label-permutation null).** Shuffling which unit's half-B values are paired with which unit's half-A values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
 

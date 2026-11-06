@@ -33,6 +33,11 @@ MD6_MUST = 2.0
 CONFORMING = "conforming"
 FULLY_CONFORMING = "fully_conforming"
 
+INCLUSION_RULE = (
+    "A unit is included in a condition if and only if it has a row for every trial of that condition "
+    "with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x."
+)
+
 
 class Requirement(StrEnum):
     """Minimum dataset (`min-dataset-*`) requirements from SPEC.md.
@@ -225,6 +230,21 @@ def validate(
                 found=preparation.preparation_id,
                 required=units_prep_id,
             )
+        present_units = set(units["unit_id"])
+        present_trials = set(responses["trial_index"].astype(str))
+        for excl in preparation.exclusions:
+            if excl.kind == "unit" and excl.id in present_units:
+                raise ContractViolation(
+                    Requirement.SCHEMA,
+                    f"exclusions lists unit '{excl.id}' as excluded but it is present in units.",
+                    found=excl.id,
+                )
+            if excl.kind == "trial" and excl.id in present_trials:
+                raise ContractViolation(
+                    Requirement.SCHEMA,
+                    f"exclusions lists trial '{excl.id}' as excluded but it is present in responses.",
+                    found=excl.id,
+                )
 
     if conditions is not None:
         for cond in responses["condition"].astype(str).unique():
@@ -271,6 +291,7 @@ def validate(
                 required=1,
             )
 
+    n_units_in_tables = int(len(units))
     responses["complete"] = responses[measures].notna().all(axis=1)
     g = responses.groupby(["condition", "unit_id"], sort=False)
     n_tr = g["trial_index"].nunique()
@@ -279,14 +300,27 @@ def validate(
     responses = responses.drop(columns=["complete"])
     cond_trials_for_unit = n_tr.index.get_level_values("condition").map(n_trials_cond)
     unit_active = (n_tr == cond_trials_for_unit) & all_complete
-    n_units_active_by_cond = unit_active.groupby(level="condition", sort=False).sum()
-    conditions_info: dict[str, dict[str, Any]] = {
-        str(cond): {
-            "n_trials": int(n_trials_cond[cond]),
-            "n_units_active": int(n_units_active_by_cond[cond]) if int(n_trials_cond[cond]) > 0 else 0,
+
+    conditions_info: dict[str, dict[str, Any]] = {}
+    for cond in responses["condition"].unique():
+        cond_str = str(cond)
+        n_trials_c = int(n_trials_cond[cond])
+        if n_trials_c > 0 and cond in unit_active.index:
+            cond_active = unit_active.loc[cond]
+            active_unit_list = sorted(str(u) for u in cond_active.index[cond_active])
+            present_cells = int(n_tr.loc[cond].sum())
+        else:
+            active_unit_list = []
+            present_cells = 0
+        n_active_c = len(active_unit_list)
+        conditions_info[cond_str] = {
+            "n_trials": n_trials_c,
+            "n_units_active": n_active_c,
+            "active_units": active_unit_list,
+            "n_units_in_tables": n_units_in_tables,
+            "n_units_excluded_by_rule": n_units_in_tables - n_active_c,
+            "n_rows_missing": n_units_in_tables * n_trials_c - present_cells,
         }
-        for cond in responses["condition"].unique()
-    }
 
     best_trial_cond = max(conditions_info, key=lambda c: conditions_info[c]["n_trials"])
     max_trials = conditions_info[best_trial_cond]["n_trials"]
@@ -449,6 +483,27 @@ def validate(
         "n_spikes": int(len(spikes)) if spikes is not None else None,
     }
 
+    declared_exclusions = {
+        "units": sum(1 for e in preparation.exclusions if e.kind == "unit") if preparation is not None else 0,
+        "trials": sum(1 for e in preparation.exclusions if e.kind == "trial")
+        if preparation is not None
+        else 0,
+    }
+    inclusion = {
+        "rule": INCLUSION_RULE,
+        "per_condition": {
+            cond: {
+                "n_units_in_tables": info["n_units_in_tables"],
+                "n_units_included": info["n_units_active"],
+                "n_units_excluded_by_rule": info["n_units_excluded_by_rule"],
+                "n_rows_missing": info["n_rows_missing"],
+                "n_trials": info["n_trials"],
+            }
+            for cond, info in conditions_info.items()
+        },
+        "declared": declared_exclusions,
+    }
+
     return {
         "spec_version": SPEC_VERSION,
         "n_preparations": int(units["preparation_id"].nunique()),
@@ -467,6 +522,7 @@ def validate(
         "post_stim_window_s": float(post_stim_window_s),
         "load_duration_s": float(load_duration_s),
         "min_inter_stimulus_s": min_inter_stimulus_s,
+        "inclusion": inclusion,
         "metadata": metadata,
     }
 
@@ -584,6 +640,14 @@ def main(argv: list[str] | None = None) -> int:
             sf = info["should_failed"] or "none"
             print(
                 f"  {name}: n_trials={info['n_trials']} n_units_active={info['n_units_active']} should_failed={sf}"
+            )
+        decl = result["inclusion"]["declared"]
+        for cond in result["evaluated_conditions"]:
+            inc = result["inclusion"]["per_condition"][cond]
+            print(
+                f"{cond}: units included {inc['n_units_included']} of {inc['n_units_in_tables']} "
+                f"(excluded by rule {inc['n_units_excluded_by_rule']}, rows missing {inc['n_rows_missing']}); "
+                f"declared exclusions units {decl['units']} trials {decl['trials']}"
             )
     return 0
 

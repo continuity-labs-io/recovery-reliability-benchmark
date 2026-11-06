@@ -19,7 +19,7 @@ from recovery_reliability_benchmark.contract import (
     read_tables,
     validate,
 )
-from recovery_reliability_benchmark.metadata import Condition, Preparation
+from recovery_reliability_benchmark.metadata import Condition, Exclusion, Preparation
 from recovery_reliability_benchmark.protocol import Protocol
 from tests.conftest import make_tables
 
@@ -554,6 +554,7 @@ def test_sidecars_absent_unchanged() -> None:
         "post_stim_window_s",
         "load_duration_s",
         "min_inter_stimulus_s",
+        "inclusion",
         "metadata",
     }
     assert set(result.keys()) == expected_keys
@@ -562,6 +563,68 @@ def test_sidecars_absent_unchanged() -> None:
         "conditions": None,
         "n_spikes": None,
     }
+
+
+def test_inclusion_counts() -> None:
+    units, responses = make_tables(n_units=12, n_trials=10)
+    drop_idx = responses.index[responses["unit_id"] == "u00"][0]
+    responses = responses.drop(index=drop_idx).reset_index(drop=True)
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0)
+    assert result["inclusion"]["per_condition"]["A"] == {
+        "n_units_in_tables": 12,
+        "n_units_included": 11,
+        "n_units_excluded_by_rule": 1,
+        "n_rows_missing": 1,
+        "n_trials": 10,
+    }
+    assert "u00" not in result["conditions"]["A"]["active_units"]
+
+
+def test_declared_exclusion_contradiction() -> None:
+    units, responses = make_tables()
+    prep_bad = Preparation(
+        preparation_id="prep0",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+        exclusions=[Exclusion(kind="unit", id="u00", reason="saturated")],
+    )
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, preparation=prep_bad)
+    assert exc_info.value.requirement is Requirement.SCHEMA
+    assert "u00" in str(exc_info.value)
+
+    prep_bad_trial = Preparation(
+        preparation_id="prep0",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+        exclusions=[Exclusion(kind="trial", id="0", reason="artifact")],
+    )
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, preparation=prep_bad_trial)
+    assert exc_info.value.requirement is Requirement.SCHEMA
+    assert "0" in str(exc_info.value)
+
+    prep_ok = Preparation(
+        preparation_id="prep0",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+        exclusions=[Exclusion(kind="unit", id="u99", reason="saturated")],
+    )
+    result = validate(units, responses, MEASURES, post_stim_window_s=2.0, preparation=prep_ok)
+    assert result["inclusion"]["declared"]["units"] == 1
+    assert result["inclusion"]["declared"]["trials"] == 0
 
 
 def test_examples_with_sidecars(capsys: pytest.CaptureFixture[str]) -> None:
