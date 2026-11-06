@@ -194,14 +194,28 @@ def test_invariant_to_affine_measure_transform(
         (tau_aff["pooled"]["centered"], tau_base["pooled"]["centered"]),
         *((tau_aff["per_condition"][c], tau_base["per_condition"][c]) for c in ("A", "B", "C")),
     ):
-        for key in ("rho", "r_half", "r_ci_low", "r_ci_high", "rho_ci_low", "rho_ci_high", "rho_single_trial", "rho_at_20"):
+        for key in (
+            "rho",
+            "r_half",
+            "r_ci_low",
+            "r_ci_high",
+            "rho_ci_low",
+            "rho_ci_high",
+            "rho_single_trial",
+            "rho_at_20",
+        ):
             assert scope_aff[key] == pytest.approx(scope_base[key], rel=1e-9, abs=1e-9)
 
     for var_aff, var_base in (
         (tau_aff["headline"]["variance"], tau_base["headline"]["variance"]),
-        *((tau_aff["per_condition"][c]["variance"], tau_base["per_condition"][c]["variance"]) for c in ("A", "B", "C")),
+        *(
+            (tau_aff["per_condition"][c]["variance"], tau_base["per_condition"][c]["variance"])
+            for c in ("A", "B", "C")
+        ),
     ):
-        assert var_aff["var_between"] == pytest.approx(var_base["var_between"] * (scale**2), rel=1e-9, abs=1e-9)
+        assert var_aff["var_between"] == pytest.approx(
+            var_base["var_between"] * (scale**2), rel=1e-9, abs=1e-9
+        )
         assert var_aff["var_within"] == pytest.approx(var_base["var_within"] * (scale**2), rel=1e-9, abs=1e-9)
         assert var_aff["moments_reliability"] == pytest.approx(
             var_base["moments_reliability"], rel=1e-9, abs=1e-9
