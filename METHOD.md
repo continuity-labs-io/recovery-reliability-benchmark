@@ -70,6 +70,8 @@ Groups where either half is empty are dropped.
 
 When `n_eff < 4` or `r` is `NaN`, both bounds are reported as `None`.
 
+**Variance components.** The report shows between-unit variance, within-unit (trial) variance and the moments estimate next to the split-half ceiling. A ceiling driven by between-unit heterogeneity shows up as large var_between relative to var_within; moments_reliability is the ANOVA-style estimate of the same quantity the split-half ceiling estimates, and the two should agree.
+
 **Step 6. Trial-count standardization.** Let `n = n_trials_group` be the median over the frame's `(unit_id, condition)` groups of `n_A + n_B`. Invert Spearman-Brown to obtain the single-trial reliability `rho_1 = rho_single_trial` (`0.0` when `rho == 0`) and project it to a standard 20-trial session:
 
     rho_single_trial = rho / (n - (n - 1) * rho)
@@ -157,6 +159,23 @@ The reported n is stated explicitly alongside what else could have been counted.
 | `seed` | 42 | Reported with every result. |
 
 Every result carries the parameter set and the code version tag, so that two laboratories reporting a ceiling of 0.8 mean the same thing.
+
+---
+
+## How this benchmark can be gamed
+
+Arc's Virtual Cell Challenge used a scale-sensitive perturbation discrimination score and was climbed by inflating the variance of random predictions; the split-half correlation is scale-invariant, so that attack fails, and the table lists its neighbors.
+
+| Attack | Effect on the score | Countermeasure | Status |
+|---|---|---|---|
+| Variance inflation | None: Pearson r is invariant to scaling and shifting a measure | Scale-invariant score | Not applicable |
+| Unit selection (drop low-variance units, keep heterogeneous ones) | Raises between-unit variance, raises the ceiling | Pre-registered inclusion rule; inclusion counts and declared exclusions in every report; variance components printed next to the ceiling | Implemented (v0.1.0) |
+| Trial exclusion after seeing results | Removes noisy trials, raises the ceiling | No trial exclusion by rule; missing rows make a unit inactive; declared exclusions required; benchmark computes measures from spikes from v0.2.0 | Implemented (counts); tightened in v0.2.0 |
+| Stable-but-meaningless measures (baseline firing rate) | Wins a reliability-only ranking while saying nothing about recovery | Sensitivity axis reported next to reliability, never combined; baseline firing rate as a reference row every submitted measure is compared with | Planned (v0.2.0) |
+| Submitter-chosen data or splits | Cherry-picked datasets or favorable halves | Submitted measures are scored on fixed public datasets with splits chosen by the benchmark | Documented (CONTRIBUTING.md); leaderboard planned |
+| Something we have not thought of | Unknown | Adversarial review requested: open an issue titled "gaming:" with the attack and, if possible, a synthetic dataset that demonstrates it | Open |
+
+With two or more conditions, the sensitivity axis is the between-condition effect per unit divided by that unit's split-half noise, summarized as the fraction of units moving more than twice their own noise band and the median standardized effect; with one condition, the same quantity between the post-load window and the pre-load baseline. Reported beside reliability, never merged into one score. Status: planned for v0.2.0 with `measures.py`.
 
 ---
 

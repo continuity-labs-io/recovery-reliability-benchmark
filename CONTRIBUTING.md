@@ -88,6 +88,12 @@ After publication, withdrawal is not possible, which is why the thirty-day revie
 
 ---
 
+## Submitting measures
+
+A submitted measure is a named function from the raw inputs (spike times, stimulus times, declared parameters) to one value per unit per trial or per half; it is scored on the fixed public datasets with splits chosen by the benchmark, never by the submitter; it is reported on both axes, reliability and sensitivity, with its interval and inclusion counts, next to the baseline-firing-rate reference row; a measure that does not beat the reference on sensitivity is listed and marked. The leaderboard does not exist yet; this is the rule it will follow.
+
+---
+
 ## 9. Starting
 
 Run the conformance check locally. If it passes, get in touch. If it fails, the error names the requirement and the shortfall, and that information is useful to you regardless of whether you contribute.

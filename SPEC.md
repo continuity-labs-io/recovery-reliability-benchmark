@@ -179,6 +179,7 @@ These sidecars are optional in SPEC v1.0 (benchmark v0.1.x) and required from SP
 | `line_or_donor_id` | anonymized string | yes |
 | `instrument` | string | yes |
 | `raw_data_url` | string | no |
+| `exclusions` | array of `{"kind": "unit" \| "trial", "id": string, "reason": string}` | no |
 
 `conditions.json`, mapping each condition label to its commanded protocol and pharmacology:
 
@@ -195,6 +196,18 @@ These sidecars are optional in SPEC v1.0 (benchmark v0.1.x) and required from SP
 ```
 
 Every condition present in `responses.csv` MUST have an entry in `conditions.json` when the file is provided. The atlas row's protocol fingerprint is computed from `"protocol"`.
+
+---
+
+## Inclusion and exclusion
+
+A unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x.
+
+Contributors MUST NOT exclude units or trials after seeing results. Any exclusion made before submission (dead electrodes, stimulation-artifact saturation, a dropped trial) MUST be declared in `preparation.json` under `exclusions`, one entry per unit or trial with a reason; the report prints the counts. An exclusion that names a unit or trial still present in the tables is a SCHEMA violation.
+
+Every report prints: units in the tables, units included by rule, units excluded by rule, rows missing from the full grid, and contributor-declared exclusions.
+
+From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration.
 
 ---
 

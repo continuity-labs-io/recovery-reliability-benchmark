@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from recovery_reliability_benchmark.contract import (
+    INCLUSION_RULE,
     SPEC_VERSION,
     ContractViolation,
     Requirement,
@@ -161,3 +162,27 @@ def test_release_docs_sections() -> None:
     assert "## Status" in readme_text
     assert "## Repository layout" in readme_text
     assert "CITATION.cff" in readme_text
+
+
+def test_inclusion_gaming_and_submission_docs() -> None:
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    assert "## Inclusion and exclusion" in spec_text
+    assert INCLUSION_RULE in spec_text
+
+    method_text = (ROOT / "METHOD.md").read_text(encoding="utf-8")
+    assert "## How this benchmark can be gamed" in method_text
+    for attack in (
+        "Variance inflation",
+        "Unit selection (drop low-variance units, keep heterogeneous ones)",
+        "Trial exclusion after seeing results",
+        "Stable-but-meaningless measures (baseline firing rate)",
+        "Submitter-chosen data or splits",
+        "Something we have not thought of",
+    ):
+        assert attack in method_text
+
+    contributing_text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "## Submitting measures" in contributing_text
+
+    glossary_text = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8")
+    assert "Sensitivity axis" in glossary_text

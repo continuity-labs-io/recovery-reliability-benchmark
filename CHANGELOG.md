@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - GLOSSARY.md added.
+- Inclusion rule made explicit and applied identically by rrb-check and rrb-evaluate; inclusion counts and contributor-declared exclusions reported.
+- Variance components reported next to each ceiling.
+- METHOD.md: 'How this benchmark can be gamed' section; CONTRIBUTING.md: measure-submission rule.
 
 ### Changed
 

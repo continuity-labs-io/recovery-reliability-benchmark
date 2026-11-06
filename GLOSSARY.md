@@ -94,9 +94,9 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Active (unit).** A unit is active in a condition when it has a row for every trial of that condition with every measure non-null. min-dataset-3 counts active units. SPEC min-dataset-3.
 
-**Inclusion rule (`INCLUSION_RULE`).** The pre-registered rule applied identically by `validate()` and `evaluate()`: a unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x. `contract.py`; `evaluate.split_halves`.
+**Inclusion rule (`INCLUSION_RULE`).** The pre-registered rule applied identically by `validate()` and `evaluate()`: a unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x. SPEC "Inclusion and exclusion"; `contract.py`; `evaluate.split_halves`.
 
-**Declared exclusion (`exclusions`).** A unit or trial removed by the contributor before submission (for example a dead electrode, stimulation-artifact saturation, or a dropped trial), recorded in `preparation.json` under `exclusions` with `kind` (`"unit"` or `"trial"`), `id`, and a non-empty `reason`. Declaring a unit or trial ID that is still present in `units.csv` or `responses.csv` is a `SCHEMA` contradiction. `metadata.Exclusion`; `contract.validate`.
+**Declared exclusion (`exclusions`).** A unit or trial removed by the contributor before submission (for example a dead electrode, stimulation-artifact saturation, or a dropped trial), recorded in `preparation.json` under `exclusions` with `kind` (`"unit"` or `"trial"`), `id`, and a non-empty `reason`. Declaring a unit or trial ID that is still present in `units.csv` or `responses.csv` is a `SCHEMA` contradiction. SPEC "Inclusion and exclusion"; `metadata.Exclusion`; `contract.validate`.
 
 **Identifier columns.** `unit_id`, `recording_id`, `session_id`, `preparation_id`, `condition`, `trial_index`, `stim_time_ns`. Compared as strings where they are labels; never allowed as measures.
 
@@ -142,7 +142,11 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Single-trial reliability (`rho_single_trial`).** The reliability one trial would have, recovered from rho and the trial count by inverting Spearman-Brown: rho1 = rho / (n − (n − 1) rho). Lets sessions with different trial counts be compared. `rho_at_20` is the same quantity re-expressed at 20 trials.
 
-**Variance components (`var_between`, `var_within`, `moments_reliability`).** Over the units included in a condition, the variance across units of per-unit trial means (`var_between`, `ddof=1`), the mean across units of per-unit trial variances (`var_within`, `ddof=1`), and the ANOVA-style moments reliability estimate `max(0, (var_between - var_within / n_trials) / var_between)`. Reported next to each split-half ceiling: a ceiling driven by between-unit heterogeneity shows up as large `var_between` relative to `var_within`, and `moments_reliability` estimates the same quantity as `ceiling()`'s `rho`. `evaluate.variance_components`.
+**Variance components (`var_between`, `var_within`, `moments_reliability`).** Over the units included in a condition, the variance across units of per-unit trial means (`var_between`, `ddof=1`), the mean across units of per-unit trial variances (`var_within`, `ddof=1`), and the ANOVA-style moments reliability estimate `max(0, (var_between - var_within / n_trials) / var_between)`. Reported next to each split-half ceiling: a ceiling driven by between-unit heterogeneity shows up as large `var_between` relative to `var_within`, and `moments_reliability` estimates the same quantity as `ceiling()`'s `rho`. METHOD §3; `evaluate.variance_components`.
+
+**Sensitivity axis.** The companion axis to reliability: with two or more conditions, the between-condition effect per unit divided by that unit's split-half noise, summarized as the fraction of units moving more than twice their own noise band and the median standardized effect; with one condition, the same quantity between the post-load window and the pre-load baseline. Reported beside reliability, never merged into one score. Planned for v0.2.0 (`measures.py`). METHOD "How this benchmark can be gamed".
+
+**Reference measure.** Baseline firing rate, reported as a reference row alongside every submitted measure so that a measure winning on reliability alone while saying nothing about recovery is visible; a submitted measure that does not beat the reference on the sensitivity axis is listed and marked. METHOD "How this benchmark can be gamed"; CONTRIBUTING "Submitting measures".
 
 **Permutation null (label-permutation null).** Shuffling which unit's half-B values are paired with which unit's half-A values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
 
@@ -216,7 +220,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Test set.** The contributed datasets. A result on one dataset and a result on another are comparable only because both passed the same conformance spec.
 
-**Submitted measure.** A proposed recovery measure, registered as a named function and scored against the whole corpus. The later form of the benchmark, with a leaderboard. Not yet built.
+**Submitted measure.** A proposed recovery measure registered as a named function from the raw inputs (spike times, stimulus times, declared parameters) to one value per unit per trial or per half. Scored on the fixed public datasets with splits chosen by the benchmark, never by the submitter, and reported on both reliability and the sensitivity axis (with its interval and inclusion counts) next to the baseline-firing-rate reference row; a measure that does not beat the reference on sensitivity is listed and marked. The leaderboard does not exist yet; this is the rule it will follow. CONTRIBUTING "Submitting measures".
 
 **Atlas, atlas row.** The accumulating public collection of scored datasets. A row is keyed by (protocol fingerprint, condition, preparation): the commanded load, the condition label with its pharmacology, and the specimen. SPEC §1.
 
