@@ -10,11 +10,14 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 from recovery_reliability_benchmark.contract import (
+    CHECKS,
     CONFORMING,
+    FORBIDDEN_MEASURES,
     FULLY_CONFORMING,
     SPEC_VERSION,
     ContractViolation,
     Requirement,
+    ValidationContext,
     main,
     read_tables,
     validate,
@@ -649,3 +652,90 @@ def test_examples_with_sidecars(capsys: pytest.CaptureFixture[str]) -> None:
     doc = json.loads(captured.out)
     metadata = doc["result"]["metadata"]
     assert metadata["conditions"]["baseline"]["fingerprint"] == Protocol.standard_hfs().fingerprint()
+
+
+def test_checks_registry() -> None:
+    assert len(CHECKS) == 11
+    reqs = [req for req, _, _ in CHECKS]
+    assert reqs == [
+        Requirement.SCHEMA,
+        Requirement.SCHEMA,
+        Requirement.SCHEMA,
+        Requirement.SCHEMA,
+        Requirement.SCHEMA,
+        Requirement.MD1,
+        Requirement.MD2,
+        Requirement.MD3,
+        Requirement.MD4,
+        Requirement.MD5,
+        Requirement.MD6,
+    ]
+    names = [name for _, name, _ in CHECKS]
+    assert len(names) == len(set(names))
+    for _, _, fn in CHECKS:
+        assert callable(fn)
+        assert isinstance(fn.__doc__, str) and len(fn.__doc__.strip()) > 0
+
+
+def test_each_check_raises_its_own_requirement() -> None:
+    units_md1, responses_md1 = make_tables()
+    units_md1.loc[units_md1.index[-1], "preparation_id"] = "prep1"
+
+    units_md2, responses_md2 = make_tables(n_trials=6)
+
+    units_md3, responses_md3 = make_tables(n_units=5)
+
+    units_md4, responses_md4 = make_tables()
+    responses_md4["stim_time_ns"] = responses_md4["stim_time_ns"].astype("Int64")
+    responses_md4.loc[0, "stim_time_ns"] = pd.NA
+
+    units_md5, responses_md5 = make_tables()
+    dup = responses_md5[(responses_md5["unit_id"] == "u00") & (responses_md5["trial_index"] == 7)].copy()
+    responses_md5 = pd.concat([responses_md5, dup], ignore_index=True)
+
+    units_md6, responses_md6 = make_tables(isi_s=1.5)
+
+    violating_fixtures: dict[Requirement, tuple[pd.DataFrame, pd.DataFrame]] = {
+        Requirement.MD1: (units_md1, responses_md1),
+        Requirement.MD2: (units_md2, responses_md2),
+        Requirement.MD3: (units_md3, responses_md3),
+        Requirement.MD4: (units_md4, responses_md4),
+        Requirement.MD5: (units_md5, responses_md5),
+        Requirement.MD6: (units_md6, responses_md6),
+    }
+
+    for req, _name, fn in CHECKS:
+        if req is Requirement.SCHEMA:
+            continue
+        units, responses = violating_fixtures[req]
+        ctx = ValidationContext(
+            units=units.copy(),
+            responses=responses.copy(),
+            measures=list(MEASURES),
+            post_stim_window_s=2.0,
+            load_duration_s=0.0,
+            forbidden=FORBIDDEN_MEASURES,
+            preparation=None,
+            conditions=None,
+            spikes=None,
+        )
+        with pytest.raises(ContractViolation) as exc_info:
+            fn(ctx)
+        assert exc_info.value.requirement is req
+
+
+def test_two_preparations_with_matching_sidecar_reports_md1() -> None:
+    units, responses = make_tables()
+    units.loc[units.index[-1], "preparation_id"] = "prep1"
+    prep = Preparation(
+        preparation_id="prep1",
+        species="Rattus norvegicus",
+        preparation_type="dissociated_culture",
+        age_days=21,
+        age_basis="DIV",
+        line_or_donor_id="example",
+        instrument="synthetic",
+    )
+    with pytest.raises(ContractViolation) as exc_info:
+        validate(units, responses, MEASURES, post_stim_window_s=2.0, preparation=prep)
+    assert exc_info.value.requirement is Requirement.MD1
