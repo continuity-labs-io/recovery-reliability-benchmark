@@ -9,7 +9,13 @@ import pandas as pd
 import pytest
 from pandas.api.types import is_integer_dtype
 
-from recovery_reliability_benchmark.checks import CHECKS
+from recovery_reliability_benchmark.checks import (
+    CHECKS,
+    check_active_units,
+    check_post_stimulus_window,
+    check_stimulus_timeline,
+    check_trials_per_condition,
+)
 from recovery_reliability_benchmark.cli import check_main as main
 from recovery_reliability_benchmark.contract import (
     CONFORMING,
@@ -719,9 +725,38 @@ def test_each_check_raises_its_own_requirement() -> None:
             conditions=None,
             spikes=None,
         )
+        if req is Requirement.MD3:
+            check_trials_per_condition(ctx)
+        elif req is Requirement.MD6:
+            check_stimulus_timeline(ctx)
         with pytest.raises(ContractViolation) as exc_info:
             fn(ctx)
         assert exc_info.value.requirement is req
+
+
+def test_check_active_units_requires_prerequisite() -> None:
+    units, responses = make_tables()
+    ctx = ValidationContext(
+        units=units.copy(),
+        responses=responses.copy(),
+        measures=list(MEASURES),
+        post_stim_window_s=2.0,
+        load_duration_s=0.0,
+        forbidden=FORBIDDEN_MEASURES,
+        preparation=None,
+        conditions=None,
+        spikes=None,
+    )
+    with pytest.raises(
+        RuntimeError,
+        match="check_active_units requires check_trials_per_condition to have run; CHECKS order guarantees this",
+    ):
+        check_active_units(ctx)
+    with pytest.raises(
+        RuntimeError,
+        match="check_post_stimulus_window requires check_stimulus_timeline to have run; CHECKS order guarantees this",
+    ):
+        check_post_stimulus_window(ctx)
 
 
 def test_two_preparations_with_matching_sidecar_reports_md1() -> None:

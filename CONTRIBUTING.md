@@ -103,6 +103,7 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 - Names say what the number is: `reliability_ceiling`, not `ceiling`; odd/even halves, not A/B.
 - The checker (`contract.py`, `checks.py`) depends on pandas only; scipy is allowed from `evaluate.py` onward.
 - Every backticked code symbol in `GLOSSARY.md` must resolve; `tests/test_style.py` enforces all of the above.
+- Every reported number must be invariant to row order, unit and condition relabeling, affine transforms of a measure, and index offsets; `tests/test_invariance.py` enforces this.
 
 ---
 

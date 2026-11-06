@@ -37,10 +37,8 @@ def check_measures_allowed_and_numeric(ctx: ValidationContext) -> None:
     for measure in ctx.measures:
         if measure not in ctx.responses.columns:
             raise ContractViolation(Requirement.SCHEMA, f"measure '{measure}' is not a column of responses.")
-    for measure in ctx.measures:
         if measure in ctx.forbidden:
             raise ContractViolation(Requirement.SCHEMA, f"'{measure}' is not allowed as a measure.")
-    for measure in ctx.measures:
         if not is_numeric_dtype(ctx.responses[measure]):
             raise ContractViolation(Requirement.SCHEMA, f"measure '{measure}' is not numeric.")
         if ctx.responses[measure].isna().all():
@@ -162,14 +160,14 @@ def check_trials_per_condition(ctx: ValidationContext) -> None:
     g = ctx.responses.assign(complete=complete).groupby(["condition", "unit_id"], sort=False)
     n_tr, all_complete = g["trial_index"].nunique(), g["complete"].all()
     n_trials_cond = ctx.responses.groupby("condition")["trial_index"].nunique()
-    unit_active = (n_tr == n_tr.index.get_level_values("condition").map(n_trials_cond)) & all_complete
+    unit_active = (
+        n_tr.to_numpy() == n_tr.index.get_level_values("condition").map(n_trials_cond).to_numpy()
+    ) & all_complete
     ctx.conditions_info = {}
     for cond in ctx.responses["condition"].unique():
         n_trials_c = int(n_trials_cond[cond])
         cond_active = unit_active.loc[cond] if (n_trials_c > 0 and cond in unit_active.index) else None
-        active_units = (
-            sorted(str(u) for u in cond_active.index[cond_active]) if cond_active is not None else []
-        )
+        active_units = sorted(str(u) for u in cond_active.index[cond_active]) if cond_active is not None else []
         present_cells = int(n_tr.loc[cond].sum()) if cond_active is not None else 0
         n_active_c = len(active_units)
         ctx.conditions_info[str(cond)] = {
@@ -192,10 +190,11 @@ def check_active_units(ctx: ValidationContext) -> None:
     Args:
         ctx: Validation context with conditions_info populated by check_trials_per_condition.
     Raises:
+        RuntimeError: If check_trials_per_condition has not populated ctx.conditions_info.
         ContractViolation: With Requirement.MD3 if no condition with >= MD2_MUST trials has >= MD3_MUST active units.
     """
     if not ctx.conditions_info:
-        check_trials_per_condition(ctx)
+        raise RuntimeError("check_active_units requires check_trials_per_condition to have run; CHECKS order guarantees this")
     eval_conds = [c for c, info in ctx.conditions_info.items() if info["n_trials"] >= contract.MD2_MUST]
     best_eval_cond = max(eval_conds, key=lambda c: ctx.conditions_info[c]["n_units_active"])
     max_active = ctx.conditions_info[best_eval_cond]["n_units_active"]
@@ -215,17 +214,21 @@ def check_stimulus_timeline(ctx: ValidationContext) -> None:
     if null_stim > 0:
         msg = f"{null_stim} responses rows have a null stim_time_ns, requires 0."
         raise ContractViolation(Requirement.MD4, msg, found=null_stim, required=0)
-    for trial_idx, trial_rows in ctx.responses.groupby("trial_index"):
-        n_cond = int(trial_rows["condition"].nunique(dropna=False))
-        if n_cond != 1:
-            vals = ", ".join(f"'{v}'" for v in sorted(trial_rows["condition"].astype(str).unique()))
-            msg = f"trial_index {int(trial_idx)} has {n_cond} distinct condition values ({vals}), requires 1."
-            raise ContractViolation(Requirement.MD4, msg, found=n_cond, required=1)
-    for trial_idx, trial_rows in ctx.responses.groupby("trial_index"):
-        n_times = int(trial_rows["stim_time_ns"].nunique())
-        if n_times != 1:
-            msg = f"trial_index {int(trial_idx)} has {n_times} distinct stim_time_ns values, requires 1."
-            raise ContractViolation(Requirement.MD4, msg, found=n_times, required=1)
+    by_trial = ctx.responses.groupby("trial_index")
+    bad_cond = by_trial["condition"].nunique(dropna=False)
+    bad_cond = bad_cond[bad_cond != 1]
+    if not bad_cond.empty:
+        trial_idx, n_cond = int(bad_cond.index[0]), int(bad_cond.iloc[0])
+        trial_rows = ctx.responses[ctx.responses["trial_index"] == trial_idx]
+        vals = ", ".join(f"'{v}'" for v in sorted(trial_rows["condition"].astype(str).unique()))
+        msg = f"trial_index {trial_idx} has {n_cond} distinct condition values ({vals}), requires 1."
+        raise ContractViolation(Requirement.MD4, msg, found=n_cond, required=1)
+    bad_time = by_trial["stim_time_ns"].nunique()
+    bad_time = bad_time[bad_time != 1]
+    if not bad_time.empty:
+        trial_idx, n_times = int(bad_time.index[0]), int(bad_time.iloc[0])
+        msg = f"trial_index {trial_idx} has {n_times} distinct stim_time_ns values, requires 1."
+        raise ContractViolation(Requirement.MD4, msg, found=n_times, required=1)
     cols = ["trial_index", "condition", "stim_time_ns"]
     ctx.trials = ctx.responses[cols].drop_duplicates().sort_values("trial_index").reset_index(drop=True)
     for cond, cond_trials in ctx.trials.groupby("condition", sort=False):
@@ -259,6 +262,7 @@ def check_post_stimulus_window(ctx: ValidationContext) -> None:
     Args:
         ctx: Validation context with post_stim_window_s, load_duration_s, and trials.
     Raises:
+        RuntimeError: If check_stimulus_timeline has not populated ctx.trials.
         ContractViolation: With Requirement.MD6 if post_stim_window_s < MD6_MUST or exceeds available inter-trial time.
     """
     if ctx.post_stim_window_s < contract.MD6_MUST:
@@ -266,8 +270,7 @@ def check_post_stimulus_window(ctx: ValidationContext) -> None:
         msg = f"Post-stimulus window {ctx.post_stim_window_s:.1f} s, requires {req_min:.1f} s."
         raise ContractViolation(Requirement.MD6, msg, found=float(ctx.post_stim_window_s), required=req_min)
     if ctx.trials is None:
-        check_stimulus_timeline(ctx)
-    assert ctx.trials is not None
+        raise RuntimeError("check_post_stimulus_window requires check_stimulus_timeline to have run; CHECKS order guarantees this")
     trials_by_time = ctx.trials.sort_values(["stim_time_ns", "trial_index"]).reset_index(drop=True)
     onsets = trials_by_time["stim_time_ns"].astype(int).to_list()
     trial_indices = trials_by_time["trial_index"].astype(int).to_list()

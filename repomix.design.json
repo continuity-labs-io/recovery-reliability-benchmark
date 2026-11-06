@@ -1,0 +1,20 @@
+{
+  "output": {
+    "filePath": "output/recovery-reliability-benchmark-repomix-design.xml",
+    "compress": true,
+    "directoryStructure": true
+  },
+  "include": [
+    "**/*.md",
+    "pyproject.toml",
+    "CITATION.cff",
+    "src/**/*.py"
+  ],
+  "ignore": {
+    "customPatterns": [
+      "docs/ai/complete/**",
+      "docs/ai/arrive/**",
+      "output/**"
+    ]
+  }
+}

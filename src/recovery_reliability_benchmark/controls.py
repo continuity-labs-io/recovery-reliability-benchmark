@@ -66,11 +66,11 @@ def permutation_null(
     perm_idx = np.empty(len(halves), dtype=int)
     rhos = np.empty(n_perm, dtype=float)
     rs = np.empty(n_perm, dtype=float)
+    permuted = halves.copy()
 
     for i in range(n_perm):
         for grp in cond_groups:
             perm_idx[grp] = rng.permutation(grp)
-        permuted = halves.copy()
         for col, arr in even_arrays.items():
             permuted[col] = arr[perm_idx]
         res = evaluate.reliability_ceiling(permuted, measure, center)
