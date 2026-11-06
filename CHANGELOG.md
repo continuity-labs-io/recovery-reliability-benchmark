@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Optional dataset items renamed OD-N to optional-dataset-N to match min-dataset-N.
+- Modules split under a 300-line rule: checks.py, controls.py, run.py, cli.py; ceiling renamed reliability_ceiling; halves named odd/even; Fisher interval and permutation null pinned to SciPy in tests; code guidelines in CONTRIBUTING.md.
 
 ## [0.1.0] - 2026-11-04
 

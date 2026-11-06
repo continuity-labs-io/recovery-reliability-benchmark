@@ -33,6 +33,22 @@ def make_tables(
     The per-unit mean over n trials has variance 1 + sigma^2/n, so its reliability is 1 / (1 + sigma^2/n) = rho.
     A split into two halves of n/2 trials gives half-means with correlation 1 / (1 + 2 sigma^2/n); Spearman-Brown on that
     correlation, 2r/(1+r), returns 1 / (1 + sigma^2/n) = rho. So the split-half estimate recovers `reliability` in expectation.
+
+    Args:
+        n_units: Number of recording units to generate.
+        n_trials: Number of trials per unit per condition.
+        conditions: Sequence of condition labels to generate.
+        isi_s: Inter-stimulus interval in seconds between consecutive trials.
+        measures: Sequence of measure column names to populate.
+        seed: Random seed for reproducible generation.
+        reliability: Optional target full-length reliability in (0, 1).
+        condition_offsets: Optional mapping of condition labels to additive mean shifts.
+
+    Returns:
+        Tuple of (units, responses) DataFrames conforming to the benchmark contract.
+
+    Raises:
+        ValueError: If reliability is not in (0, 1) or condition_offsets has unknown conditions.
     """
     if reliability is not None and not (0.0 < reliability < 1.0):
         raise ValueError(f"reliability must satisfy 0 < reliability < 1, got {reliability}.")

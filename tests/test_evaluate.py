@@ -14,19 +14,22 @@ import pandas as pd
 import pytest
 import scipy.stats
 
+import recovery_reliability_benchmark.controls as controls
 import recovery_reliability_benchmark.evaluate as evaluate
+from recovery_reliability_benchmark.cli import evaluate_main as main
 from recovery_reliability_benchmark.contract import MD2_SHOULD, read_tables, validate
-from recovery_reliability_benchmark.evaluate import (
-    REFERENCE_N_TRIALS,
+from recovery_reliability_benchmark.controls import (
     census,
-    main,
     permutation_null,
     positive_control,
+)
+from recovery_reliability_benchmark.evaluate import (
+    REFERENCE_N_TRIALS,
     reliability_ceiling,
-    run,
     split_halves,
     variance_components,
 )
+from recovery_reliability_benchmark.run import run
 from recovery_reliability_benchmark.synthetic import make_tables
 
 
@@ -164,7 +167,7 @@ def test_run_positive_control_failure_path(monkeypatch: pytest.MonkeyPatch) -> N
             "tolerance": 0.05,
         }
 
-    monkeypatch.setattr(evaluate, "positive_control", _failed_pc)
+    monkeypatch.setattr(controls, "positive_control", _failed_pc)
     units, responses = make_tables(n_units=15, n_trials=20, reliability=0.8)
     res = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0)
     assert res["status"] == "positive_control_failed"
@@ -488,7 +491,8 @@ def test_contract_imports_only_pandas() -> None:
         [
             sys.executable,
             "-c",
-            "import recovery_reliability_benchmark.contract, sys; assert 'scipy' not in sys.modules",
+            "import recovery_reliability_benchmark.contract, recovery_reliability_benchmark.checks, sys; "
+            "assert 'scipy' not in sys.modules",
         ],
         capture_output=True,
         text=True,

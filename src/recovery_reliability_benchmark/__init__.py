@@ -13,7 +13,6 @@ from .contract import (
 )
 from .evaluate import (
     reliability_ceiling,
-    run,
     split_halves,
 )
 from .metadata import (
@@ -27,6 +26,7 @@ from .protocol import (
     Train,
     default_pulse,
 )
+from .run import run
 
 try:
     __version__ = version("recovery-reliability-benchmark")

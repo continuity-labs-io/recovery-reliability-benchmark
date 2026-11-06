@@ -44,5 +44,6 @@ def test_exports() -> None:
         "__version__": __version__,
     }
     assert isinstance(__version__, str) and len(__version__) > 0
+    assert len(__all__) == len(set(__all__))
     assert set(__all__) == set(exported.keys())
     assert set(recovery_reliability_benchmark.__all__) == set(exported.keys())

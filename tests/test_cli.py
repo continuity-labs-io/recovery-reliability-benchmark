@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from recovery_reliability_benchmark.contract import main
-from recovery_reliability_benchmark.evaluate import main as evaluate_main
+from recovery_reliability_benchmark.cli import check_main as main
+from recovery_reliability_benchmark.cli import evaluate_main
 from recovery_reliability_benchmark.synthetic import make_tables
 from recovery_reliability_benchmark.thresholds import main as thresholds_main
 

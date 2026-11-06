@@ -94,6 +94,18 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 
 ---
 
+## Code guidelines
+
+- Source files stay under 300 lines; split by responsibility, not by line count.
+- Public functions carry Google-style docstrings with `Args`, `Returns` and `Raises` where applicable.
+- Validation lives in `checks.py` as an ordered registry; a new requirement is a new entry, not a new branch in `validate()`.
+- Anything algorithmically non-obvious carries a comment stating intent before the code (`permutation_null` is the example).
+- Names say what the number is: `reliability_ceiling`, not `ceiling`; odd/even halves, not A/B.
+- The checker (`contract.py`, `checks.py`) depends on pandas only; scipy is allowed from `evaluate.py` onward.
+- Every backticked code symbol in `GLOSSARY.md` must resolve; `tests/test_style.py` enforces all of the above.
+
+---
+
 ## 9. Starting
 
 Run the conformance check locally. If it passes, get in touch. If it fails, the error names the requirement and the shortfall, and that information is useful to you regardless of whether you contribute.

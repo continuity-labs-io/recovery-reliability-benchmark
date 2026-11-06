@@ -21,7 +21,15 @@ N_UNITS_GRID = (8, 15, 30)
 
 
 def format_interval(p2_5: float, p97_5: float) -> str:
-    """Format a 95% interval with two decimals in square brackets."""
+    """Format a 95% interval with two decimals in square brackets.
+
+    Args:
+        p2_5: 2.5th percentile bound.
+        p97_5: 97.5th percentile bound.
+
+    Returns:
+        Formatted interval string ``"[p2_5, p97_5]"``.
+    """
     return f"[{p2_5:.2f}, {p97_5:.2f}]"
 
 
@@ -32,7 +40,18 @@ def simulate_cell(
     n_units: int,
     seeds: int,
 ) -> dict[str, Any]:
-    """Run one grid cell across ``seeds`` synthetic datasets."""
+    """Run one grid cell across ``seeds`` synthetic datasets.
+
+    Args:
+        rho1: Single-trial reliability for the synthetic generator.
+        n_conditions: Number of conditions (1 or 3).
+        n_trials: Number of trials per condition.
+        n_units: Number of recording units.
+        seeds: Number of random seeds to simulate.
+
+    Returns:
+        Dictionary summarizing the empirical sampling distribution and CI coverage for the cell.
+    """
     if n_conditions == 3:
         conditions: tuple[str, ...] = ("A", "B", "C")
         condition_offsets: dict[str, float] | None = {"A": 0.0, "B": 1.0, "C": 2.0}
@@ -88,7 +107,16 @@ def simulate_cell(
 
 
 def render_markdown(cells: list[dict[str, Any]], seeds: int, command: str) -> str:
-    """Render the simulation cells as a single Markdown document and table."""
+    """Render the simulation cells as a single Markdown document and table.
+
+    Args:
+        cells: List of simulated grid cell result dictionaries.
+        seeds: Number of seeds simulated per cell.
+        command: CLI command string used to generate the results.
+
+    Returns:
+        Rendered Markdown document string.
+    """
     lines = [
         "# Threshold Simulation",
         "",
@@ -132,12 +160,26 @@ def render_markdown(cells: list[dict[str, Any]], seeds: int, command: str) -> st
 
 
 def write_table(path: Path, cells: list[dict[str, Any]], seeds: int, command: str) -> None:
-    """Write the Markdown threshold simulation table to ``path``."""
+    """Write the Markdown threshold simulation table to ``path``.
+
+    Args:
+        path: Output Markdown file path.
+        cells: List of simulated grid cell result dictionaries.
+        seeds: Number of seeds simulated per cell.
+        command: CLI command string used to generate the results.
+    """
     path.write_text(render_markdown(cells, seeds=seeds, command=command), encoding="utf-8")
 
 
 def write_json(path: Path, cells: list[dict[str, Any]], seeds: int, command: str) -> None:
-    """Write the JSON threshold simulation payload to ``path``."""
+    """Write the JSON threshold simulation payload to ``path``.
+
+    Args:
+        path: Output JSON file path.
+        cells: List of simulated grid cell result dictionaries.
+        seeds: Number of seeds simulated per cell.
+        command: CLI command string used to generate the results.
+    """
     payload = {
         "generated_by": command,
         "seeds": seeds,
@@ -147,7 +189,14 @@ def write_json(path: Path, cells: list[dict[str, Any]], seeds: int, command: str
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the threshold simulation grid and write Markdown and JSON outputs."""
+    """Run the threshold simulation grid and write Markdown and JSON outputs.
+
+    Args:
+        argv: Optional list of CLI argument strings (defaults to ``sys.argv[1:]``).
+
+    Returns:
+        Process exit code (0 on success).
+    """
     parser = argparse.ArgumentParser(
         description="Simulate the sampling distribution of the reliability ceiling across min-dataset-2/min-dataset-3 thresholds."
     )

@@ -9,8 +9,9 @@ import pandas as pd
 import pytest
 from pandas.api.types import is_integer_dtype
 
+from recovery_reliability_benchmark.checks import CHECKS
+from recovery_reliability_benchmark.cli import check_main as main
 from recovery_reliability_benchmark.contract import (
-    CHECKS,
     CONFORMING,
     FORBIDDEN_MEASURES,
     FULLY_CONFORMING,
@@ -18,7 +19,6 @@ from recovery_reliability_benchmark.contract import (
     ContractViolation,
     Requirement,
     ValidationContext,
-    main,
     read_tables,
     validate,
 )

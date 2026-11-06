@@ -1,11 +1,10 @@
 """Commanded stimulation protocol schema for the Recovery Reliability Benchmark.
 
-This schema describes the commanded stimulation protocol so two labs can assert
-they delivered the same conditioning load. It does not describe the delivered
-dose at the tissue, which also depends on electrode count, impedance and return
-configuration.
-
-Timing convention: an interval is onset-to-onset; a gap is end-to-onset. intra_burst_frequency_hz and inter_burst_interval_ms are intervals; inter_train_gap_s is a gap.
+This schema describes the commanded stimulation protocol so two labs can assert they delivered the
+same conditioning load. It does not describe the delivered dose at the tissue, which also depends on
+electrode count, impedance and return configuration.
+Timing convention: an interval is onset-to-onset; a gap is end-to-onset. intra_burst_frequency_hz
+and inter_burst_interval_ms are intervals; inter_train_gap_s is a gap.
 """
 
 from __future__ import annotations
@@ -22,18 +21,16 @@ CHARGE_BALANCE_REL_TOL = 1e-6
 class Pulse(BaseModel):
     """Single stimulation pulse waveform parameters.
 
-    In current mode, biphasic pulses are checked for charge balance between
-    phase 1 and phase 2. Delivered charge in voltage mode depends on electrode
-    impedance and is not known from the protocol, so no charge balance check is
-    performed in voltage mode.
+    In current mode, biphasic pulses are checked for charge balance between phase 1 and phase 2.
+    Delivered charge in voltage mode depends on electrode impedance and is not known from the
+    protocol, so no charge balance check is performed in voltage mode.
     """
 
     model_config = ConfigDict(frozen=True)
 
     waveform_shape: Literal["biphasic_square", "monophasic_square"] = "biphasic_square"
-    polarity_order: Literal["cathodic_first", "anodic_first"] = (
-        "cathodic_first"  # for monophasic, the polarity of the single phase
-    )
+    # for monophasic, the polarity of the single phase
+    polarity_order: Literal["cathodic_first", "anodic_first"] = "cathodic_first"
     mode: Literal["current", "voltage"] = "current"
     phase_1_duration_us: float = Field(gt=0)
     inter_phase_gap_us: float = Field(default=0.0, ge=0)
@@ -78,19 +75,12 @@ class Pulse(BaseModel):
         """Return net charge imbalance in picocoulombs in current mode, or None in voltage mode."""
         if self.mode != "current" or self.phase_1_amplitude_ua is None:
             return None
-        return (
-            self.phase_1_amplitude_ua * self.phase_1_duration_us
-            - self.phase_2_amplitude * self.phase_2_duration_us
-        )
+        q1 = self.phase_1_amplitude_ua * self.phase_1_duration_us
+        return q1 - self.phase_2_amplitude * self.phase_2_duration_us
 
     @model_validator(mode="after")
     def _validate_pulse(self) -> Pulse:
-        """Validate mode-unit pairing, waveform phase rules, and current-mode charge balance.
-
-        Delivered charge in voltage mode depends on electrode impedance and is
-        not known from the protocol, so charge balance is only checked in
-        current mode.
-        """
+        """Validate mode-unit pairing, waveform phase rules, and current-mode charge balance."""
         if self.mode == "current":
             if self.phase_1_amplitude_ua is None:
                 raise ValueError("mode='current' requires phase_1_amplitude_ua to be given.")
@@ -105,10 +95,8 @@ class Pulse(BaseModel):
                 raise ValueError(
                     "mode='voltage' requires phase_1_amplitude_ua and phase_2_amplitude_ua to be None."
                 )
-
         p2_amp_field = "phase_2_amplitude_ua" if self.mode == "current" else "phase_2_amplitude_mv"
         p2_amp = self.phase_2_amplitude_ua if self.mode == "current" else self.phase_2_amplitude_mv
-
         if self.waveform_shape == "monophasic_square":
             if self.phase_2_duration_us != 0:
                 raise ValueError("waveform_shape='monophasic_square' requires phase_2_duration_us == 0.")
@@ -123,22 +111,24 @@ class Pulse(BaseModel):
                 raise ValueError("waveform_shape='biphasic_square' requires phase_2_duration_us > 0.")
             if p2_amp is None or p2_amp <= 0:
                 raise ValueError(f"waveform_shape='biphasic_square' requires {p2_amp_field} > 0.")
-
             if self.mode == "current":
                 assert self.phase_1_amplitude_ua is not None and self.phase_2_amplitude_ua is not None
                 q1_pc = self.phase_1_amplitude_ua * self.phase_1_duration_us
                 q2_pc = self.phase_2_amplitude_ua * self.phase_2_duration_us
                 if not math.isclose(q1_pc, q2_pc, rel_tol=CHARGE_BALANCE_REL_TOL):
-                    raise ValueError(
+                    msg = (
                         "waveform_shape='biphasic_square' in current mode requires charge balance "
                         f"(phase_1 charge = {q1_pc} pC, phase_2 charge = {q2_pc} pC)."
                     )
-
+                    raise ValueError(msg)
         return self
 
 
 def default_pulse() -> Pulse:
-    """Return the default biphasic current-mode pulse (100 us phases, 20 us gap, 50 uA)."""
+    """Return the default biphasic current-mode pulse (100 us phases, 20 us gap, 50 uA).
+    Returns:
+        Default biphasic square current-mode Pulse instance.
+    """
     return Pulse(
         waveform_shape="biphasic_square",
         mode="current",
@@ -167,9 +157,8 @@ class Burst(BaseModel):
     @property
     def active_burst_duration_ms(self) -> float:
         """Return the duration from the first pulse onset to the last pulse end in milliseconds."""
-        return (self.pulses_per_burst - 1) * (
-            1000.0 / self.intra_burst_frequency_hz
-        ) + self.pulse.total_pulse_duration_us * 1e-3
+        span_ms = (self.pulses_per_burst - 1) * (1000.0 / self.intra_burst_frequency_hz)
+        return span_ms + self.pulse.total_pulse_duration_us * 1e-3
 
     @property
     def n_pulses(self) -> int:
@@ -204,9 +193,8 @@ class Train(BaseModel):
     @property
     def train_duration_s(self) -> float:
         """Return the duration from the first burst onset to the last burst end in seconds."""
-        return (
-            (self.bursts_per_train - 1) * self.inter_burst_interval_ms + self.burst.active_burst_duration_ms
-        ) * 1e-3
+        span_ms = (self.bursts_per_train - 1) * self.inter_burst_interval_ms
+        return (span_ms + self.burst.active_burst_duration_ms) * 1e-3
 
     @property
     def n_pulses(self) -> int:
@@ -218,10 +206,8 @@ class Train(BaseModel):
         """Validate inter-burst interval when multiple bursts are present."""
         if self.bursts_per_train > 1:
             if self.inter_burst_interval_ms <= 0:
-                raise ValueError(
-                    "bursts_per_train > 1 requires inter_burst_interval_ms > 0 "
-                    f"(got {self.inter_burst_interval_ms})."
-                )
+                msg = f"bursts_per_train > 1 requires inter_burst_interval_ms > 0 (got {self.inter_burst_interval_ms})."
+                raise ValueError(msg)
             if self.burst.active_burst_duration_ms >= self.inter_burst_interval_ms:
                 raise ValueError(
                     f"Bursts in train collide: active_burst_duration_ms ({self.burst.active_burst_duration_ms}) "
@@ -251,18 +237,14 @@ class Protocol(BaseModel):
     @property
     def total_duration_s(self) -> float:
         """Return the total duration from the first train onset to the last train end in seconds."""
-        return (
-            self.trains_per_protocol * self.train.train_duration_s
-            + (self.trains_per_protocol - 1) * self.inter_train_gap_s
-        )
+        active_s = self.trains_per_protocol * self.train.train_duration_s
+        return active_s + (self.trains_per_protocol - 1) * self.inter_train_gap_s
 
     @property
     def total_charge_nc(self) -> float | None:
         """Return the sum of phase-1 charge over all pulses in nC in current mode, or None in voltage mode."""
         charge_per_phase = self.train.burst.pulse.charge_per_phase_nc
-        if charge_per_phase is None:
-            return None
-        return self.n_pulses * charge_per_phase
+        return None if charge_per_phase is None else self.n_pulses * charge_per_phase
 
     @model_validator(mode="after")
     def _validate_protocol(self) -> Protocol:
@@ -288,41 +270,28 @@ class Protocol(BaseModel):
         """Return a standard 100 Hz high-frequency stimulation protocol (1 train of 100 pulses)."""
         p = default_pulse() if pulse is None else pulse
         burst = Burst(pulse=p, pulses_per_burst=100, intra_burst_frequency_hz=100.0)
-        train = Train(burst=burst, bursts_per_train=1)
-        return cls(name="standard_hfs", train=train, trains_per_protocol=1)
+        return cls(name="standard_hfs", train=Train(burst=burst, bursts_per_train=1), trains_per_protocol=1)
 
     @classmethod
     def spaced_hfs(
-        cls,
-        trains: int = 4,
-        inter_train_gap_s: float = 20.0,
-        pulse: Pulse | None = None,
+        cls, trains: int = 4, inter_train_gap_s: float = 20.0, pulse: Pulse | None = None
     ) -> Protocol:
         """Return a spaced HFS protocol with multiple 100-pulse 100 Hz trains separated by a gap."""
         p = default_pulse() if pulse is None else pulse
         burst = Burst(pulse=p, pulses_per_burst=100, intra_burst_frequency_hz=100.0)
         train = Train(burst=burst, bursts_per_train=1)
         return cls(
-            name="spaced_hfs",
-            train=train,
-            trains_per_protocol=trains,
-            inter_train_gap_s=inter_train_gap_s,
+            name="spaced_hfs", train=train, trains_per_protocol=trains, inter_train_gap_s=inter_train_gap_s
         )
 
     @classmethod
     def theta_burst(
-        cls,
-        trains: int = 1,
-        inter_train_gap_s: float = 0.0,
-        pulse: Pulse | None = None,
+        cls, trains: int = 1, inter_train_gap_s: float = 0.0, pulse: Pulse | None = None
     ) -> Protocol:
         """Return a theta-burst stimulation protocol (10 bursts of 4 pulses at 100 Hz, 200 ms inter-burst interval)."""
         p = default_pulse() if pulse is None else pulse
         burst = Burst(pulse=p, pulses_per_burst=4, intra_burst_frequency_hz=100.0)
         train = Train(burst=burst, bursts_per_train=10, inter_burst_interval_ms=200.0)
         return cls(
-            name="theta_burst",
-            train=train,
-            trains_per_protocol=trains,
-            inter_train_gap_s=inter_train_gap_s,
+            name="theta_burst", train=train, trains_per_protocol=trains, inter_train_gap_s=inter_train_gap_s
         )

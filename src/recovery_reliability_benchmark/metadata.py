@@ -82,7 +82,17 @@ def _first_error(exc: ValidationError | json.JSONDecodeError | ValueError) -> st
 
 
 def load_preparation(path: str | Path) -> Preparation:
-    """Load and validate a preparation.json metadata sidecar."""
+    """Load and validate a preparation.json metadata sidecar.
+
+    Args:
+        path: Path to the preparation.json sidecar file.
+
+    Returns:
+        Validated Preparation model.
+
+    Raises:
+        ContractViolation: With Requirement.SCHEMA if the JSON is malformed or invalid.
+    """
     raw = Path(path).read_text(encoding="utf-8")
     try:
         return Preparation.model_validate_json(raw)
@@ -94,7 +104,17 @@ def load_preparation(path: str | Path) -> Preparation:
 
 
 def load_conditions(path: str | Path) -> dict[str, Condition]:
-    """Load and validate a conditions.json metadata sidecar."""
+    """Load and validate a conditions.json metadata sidecar.
+
+    Args:
+        path: Path to the conditions.json sidecar file.
+
+    Returns:
+        Dictionary mapping condition labels to validated Condition models.
+
+    Raises:
+        ContractViolation: With Requirement.SCHEMA if the JSON is malformed or invalid.
+    """
     raw = Path(path).read_text(encoding="utf-8")
     try:
         return _CONDITIONS_ADAPTER.validate_json(raw)

@@ -134,7 +134,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Condition-centering (centered).** Subtracting each condition's mean over units, within each half, before correlating the pooled pairs. Removes between-condition variance (for example a dose effect) that would otherwise inflate the pooled ceiling. Has no effect on a per-condition estimate. METHOD §4.
 
-**Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `evaluate.run`.
+**Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `run.run`.
 
 **Fisher z interval.** The confidence interval on `r_half` (`r_ci_low`, `r_ci_high`) obtained by transforming r to z = atanh(r), using standard error 1/sqrt(n − 3) and normal critical value `z_crit`, and transforming back; then applied through Spearman-Brown to give `rho_ci_low`, `rho_ci_high`. METHOD §3.
 
@@ -148,9 +148,9 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Reference measure.** Baseline firing rate, reported as a reference row alongside every submitted measure so that a measure winning on reliability alone while saying nothing about recovery is visible; a submitted measure that does not beat the reference on the sensitivity axis is listed and marked. METHOD "How this benchmark can be gamed"; CONTRIBUTING "Submitting measures".
 
-**Permutation null (label-permutation null).** Shuffling which unit's even-half values are paired with which unit's odd-half values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
+**Permutation null (label-permutation null).** Shuffling which unit's even-half values are paired with which unit's odd-half values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2; `controls.permutation_null`.
 
-**Positive control.** A synthetic dataset with a known injected reliability run through the identical pipeline before any real data; if the pipeline does not recover the injected value within tolerance, every other number in the run is void. Fixed at 1,000 units × 20 trials, injected 0.85, tolerance 0.05. METHOD §5.1; `evaluate.positive_control`.
+**Positive control.** A synthetic dataset with a known injected reliability run through the identical pipeline before any real data; if the pipeline does not recover the injected value within tolerance, every other number in the run is void. Fixed at 1,000 units × 20 trials, injected 0.85, tolerance 0.05. METHOD §5.1; `controls.positive_control`.
 
 **Injected reliability.** The reliability a synthetic dataset is generated to have: unit true values T ~ N(0, 1), per-trial errors with variance n(1 − rho)/rho, so that the n-trial mean has reliability rho. `synthetic.make_tables(reliability=...)`.
 
@@ -180,7 +180,11 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **SCHEMA checks.** Checks on the container rather than the dataset: required columns present, measures numeric and allowed, `unit_id` unique, no orphan rows, sidecars consistent. Reported under the name SCHEMA; not one of the six requirements. SPEC §9.
 
-**ContractViolation.** The exception (and CLI exit code 1) raised on the first failed check, naming the requirement, the value found and the value required. SPEC §11.
+**Check registry (`checks.CHECKS`).** The ordered tuple of `(Requirement, name, check_fn)` entries that `contract.validate` runs from top to bottom, stopping at the first `ContractViolation`. Schema checks run before `min-dataset-1` through `min-dataset-6`; adding a requirement means adding a check function and a registry entry in `checks.py`.
+
+**Validation context (`contract.ValidationContext`).** The dataclass holding working copies of the input tables, declared parameters, optional sidecars, and intermediate derived state (`conditions_info`, `trials`, `gaps_s`) that each check in `checks.CHECKS` reads and populates before `contract.build_report` assembles the conformance report.
+
+**ContractViolation.** The exception (and CLI exit code 1) raised on the first failed check, naming the requirement, the value found and the value required. SPEC §11; `contract.ContractViolation`.
 
 **Optional data (optional-dataset-1 to optional-dataset-5).** Items that add value without being required: multiple amplitudes, repeated sessions, both polarities, preparation metadata, raw signal. SPEC §7.
 

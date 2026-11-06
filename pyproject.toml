@@ -16,8 +16,8 @@ authors = [
 dependencies = ["numpy>=1.24", "pandas>=2.0", "pydantic>=2.0", "scipy>=1.10"]
 
 [project.scripts]
-rrb-check = "recovery_reliability_benchmark.contract:main"
-rrb-evaluate = "recovery_reliability_benchmark.evaluate:main"
+rrb-check = "recovery_reliability_benchmark.cli:check_main"
+rrb-evaluate = "recovery_reliability_benchmark.cli:evaluate_main"
 rrb-thresholds = "recovery_reliability_benchmark.thresholds:main"
 
 [dependency-groups]
