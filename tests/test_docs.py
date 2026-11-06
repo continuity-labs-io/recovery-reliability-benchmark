@@ -186,3 +186,12 @@ def test_inclusion_gaming_and_submission_docs() -> None:
 
     glossary_text = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8")
     assert "Sensitivity axis" in glossary_text
+
+
+def test_zenodo_doi_recorded() -> None:
+    cff_text = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    assert "doi: 10.5281/zenodo.24020732" in cff_text
+
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "zenodo.org/badge/1444426702.svg" in readme_text
+    assert "10.5281/zenodo.24020731" in readme_text

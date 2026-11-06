@@ -1,5 +1,6 @@
 # recovery-reliability-benchmark
 [![test](https://github.com/continuity-labs-io/recovery-reliability-benchmark/actions/workflows/test.yml/badge.svg)](https://github.com/continuity-labs-io/recovery-reliability-benchmark/actions/workflows/test.yml)
+[![DOI](https://zenodo.org/badge/1444426702.svg)](https://doi.org/10.5281/zenodo.24020731)
 
 ## Status
 
@@ -70,7 +71,9 @@ The first line of output is the conformance level (`conforming` or `fully_confor
 
 ## Citing
 
-If you use this benchmark, please cite it using the metadata in [CITATION.cff](CITATION.cff).
+Every release is archived on Zenodo. Cite the version you used. The version DOI for v0.1.0 is [10.5281/zenodo.24020732](https://doi.org/10.5281/zenodo.24020732); [10.5281/zenodo.24020731](https://doi.org/10.5281/zenodo.24020731) always resolves to the latest release. Citation metadata is in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button renders it.
+
+> McCall, R. J. (2026). Recovery Reliability Benchmark (v0.1.0). Continuity Labs. https://doi.org/10.5281/zenodo.24020732
 
 ## Licensing
 
