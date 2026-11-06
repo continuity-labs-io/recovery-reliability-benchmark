@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 from .contract import validate
-from .evaluate import ceiling, split_halves
+from .evaluate import reliability_ceiling, split_halves
 from .synthetic import make_tables
 
 RHO1_GRID = (0.1, 0.2, 0.4)
@@ -62,7 +62,7 @@ def simulate_cell(
             conformance = str(val["conformance"])
 
         halves = split_halves(responses, ["tau"], conditions)
-        est = ceiling(halves, "tau", center=center)
+        est = reliability_ceiling(halves, "tau", center=center)
         rhos[seed] = est["rho"]
         r_nonpositive[seed] = bool(est["r_nonpositive"])
         ci_lo = est["rho_ci_low"]
@@ -98,7 +98,7 @@ def render_markdown(cells: list[dict[str, Any]], seeds: int, command: str) -> st
             "with `recovery_reliability_benchmark.synthetic.make_tables` (Gaussian unit true values "
             "and per-trial errors scaled to single-trial reliability `rho1`, with condition offsets "
             "`{A: 0.0, B: 1.0, C: 2.0}` when `n_conditions == 3`) and estimated with "
-            "`split_halves` and `ceiling` from `recovery_reliability_benchmark.evaluate` "
+            "`split_halves` and `reliability_ceiling` from `recovery_reliability_benchmark.evaluate` "
             "(odd/even split-half Pearson correlation with Spearman-Brown correction, "
             "condition-centered for 3 conditions). "
             f"Run across **{seeds} seeds** per cell with `{command}`. "

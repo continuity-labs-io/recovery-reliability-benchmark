@@ -42,37 +42,37 @@ The correlation therefore runs **across units**, not across trials. Between-unit
 
 Input: a conforming dataset (min-dataset-1 through min-dataset-6), one or more measure columns, and the evaluated conditions identified by `validate()`.
 
-**Step 1. Partition.** Within each `(unit_id, condition)` group in the evaluated conditions, sort trials by `trial_index` and rank them `k = 0, 1, 2, ...` within the group (not by global `trial_index` parity).
+**Step 1. Partition.** Within each `(unit_id, condition)` group in the evaluated conditions, sort trials by `trial_index` and assign 1-based positions `1, 2, 3, ...` within the group (not by global `trial_index` parity, which can leave one half empty when conditions are interleaved or trials are excluded).
 
-- `odd_even` (default, implemented in v1): even `k` go to half A, odd `k` go to half B.
+- `odd_even` (default, implemented in v1): positions `1, 3, 5, ...` go to the odd half, positions `2, 4, 6, ...` go to the even half.
 - `random`: random partition, repeated `n_splits` times (not yet implemented in v1).
 
 Groups where either half is empty are dropped.
 
-**Step 2. Aggregate.** For each `(unit_id, condition)` group, take the mean of the measure over its half-A trials to give `x_A[u, c]`, and over its half-B trials to give `x_B[u, c]`, skipping nulls within each half and dropping pairs where either half-mean is `NaN`.
+**Step 2. Aggregate.** For each `(unit_id, condition)` group, take the mean of the measure over its odd-half trials to give `x_odd[u, c]` (`{measure}_odd`, count `n_odd`), and over its even-half trials to give `x_even[u, c]` (`{measure}_even`, count `n_even`), skipping nulls within each half and dropping pairs where either half-mean is `NaN`.
 
 **Step 3. Per-condition and pooled estimates.** Two estimates are formed from the half-means:
 
-- **Per-condition:** within each evaluated condition `c`, take the vector of pairs `(x_A[u, c], x_B[u, c])` across units `u`.
-- **Pooled:** pool the pairs `(x_A[u, c], x_B[u, c])` across all evaluated conditions, both **uncentered** and **condition-centered**. Condition-centering subtracts each condition's mean over units from `x_A` and from `x_B`, within each half separately, before correlating.
+- **Per-condition:** within each evaluated condition `c`, take the vector of pairs `(x_odd[u, c], x_even[u, c])` across units `u`.
+- **Pooled:** pool the pairs `(x_odd[u, c], x_even[u, c])` across all evaluated conditions, both **uncentered** and **condition-centered**. Condition-centering subtracts each condition's mean over units from `x_odd` and from `x_even`, within each half separately, before correlating.
 
 **Step 4. Correlate and correct for length.** Compute Pearson `r` between the two halves (`NaN` if fewer than 3 pairs or if either half is constant) and apply the Spearman-Brown correction with `k = 2`:
 
     rho = 2r / (1 + r)
 
-**Step 5. Confidence interval.** Apply the Fisher `z` transform to `r_half` using `n_eff = n_units` (not `n_pairs`: pooled pairs share units across conditions, so `n_units` is the conservative count):
+**Step 5. Confidence interval.** Apply the Fisher `z` transform to `r_half` using `n_eff = n_units` (not `n_pairs`: pooled pairs share units across conditions, so `n_units` is the conservative count) and critical value `z_crit = scipy.stats.norm.ppf(0.5 + confidence / 2)` (`confidence = 0.95` by default):
 
     z = atanh(r)
     se = 1 / sqrt(n_eff - 3)
-    r_lo = tanh(z - 1.96 * se),  r_hi = tanh(z + 1.96 * se)
-    rho_ci_low  = 2 * r_lo / (1 + r_lo)  if r_lo > 0 else 0.0
-    rho_ci_high = 2 * r_hi / (1 + r_hi)  if r_hi > 0 else 0.0
+    r_ci_low  = tanh(z - z_crit * se),  r_ci_high = tanh(z + z_crit * se)
+    rho_ci_low  = 2 * r_ci_low / (1 + r_ci_low)   if r_ci_low > 0 else 0.0
+    rho_ci_high = 2 * r_ci_high / (1 + r_ci_high) if r_ci_high > 0 else 0.0
 
-When `n_eff < 4` or `r` is `NaN`, both bounds are reported as `None`.
+When `n_eff < 4` or `r` is `NaN`, all four bounds are reported as `None`.
 
 **Variance components.** The report shows between-unit variance, within-unit (trial) variance and the moments estimate next to the split-half ceiling. A ceiling driven by between-unit heterogeneity shows up as large var_between relative to var_within; moments_reliability is the ANOVA-style estimate of the same quantity the split-half ceiling estimates, and the two should agree.
 
-**Step 6. Trial-count standardization.** Let `n = n_trials_group` be the median over the frame's `(unit_id, condition)` groups of `n_A + n_B`. Invert Spearman-Brown to obtain the single-trial reliability `rho_1 = rho_single_trial` (`0.0` when `rho == 0`) and project it to a standard 20-trial session:
+**Step 6. Trial-count standardization.** Let `n = n_trials_group` be the median over the frame's `(unit_id, condition)` groups of `n_odd + n_even`. Invert Spearman-Brown to obtain the single-trial reliability `rho_1 = rho_single_trial` (`0.0` when `rho == 0`) and project it to a standard 20-trial session (`REFERENCE_N_TRIALS = MD2_SHOULD = 20`):
 
     rho_single_trial = rho / (n - (n - 1) * rho)
     rho_at_20 = 20 * rho_single_trial / (1 + 19 * rho_single_trial)
@@ -81,7 +81,7 @@ Ceilings from sessions with different trial counts are compared through `rho_sin
 
 **Step 7. Headline rule.** When there are two or more evaluated conditions, the headline ceiling is the pooled condition-centered estimate (`pooled_centered`). When there is a single evaluated condition, the pooled and per-condition estimates coincide (Pearson correlation is shift-invariant) and the headline is the per-condition estimate of `validate()`'s `best_condition` (`per_condition`).
 
-**Edge cases.** With an odd trial count one half carries one extra trial; record it (`odd_trials`). If `r <= 0` (or `NaN`) the Spearman-Brown correction is not meaningful and diverges as `r` approaches -1, so report the ceiling as `0.0` with the raw `r` alongside and a flag (`r_nonpositive`). A non-positive split-half correlation means there is no reliable between-unit variance to measure.
+**Edge cases.** With an odd trial count one half carries one extra trial; record it (`odd_trials`). When fewer than 3 pairs are available or either half is constant, `r` is `NaN` (`r_undefined = True`, `r_nonpositive = False`). When `r` is defined and `r <= 0`, the Spearman-Brown correction is not meaningful and diverges as `r` approaches -1 (`r_undefined = False`, `r_nonpositive = True`). In both cases report the ceiling `rho` as `0.0` with the raw `r_half` alongside; the two flags distinguish undefined from non-positive correlation. A non-positive split-half correlation means there is no reliable between-unit variance to measure.
 
 ---
 
@@ -105,14 +105,14 @@ For a target full-length reliability `rho` across `n = 20` trials on `1000` unit
 
     sigma^2 = n * (1 - rho) / rho
 
-Run the synthetic data through the identical pipeline (`validate` -> `split_halves` -> `ceiling`) and require recovery within `0.05` (`|recovered - injected| <= tolerance`). The pilot's `gate1.py` used day-1 values plus noise instead; the two constructions agree in expectation.
+Run the synthetic data through the identical pipeline (`validate` -> `split_halves` -> `reliability_ceiling`) and require recovery within `0.05` (`|recovered - injected| <= tolerance`). The pilot's `gate1.py` used day-1 values plus noise instead; the two constructions agree in expectation.
 
 **Pass:** `|recovered - injected| <= tolerance`, default `0.05`.
 **Fail:** the pipeline has a defect and every other number in the run is void. This control is evaluated first for that reason.
 
 ### 5.2 Label-permutation null
 
-Within each condition, permute the unit labels of half B (`*_B` and `n_B` rows) and recompute the headline ceiling through the same `ceiling()` function, rather than a separate routine, because a null that executes different code tests nothing.
+Within each condition, permute the unit labels of the even half (`*_even` and `n_even` columns) and recompute the headline ceiling through the same `reliability_ceiling()` function, rather than a separate routine, because a null that executes different code tests nothing.
 
 **Pass:** median corrected correlation at or near zero, and the 95th percentile across permutations below the observed ceiling.
 **Fail:** the observed ceiling is reachable by shuffled data and carries no information.

@@ -4,19 +4,25 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.stats
 
 import recovery_reliability_benchmark.evaluate as evaluate
-from recovery_reliability_benchmark.contract import read_tables, validate
+from recovery_reliability_benchmark.contract import MD2_SHOULD, read_tables, validate
 from recovery_reliability_benchmark.evaluate import (
-    ceiling,
+    REFERENCE_N_TRIALS,
     census,
     main,
+    permutation_null,
     positive_control,
+    reliability_ceiling,
     run,
     split_halves,
     variance_components,
@@ -29,20 +35,20 @@ def test_split_ranks_within_group() -> None:
     responses["ti"] = (responses["trial_index"].astype(float)) ** 2
     halves = split_halves(responses, ["ti"], ["A", "B"])
     row = halves.loc[("u00", "B")]
-    assert row["n_A"] == 3
-    assert row["n_B"] == 2
-    assert row["ti_A"] == pytest.approx((25.0 + 49.0 + 81.0) / 3.0)
-    assert row["ti_B"] == pytest.approx((36.0 + 64.0) / 2.0)
+    assert row["n_odd"] == 3
+    assert row["n_even"] == 2
+    assert row["ti_odd"] == pytest.approx((25.0 + 49.0 + 81.0) / 3.0)
+    assert row["ti_even"] == pytest.approx((36.0 + 64.0) / 2.0)
 
 
 def test_odd_trials_flag() -> None:
     _, resp_odd = make_tables(n_units=8, n_trials=11)
     halves_odd = split_halves(resp_odd, ["tau"], ["A"])
-    assert ceiling(halves_odd, "tau", center=False)["odd_trials"] is True
+    assert reliability_ceiling(halves_odd, "tau", center=False)["odd_trials"] is True
 
     _, resp_even = make_tables(n_units=8, n_trials=10)
     halves_even = split_halves(resp_even, ["tau"], ["A"])
-    assert ceiling(halves_even, "tau", center=False)["odd_trials"] is False
+    assert reliability_ceiling(halves_even, "tau", center=False)["odd_trials"] is False
 
 
 def test_positive_control_large() -> None:
@@ -86,18 +92,19 @@ def test_nonpositive_r_reports_zero() -> None:
         [[f"u{i:02d}" for i in range(10)], ["A"] * 10],
         names=["unit_id", "condition"],
     )
-    tau_a = np.arange(1.0, 11.0)
+    tau_odd = np.arange(1.0, 11.0)
     halves = pd.DataFrame(
         {
-            "tau_A": tau_a,
-            "tau_B": -tau_a,
-            "n_A": 5,
-            "n_B": 5,
+            "tau_odd": tau_odd,
+            "tau_even": -tau_odd,
+            "n_odd": 5,
+            "n_even": 5,
         },
         index=idx,
     )
-    c = ceiling(halves, "tau", center=False)
+    c = reliability_ceiling(halves, "tau", center=False)
     assert c["rho"] == 0.0
+    assert c["r_undefined"] is False
     assert c["r_nonpositive"] is True
     assert c["r_half"] == pytest.approx(-1.0)
 
@@ -221,7 +228,7 @@ def test_ci_contains_truth_at_scale() -> None:
     # coverage over seeds (test_ci_coverage_small_n), not on one draw.
     _, responses = make_tables(n_units=2000, n_trials=20, reliability=0.8, seed=0)
     halves = split_halves(responses, ["tau"], ["A"])
-    est = ceiling(halves, "tau", center=False)
+    est = reliability_ceiling(halves, "tau", center=False)
     assert est["rho_ci_low"] is not None
     assert est["rho_ci_high"] is not None
     assert abs(est["rho"] - 0.8) < 0.03
@@ -245,7 +252,7 @@ def test_ci_coverage_small_n() -> None:
     for seed in range(n_seeds):
         _, responses = make_tables(n_units=15, n_trials=20, reliability=0.8, seed=seed)
         halves = split_halves(responses, ["tau"], ["A"])
-        est = ceiling(halves, "tau", center=False)
+        est = reliability_ceiling(halves, "tau", center=False)
         if est["rho_ci_low"] <= 0.8 <= est["rho_ci_high"]:
             covered += 1
     coverage = covered / n_seeds
@@ -262,22 +269,22 @@ def test_single_trial_conversion() -> None:
     r_target = 0.8 / (2.0 - 0.8)
     halves = pd.DataFrame(
         {
-            "tau_A": u,
-            "tau_B": r_target * u + np.sqrt(1.0 - r_target**2) * v,
-            "n_A": 10,
-            "n_B": 10,
+            "tau_odd": u,
+            "tau_even": r_target * u + np.sqrt(1.0 - r_target**2) * v,
+            "n_odd": 10,
+            "n_even": 10,
         },
         index=idx,
     )
-    est = ceiling(halves, "tau", center=False)
+    est = reliability_ceiling(halves, "tau", center=False)
     assert est["rho"] == pytest.approx(0.8)
     assert est["n_trials_group"] == pytest.approx(20.0)
     assert est["rho_single_trial"] == pytest.approx(0.8 / (20.0 - 19.0 * 0.8))
     assert est["rho_at_20"] == pytest.approx(0.8)
 
     halves_zero = halves.copy()
-    halves_zero["tau_B"] = -u
-    est_zero = ceiling(halves_zero, "tau", center=False)
+    halves_zero["tau_even"] = -u
+    est_zero = reliability_ceiling(halves_zero, "tau", center=False)
     assert est_zero["rho"] == 0.0
     assert est_zero["rho_single_trial"] == 0.0
     assert est_zero["rho_at_20"] == 0.0
@@ -297,7 +304,7 @@ def test_variance_components_match_generator() -> None:
     active = set(units["unit_id"])
     vc = variance_components(responses, "tau", "A", active)
     halves = split_halves(responses, ["tau"], ["A"], active_units={"A": active})
-    est = ceiling(halves, "tau", center=False)
+    est = reliability_ceiling(halves, "tau", center=False)
 
     assert abs(vc["var_within"] - 5.0) / 5.0 <= 0.05
     assert abs(vc["var_between"] - 1.25) / 1.25 <= 0.05
@@ -330,3 +337,161 @@ def test_cli_prints_inclusion(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert "units included" in captured.out
     assert "between=" in captured.out
     assert "within=" in captured.out
+
+
+def test_fisher_interval_matches_scipy() -> None:
+    _, responses = make_tables(n_units=40, n_trials=20, conditions=("A",), reliability=0.8, seed=0)
+    halves = split_halves(responses, ["tau"], ["A"])
+    est = reliability_ceiling(halves, "tau", center=False, confidence=0.95)
+    assert est["n_eff"] == est["n_pairs"] == 40
+    ci = scipy.stats.pearsonr(halves["tau_odd"], halves["tau_even"]).confidence_interval(0.95)
+    assert est["r_ci_low"] == pytest.approx(ci.low, abs=1e-9)
+    assert est["r_ci_high"] == pytest.approx(ci.high, abs=1e-9)
+
+
+def test_pooled_interval_uses_units_not_pairs() -> None:
+    _, responses = make_tables(
+        n_units=30,
+        n_trials=20,
+        conditions=("A", "B", "C"),
+        reliability=0.8,
+        seed=1,
+    )
+    halves = split_halves(responses, ["tau"], ["A", "B", "C"])
+    est = reliability_ceiling(halves, "tau", center=False)
+    assert est["n_eff"] == 30
+    assert est["n_pairs"] == 90
+    ci_pairs = scipy.stats.pearsonr(halves["tau_odd"], halves["tau_even"]).confidence_interval(0.95)
+    assert est["r_ci_low"] is not None and est["r_ci_high"] is not None
+    assert (est["r_ci_high"] - est["r_ci_low"]) > (ci_pairs.high - ci_pairs.low)
+
+
+def test_null_matches_scipy_pairings_single_condition() -> None:
+    _, responses = make_tables(n_units=40, n_trials=20, conditions=("A",), reliability=0.5, seed=0)
+    halves = split_halves(responses, ["tau"], ["A"])
+    null = permutation_null(
+        halves,
+        "tau",
+        center=False,
+        n_perm=2000,
+        rng=np.random.default_rng(0),
+    )
+    odd = halves["tau_odd"].to_numpy()
+    even = halves["tau_even"].to_numpy()
+    scipy_res = scipy.stats.permutation_test(
+        (odd, even),
+        lambda a, b: np.corrcoef(a, b)[0, 1],
+        permutation_type="pairings",
+        n_resamples=2000,
+        random_state=0,
+    )
+    scipy_median_r = float(np.percentile(scipy_res.null_distribution, 50))
+    scipy_p95_r = float(np.percentile(scipy_res.null_distribution, 95))
+    assert abs(null["median_r"] - scipy_median_r) <= 0.03
+    assert abs(null["p95_r"] - scipy_p95_r) <= 0.03
+
+
+def test_null_never_mixes_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, responses = make_tables(
+        n_units=15,
+        n_trials=20,
+        conditions=("A", "B"),
+        reliability=0.8,
+        condition_offsets={"A": 0.0, "B": 100.0},
+        seed=0,
+    )
+    halves = split_halves(responses, ["tau"], ["A", "B"])
+    cond_level = halves.index.get_level_values("condition")
+    orig_sorted_a = np.sort(halves.loc[cond_level == "A", "tau_even"].to_numpy())
+    orig_sorted_b = np.sort(halves.loc[cond_level == "B", "tau_even"].to_numpy())
+
+    captured_frames: list[pd.DataFrame] = []
+    orig_fn = evaluate.reliability_ceiling
+
+    def _capturing_ceiling(
+        frame: pd.DataFrame,
+        measure: str,
+        center: bool = False,
+        confidence: float = 0.95,
+    ) -> dict[str, Any]:
+        captured_frames.append(frame.copy())
+        return orig_fn(frame, measure, center=center, confidence=confidence)
+
+    monkeypatch.setattr(evaluate, "reliability_ceiling", _capturing_ceiling)
+    permutation_null(halves, "tau", center=True, n_perm=25, rng=np.random.default_rng(0))
+    assert len(captured_frames) == 26
+    for frame in captured_frames[1:]:
+        c_level = frame.index.get_level_values("condition")
+        np.testing.assert_array_equal(
+            np.sort(frame.loc[c_level == "A", "tau_even"].to_numpy()),
+            orig_sorted_a,
+        )
+        np.testing.assert_array_equal(
+            np.sort(frame.loc[c_level == "B", "tau_even"].to_numpy()),
+            orig_sorted_b,
+        )
+
+
+def test_r_undefined_flags() -> None:
+    idx2 = pd.MultiIndex.from_arrays(
+        [["u00", "u01"], ["A", "A"]],
+        names=["unit_id", "condition"],
+    )
+    two_pairs = pd.DataFrame(
+        {"tau_odd": [1.0, 2.0], "tau_even": [1.5, 2.5], "n_odd": 5, "n_even": 5},
+        index=idx2,
+    )
+    res_two = reliability_ceiling(two_pairs, "tau")
+    assert res_two["r_undefined"] is True
+    assert res_two["r_nonpositive"] is False
+    assert res_two["rho"] == 0.0
+
+    idx5 = pd.MultiIndex.from_arrays(
+        [[f"u{i:02d}" for i in range(5)], ["A"] * 5],
+        names=["unit_id", "condition"],
+    )
+    const_odd = pd.DataFrame(
+        {
+            "tau_odd": [3.0] * 5,
+            "tau_even": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "n_odd": 5,
+            "n_even": 5,
+        },
+        index=idx5,
+    )
+    res_const = reliability_ceiling(const_odd, "tau")
+    assert res_const["r_undefined"] is True
+    assert res_const["r_nonpositive"] is False
+    assert res_const["rho"] == 0.0
+
+    neg_corr = pd.DataFrame(
+        {
+            "tau_odd": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "tau_even": [5.0, 4.0, 3.0, 2.0, 1.0],
+            "n_odd": 5,
+            "n_even": 5,
+        },
+        index=idx5,
+    )
+    res_neg = reliability_ceiling(neg_corr, "tau")
+    assert res_neg["r_undefined"] is False
+    assert res_neg["r_nonpositive"] is True
+    assert res_neg["rho"] == 0.0
+
+
+def test_reference_trials_is_should_threshold() -> None:
+    assert REFERENCE_N_TRIALS == MD2_SHOULD == 20
+
+
+def test_contract_imports_only_pandas() -> None:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import recovery_reliability_benchmark.contract, sys; assert 'scipy' not in sys.modules",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr

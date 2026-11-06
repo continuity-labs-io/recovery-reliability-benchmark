@@ -112,21 +112,21 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Per-unit reliability.** Reliability of the vector of per-unit values, as opposed to the reproducibility of a well-level or dish-level average. The benchmark reports per-unit reliability; most published assays report well-level reproducibility or none.
 
-**Reliability ceiling (ceiling).** Reliability as an upper bound: by the attenuation theorem, no correlation between a measure and anything else can exceed the measure's correlation with itself. A low ceiling means downstream results built on the measure are uninterpretable before they are run. METHOD §1.
+**Reliability ceiling (ceiling).** Reliability as an upper bound: by the attenuation theorem, no correlation between a measure and anything else can exceed the measure's correlation with itself. A low ceiling means downstream results built on the measure are uninterpretable before they are run. METHOD §1; `evaluate.reliability_ceiling`.
 
 **Attenuation theorem.** r(X, Y) ≤ sqrt(reliability(X) × reliability(Y)); the observed correlation between two noisy measures is attenuated by their reliabilities. The reason "ceiling" is the right word. METHOD §1.
 
 **Split-half.** Dividing one session's trials into two halves, computing the measure on each, and correlating the two results across units. Two measurements of the same vector from one recording. METHOD §3; `evaluate.split_halves`.
 
-**Odd/even split (`odd_even`).** Within each (unit, condition) group, trials ranked by `trial_index`; even ranks to half A, odd ranks to half B. Balanced against drift. The only split mode in v0.1.0; `random` is planned.
+**Odd/even split (`odd_even`).** Within each (unit, condition) group, trials are sorted by `trial_index` and assigned 1-based positions 1, 2, 3, ...; odd positions (1, 3, 5, ...) go to the odd half and even positions (2, 4, 6, ...) go to the even half. Balanced against drift. The only split mode in v0.1.0; `random` is planned.
 
-**Half means (A, B).** For each (unit, condition) group, the mean of the measure over the half's trials; the two vectors that get correlated.
+**Half means (odd, even).** For each (unit, condition) group, the mean of the measure over the odd-half trials (`{measure}_odd`, count `n_odd`) and over the even-half trials (`{measure}_even`, count `n_even`); the two vectors that get correlated.
 
-**Pearson r (`r_half`).** The correlation between half-A and half-B values across the pairs being scored. Reported raw, before correction.
+**Pearson r (`r_half`).** The correlation between the odd-half and even-half values across the pairs being scored. Reported raw, before correction.
 
 **Spearman-Brown correction.** rho = 2r / (1 + r): converts the correlation between two half-length measurements into the reliability of the full-length measurement. METHOD §3.
 
-**rho.** The reliability ceiling after Spearman-Brown. Reported as 0.0 when r ≤ 0 (with `r_nonpositive` set), because the correction is not meaningful for non-positive correlations.
+**rho.** The reliability ceiling after Spearman-Brown. Reported as 0.0 when `r_half` is undefined (`r_undefined`) or non-positive (`r_nonpositive`), because the correction is not meaningful for non-positive correlations.
 
 **Per-condition estimate.** The ceiling computed on one condition's units only. The simplest estimate; noisy at small unit counts.
 
@@ -136,19 +136,19 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `evaluate.run`.
 
-**Fisher z interval.** The 95% confidence interval on r obtained by transforming r to z = atanh(r), using standard error 1/sqrt(n − 3), and transforming back; then applied through Spearman-Brown to give `rho_ci_low`, `rho_ci_high`. METHOD §3.
+**Fisher z interval.** The confidence interval on `r_half` (`r_ci_low`, `r_ci_high`) obtained by transforming r to z = atanh(r), using standard error 1/sqrt(n − 3) and normal critical value `z_crit`, and transforming back; then applied through Spearman-Brown to give `rho_ci_low`, `rho_ci_high`. METHOD §3.
 
 **n_eff.** The sample size used for the interval: the number of units, never the number of (unit, condition) pairs, because pairs sharing a unit are not independent. Conservative for pooled estimates.
 
 **Single-trial reliability (`rho_single_trial`).** The reliability one trial would have, recovered from rho and the trial count by inverting Spearman-Brown: rho1 = rho / (n − (n − 1) rho). Lets sessions with different trial counts be compared. `rho_at_20` is the same quantity re-expressed at 20 trials.
 
-**Variance components (`var_between`, `var_within`, `moments_reliability`).** Over the units included in a condition, the variance across units of per-unit trial means (`var_between`, `ddof=1`), the mean across units of per-unit trial variances (`var_within`, `ddof=1`), and the ANOVA-style moments reliability estimate `max(0, (var_between - var_within / n_trials) / var_between)`. Reported next to each split-half ceiling: a ceiling driven by between-unit heterogeneity shows up as large `var_between` relative to `var_within`, and `moments_reliability` estimates the same quantity as `ceiling()`'s `rho`. METHOD §3; `evaluate.variance_components`.
+**Variance components (`var_between`, `var_within`, `moments_reliability`).** Over the units included in a condition, the variance across units of per-unit trial means (`var_between`, `ddof=1`), the mean across units of per-unit trial variances (`var_within`, `ddof=1`), and the ANOVA-style moments reliability estimate `max(0, (var_between - var_within / n_trials) / var_between)`. Reported next to each split-half ceiling: a ceiling driven by between-unit heterogeneity shows up as large `var_between` relative to `var_within`, and `moments_reliability` estimates the same quantity as `reliability_ceiling()`'s `rho`. METHOD §3; `evaluate.variance_components`.
 
 **Sensitivity axis.** The companion axis to reliability: with two or more conditions, the between-condition effect per unit divided by that unit's split-half noise, summarized as the fraction of units moving more than twice their own noise band and the median standardized effect; with one condition, the same quantity between the post-load window and the pre-load baseline. Reported beside reliability, never merged into one score. Planned for v0.2.0 (`measures.py`). METHOD "How this benchmark can be gamed".
 
 **Reference measure.** Baseline firing rate, reported as a reference row alongside every submitted measure so that a measure winning on reliability alone while saying nothing about recovery is visible; a submitted measure that does not beat the reference on the sensitivity axis is listed and marked. METHOD "How this benchmark can be gamed"; CONTRIBUTING "Submitting measures".
 
-**Permutation null (label-permutation null).** Shuffling which unit's half-B values are paired with which unit's half-A values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
+**Permutation null (label-permutation null).** Shuffling which unit's even-half values are paired with which unit's odd-half values, within each condition, and recomputing the ceiling many times through the same function. Shows what the estimate looks like when unit identity carries no information. METHOD §5.2.
 
 **Positive control.** A synthetic dataset with a known injected reliability run through the identical pipeline before any real data; if the pipeline does not recover the injected value within tolerance, every other number in the run is void. Fixed at 1,000 units × 20 trials, injected 0.85, tolerance 0.05. METHOD §5.1; `evaluate.positive_control`.
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
+from . import contract
 from .contract import (
     SPEC_VERSION,
     ContractViolation,
@@ -26,6 +28,11 @@ from .synthetic import make_tables
 if TYPE_CHECKING:
     from .metadata import Condition, Preparation
 
+logger = logging.getLogger(__name__)
+
+# the SHOULD threshold of min-dataset-2; rho_at_20 is the ceiling a fully conforming session would show
+REFERENCE_N_TRIALS = contract.MD2_SHOULD
+
 
 def split_halves(
     responses: pd.DataFrame,
@@ -33,18 +40,33 @@ def split_halves(
     conditions: Sequence[str],
     active_units: dict[str, set[str]] | None = None,
 ) -> pd.DataFrame:
-    """Partition trials into odd/even halves ranked within each (unit_id, condition) group.
+    """Partition trials into odd and even halves by 1-based position within each (unit_id, condition) group.
 
     Within each ``(unit_id, condition)`` group, trials are sorted by ``trial_index``
-    and assigned rank ``k = 0, 1, 2, ...``; even ``k`` go to half A and odd ``k``
-    go to half B. Groups where either half is empty are dropped.
+    and assigned 1-based positions ``1, 2, 3, ...``; positions ``1, 3, 5, ...`` form
+    the odd half and positions ``2, 4, 6, ...`` form the even half. Trials are ranked
+    within each group rather than split by global ``trial_index`` parity because
+    interleaved conditions or dropped trials can leave a group with only even or only
+    odd global ``trial_index`` values. Groups where either half is empty are dropped.
+
+    Args:
+        responses: Trial-level response DataFrame containing ``unit_id``, ``condition``,
+            ``trial_index``, and the measure columns.
+        measures: Measure column names to average within each half.
+        conditions: Condition labels to include in the partition.
+        active_units: Optional mapping from condition label to the set of active
+            ``unit_id`` values to retain in that condition.
+
+    Returns:
+        DataFrame indexed by ``(unit_id, condition)`` with columns ``f"{m}_odd"``
+        and ``f"{m}_even"`` for each measure ``m``, plus ``n_odd`` and ``n_even``.
     """
     measure_list = list(measures)
     cond_set = set(conditions)
     sub = responses[responses["condition"].isin(cond_set)].copy()
     if sub.empty:
         empty_index = pd.MultiIndex.from_arrays([[], []], names=["unit_id", "condition"])
-        cols = [*(f"{m}_{h}" for m in measure_list for h in ("A", "B")), "n_A", "n_B"]
+        cols = [*(f"{m}_{h}" for m in measure_list for h in ("odd", "even")), "n_odd", "n_even"]
         return pd.DataFrame(columns=cols, index=empty_index)
 
     sub["unit_id"] = sub["unit_id"].astype(str)
@@ -57,53 +79,96 @@ def split_halves(
         sub = sub[keep]
         if sub.empty:
             empty_index = pd.MultiIndex.from_arrays([[], []], names=["unit_id", "condition"])
-            cols = [*(f"{m}_{h}" for m in measure_list for h in ("A", "B")), "n_A", "n_B"]
+            cols = [*(f"{m}_{h}" for m in measure_list for h in ("odd", "even")), "n_odd", "n_even"]
             return pd.DataFrame(columns=cols, index=empty_index)
 
     sub = sub.sort_values(["unit_id", "condition", "trial_index"], kind="mergesort")
 
-    rank = sub.groupby(["unit_id", "condition"], sort=False).cumcount()
-    half_a = sub[rank % 2 == 0]
-    half_b = sub[rank % 2 == 1]
+    position = sub.groupby(["unit_id", "condition"], sort=False).cumcount() + 1
+    half_odd = sub[position % 2 == 1]
+    half_even = sub[position % 2 == 0]
 
-    grp_a = half_a.groupby(["unit_id", "condition"], sort=True)
-    grp_b = half_b.groupby(["unit_id", "condition"], sort=True)
+    grp_odd = half_odd.groupby(["unit_id", "condition"], sort=True)
+    grp_even = half_even.groupby(["unit_id", "condition"], sort=True)
 
-    n_a = grp_a.size()
-    n_b = grp_b.size()
-    common_idx = n_a.index.intersection(n_b.index)
+    n_odd = grp_odd.size()
+    n_even = grp_even.size()
+    common_idx = n_odd.index.intersection(n_even.index)
     common_idx.names = ["unit_id", "condition"]
 
-    means_a = grp_a[measure_list].mean().reindex(common_idx)
-    means_b = grp_b[measure_list].mean().reindex(common_idx)
+    means_odd = grp_odd[measure_list].mean().reindex(common_idx)
+    means_even = grp_even[measure_list].mean().reindex(common_idx)
 
     out_cols: dict[str, Any] = {}
     for m in measure_list:
-        out_cols[f"{m}_A"] = means_a[m].astype(float)
-        out_cols[f"{m}_B"] = means_b[m].astype(float)
-    out_cols["n_A"] = n_a.reindex(common_idx).astype(int)
-    out_cols["n_B"] = n_b.reindex(common_idx).astype(int)
+        out_cols[f"{m}_odd"] = means_odd[m].astype(float)
+        out_cols[f"{m}_even"] = means_even[m].astype(float)
+    out_cols["n_odd"] = n_odd.reindex(common_idx).astype(int)
+    out_cols["n_even"] = n_even.reindex(common_idx).astype(int)
 
     return pd.DataFrame(out_cols, index=common_idx)
 
 
-def ceiling(
+def reliability_ceiling(
     halves: pd.DataFrame,
     measure: str,
     center: bool = False,
+    confidence: float = 0.95,
 ) -> dict[str, Any]:
-    """Compute the split-half Pearson correlation and Spearman-Brown reliability ceiling.
+    """Compute the split-half Pearson correlation, Spearman-Brown reliability ceiling, and Fisher-z interval.
 
-    Ceilings from sessions with different trial counts are compared through
-    ``rho_single_trial`` or ``rho_at_20``, not through ``rho``.
+    Args:
+        halves: DataFrame of per-unit, per-condition odd and even half means as
+            returned by ``split_halves``.
+        measure: Measure name prefix to evaluate (reads ``f"{measure}_odd"`` and
+            ``f"{measure}_even"``).
+        center: If True, subtract each condition's mean over units within each
+            half separately before correlating.
+        confidence: Confidence level in ``(0, 1)`` for the two-sided Fisher-z
+            interval (default ``0.95``).
+
+    Returns:
+        Dictionary with the following keys:
+            r_half: Raw Pearson correlation between the odd and even half means (NaN if undefined).
+            r_ci_low: Lower Fisher-z confidence bound on r_half, or None when n_eff < 4 or r_half is undefined.
+            r_ci_high: Upper Fisher-z confidence bound on r_half, or None when n_eff < 4 or r_half is undefined.
+            rho: Spearman-Brown corrected reliability ceiling 2r / (1 + r), floored at 0.0.
+            rho_ci_low: Lower confidence bound on rho via Spearman-Brown on r_ci_low (floored at 0.0), or None.
+            rho_ci_high: Upper confidence bound on rho via Spearman-Brown on r_ci_high (floored at 0.0), or None.
+            n_eff: Effective sample size used for the Fisher-z interval (equal to n_units).
+            n_trials_group: Median of n_odd + n_even across evaluated (unit_id, condition) pairs.
+            rho_single_trial: Single-trial reliability obtained by inverting Spearman-Brown at n_trials_group.
+            rho_at_20: Reliability projected to REFERENCE_N_TRIALS (20) trials via Spearman-Brown.
+            n_pairs: Number of non-null (unit_id, condition) pairs correlated.
+            n_units: Number of distinct units among the correlated pairs.
+            n_conditions: Number of distinct conditions among the correlated pairs.
+            r_undefined: True when fewer than 3 pairs are present or either half is constant.
+            r_nonpositive: True when r_half is defined and r_half <= 0.
+            odd_trials: True when any pair has n_odd != n_even.
+            center: Boolean flag recording whether condition-centering was applied.
+
+    Notes:
+        The Fisher-z standard error uses ``n_eff = n_units`` rather than ``n_pairs``
+        because pooled ``(unit_id, condition)`` pairs share physical units across
+        conditions and are not independent observations; counting distinct units is
+        the conservative choice.
+
+        The ceiling ``rho`` is floored at ``0.0`` when ``r_half`` is undefined or
+        non-positive because reliability is a variance ratio in ``[0, 1]`` and the
+        Spearman-Brown formula ``2r / (1 + r)`` is not meaningful for ``r <= 0``
+        (diverging as ``r`` approaches ``-1``). Ceilings from sessions with
+        different trial counts are compared through ``rho_single_trial`` or
+        ``rho_at_20``, not through ``rho``.
     """
-    col_a = f"{measure}_A"
-    col_b = f"{measure}_B"
-    valid_mask = halves[col_a].notna() & halves[col_b].notna()
+    from scipy.stats import norm
+
+    col_odd = f"{measure}_odd"
+    col_even = f"{measure}_even"
+    valid_mask = halves[col_odd].notna() & halves[col_even].notna()
     sub = halves.loc[valid_mask]
 
-    x = sub[col_a].astype(float)
-    y = sub[col_b].astype(float)
+    x = sub[col_odd].astype(float)
+    y = sub[col_even].astype(float)
 
     unit_level = "unit_id" if "unit_id" in sub.index.names else 0
     cond_level = "condition" if "condition" in sub.index.names else 1
@@ -111,9 +176,9 @@ def ceiling(
     n_pairs = int(len(sub))
     n_units = int(sub.index.get_level_values(unit_level).nunique()) if n_pairs > 0 else 0
     n_conditions = int(sub.index.get_level_values(cond_level).nunique()) if n_pairs > 0 else 0
-    if "n_A" in sub.columns and "n_B" in sub.columns and n_pairs > 0:
-        odd_trials = bool((sub["n_A"] != sub["n_B"]).any())
-        n_trials_group = float(np.median((sub["n_A"] + sub["n_B"]).to_numpy(dtype=float)))
+    if "n_odd" in sub.columns and "n_even" in sub.columns and n_pairs > 0:
+        odd_trials = bool((sub["n_odd"] != sub["n_even"]).any())
+        n_trials_group = float(np.median((sub["n_odd"] + sub["n_even"]).to_numpy(dtype=float)))
     else:
         odd_trials = False
         n_trials_group = 0.0
@@ -124,35 +189,49 @@ def ceiling(
 
     xv = x.to_numpy(dtype=float)
     yv = y.to_numpy(dtype=float)
-    if (
-        n_pairs < 3
-        or np.allclose(xv, xv[0], rtol=0.0, atol=1e-15)
-        or np.allclose(yv, yv[0], rtol=0.0, atol=1e-15)
-    ):
+    if n_pairs < 3:
+        logger.debug("Undefined r_half for measure '%s': fewer than 3 pairs (n_pairs=%d).", measure, n_pairs)
+        r = float("nan")
+    elif np.allclose(xv, xv[0], rtol=0.0, atol=1e-15):
+        logger.debug("Undefined r_half for measure '%s': odd half is constant.", measure)
+        r = float("nan")
+    elif np.allclose(yv, yv[0], rtol=0.0, atol=1e-15):
+        logger.debug("Undefined r_half for measure '%s': even half is constant.", measure)
         r = float("nan")
     else:
         dx = xv - xv.mean()
         dy = yv - yv.mean()
         denom = float(np.sqrt(np.dot(dx, dx) * np.dot(dy, dy)))
         if denom == 0.0:
+            logger.debug("Undefined r_half for measure '%s': zero variance denominator.", measure)
             r = float("nan")
         else:
             r = float(np.clip(np.dot(dx, dy) / denom, -1.0, 1.0))
 
-    rho = float(2.0 * r / (1.0 + r)) if r > 0 else 0.0
+    r_undefined = bool(np.isnan(r))
+    r_nonpositive = bool(not r_undefined and r <= 0.0)
+    if r_nonpositive:
+        logger.debug("Nonpositive r_half for measure '%s': r_half=%f.", measure, r)
+
+    rho = float(2.0 * r / (1.0 + r)) if (not r_undefined and r > 0.0) else 0.0
 
     n_eff = n_units
-    if n_eff < 4 or np.isnan(r):
+    if n_eff < 4:
+        logger.debug("CI not computed for measure '%s': n_eff=%d < 4.", measure, n_eff)
+    if n_eff < 4 or r_undefined:
+        r_ci_low: float | None = None
+        r_ci_high: float | None = None
         rho_ci_low: float | None = None
         rho_ci_high: float | None = None
     else:
+        z_crit = float(norm.ppf(0.5 + confidence / 2.0))
         with np.errstate(divide="ignore"):
             z = float(np.arctanh(r))
         se = 1.0 / float(np.sqrt(n_eff - 3))
-        r_lo = float(np.tanh(z - 1.96 * se))
-        r_hi = float(np.tanh(z + 1.96 * se))
-        rho_ci_low = float(2.0 * r_lo / (1.0 + r_lo)) if r_lo > 0 else 0.0
-        rho_ci_high = float(2.0 * r_hi / (1.0 + r_hi)) if r_hi > 0 else 0.0
+        r_ci_low = float(np.tanh(z - z_crit * se))
+        r_ci_high = float(np.tanh(z + z_crit * se))
+        rho_ci_low = float(2.0 * r_ci_low / (1.0 + r_ci_low)) if r_ci_low > 0.0 else 0.0
+        rho_ci_high = float(2.0 * r_ci_high / (1.0 + r_ci_high)) if r_ci_high > 0.0 else 0.0
 
     if rho == 0.0 or n_trials_group <= 0.0:
         rho_single_trial = 0.0
@@ -160,10 +239,13 @@ def ceiling(
     else:
         denom_single = n_trials_group - (n_trials_group - 1.0) * rho
         rho_single_trial = float(rho / denom_single) if denom_single > 0.0 else 1.0
-        rho_at_20 = float(20.0 * rho_single_trial / (1.0 + 19.0 * rho_single_trial))
+        ref_n = float(REFERENCE_N_TRIALS)
+        rho_at_20 = float(ref_n * rho_single_trial / (1.0 + (ref_n - 1.0) * rho_single_trial))
 
     return {
         "r_half": r,
+        "r_ci_low": r_ci_low,
+        "r_ci_high": r_ci_high,
         "rho": rho,
         "rho_ci_low": rho_ci_low,
         "rho_ci_high": rho_ci_high,
@@ -174,12 +256,20 @@ def ceiling(
         "n_pairs": n_pairs,
         "n_units": n_units,
         "n_conditions": n_conditions,
-        "r_nonpositive": bool(not r > 0),
+        "r_undefined": r_undefined,
+        "r_nonpositive": r_nonpositive,
         "odd_trials": odd_trials,
         "center": bool(center),
     }
 
 
+# Algorithm: within each condition, draw a random permutation of that
+# condition's rows and move the even-half columns (every f"{m}_even" for m in
+# measures, plus n_even) along it, leaving the odd half in place; recompute
+# reliability_ceiling on the permuted frame with the same center flag; repeat
+# n_perm times. Pairings never cross conditions. This is a stratified pairing
+# permutation, the same null scipy.stats.permutation_test(permutation_type="pairings")
+# computes for a single stratum.
 def permutation_null(
     halves: pd.DataFrame,
     measure: str,
@@ -187,19 +277,42 @@ def permutation_null(
     n_perm: int,
     rng: np.random.Generator,
 ) -> dict[str, Any]:
-    """Compute the label-permutation null distribution by shuffling half B within conditions."""
-    if not isinstance(rng, np.random.Generator):
-        rng = np.random.default_rng(rng)
+    """Compute the stratified pairing-permutation null distribution by shuffling the even half within conditions.
 
-    observed = ceiling(halves, measure, center)["rho"]
-    b_cols = [c for c in halves.columns if c.endswith("_B")]
-    b_arrays = {col: halves[col].to_numpy(copy=True) for col in b_cols}
+    Args:
+        halves: DataFrame of odd and even half means indexed by ``(unit_id, condition)``.
+        measure: Measure name to pass to ``reliability_ceiling``.
+        center: Whether to condition-center within each half when calling ``reliability_ceiling``.
+        n_perm: Number of stratified permutations to draw.
+        rng: NumPy random ``Generator`` used to draw row permutations within each condition.
+
+    Returns:
+        Dictionary with keys ``median_rho``, ``p95_rho``, ``median_r``, ``p95_r``,
+        ``frac_rho_ge_observed``, and ``n_perm``.
+
+    Raises:
+        TypeError: If ``rng`` is not a ``numpy.random.Generator``.
+    """
+    if not isinstance(rng, np.random.Generator):
+        raise TypeError(f"rng must be a numpy.random.Generator, got {type(rng).__name__}.")
+
+    present_measures = [
+        col.removesuffix("_even") for col in halves.columns if col.endswith("_even") and col != "n_even"
+    ]
+    moved_cols = [f"{m}_even" for m in present_measures]
+    if "n_even" in halves.columns:
+        moved_cols.append("n_even")
+    assert len(present_measures) > 0 and len(moved_cols) > 0, (
+        "halves must contain at least one '<measure>_even' column."
+    )
+
+    observed = reliability_ceiling(halves, measure, center)["rho"]
+    even_arrays = {col: halves[col].to_numpy(copy=True) for col in moved_cols}
 
     cond_level = "condition" if "condition" in halves.index.names else 1
     cond_vals = halves.index.get_level_values(cond_level)
     cond_groups = [np.flatnonzero(cond_vals == c) for c in cond_vals.unique()]
 
-    permuted = halves.copy()
     perm_idx = np.empty(len(halves), dtype=int)
     rhos = np.empty(n_perm, dtype=float)
     rs = np.empty(n_perm, dtype=float)
@@ -207,9 +320,10 @@ def permutation_null(
     for i in range(n_perm):
         for grp in cond_groups:
             perm_idx[grp] = rng.permutation(grp)
-        for col, arr in b_arrays.items():
+        permuted = halves.copy()
+        for col, arr in even_arrays.items():
             permuted[col] = arr[perm_idx]
-        res = ceiling(permuted, measure, center)
+        res = reliability_ceiling(permuted, measure, center)
         rhos[i] = res["rho"]
         rs[i] = res["r_half"]
 
@@ -231,9 +345,20 @@ def variance_components(
 ) -> dict[str, Any]:
     """Compute between-unit and within-unit variance components and moments reliability.
 
-    A ceiling driven by between-unit heterogeneity shows up as large var_between
-    relative to var_within; moments_reliability is the ANOVA-style estimate of
+    A ceiling driven by between-unit heterogeneity shows up as large ``var_between``
+    relative to ``var_within``; ``moments_reliability`` is the ANOVA-style estimate of
     the same quantity the split-half ceiling estimates, and the two should agree.
+
+    Args:
+        responses: Trial-level response DataFrame.
+        measure: Measure column name to analyze.
+        condition: Condition label to filter on.
+        active_units: Optional iterable of active ``unit_id`` values (or mapping from
+            condition label to active ``unit_id`` values).
+
+    Returns:
+        Dictionary with keys ``var_between``, ``var_within``, ``n_trials``, and
+        ``moments_reliability``.
     """
     cond_mask = responses["condition"].astype(str) == str(condition)
     sub = responses.loc[cond_mask]
@@ -275,7 +400,19 @@ def positive_control(
     seed: int = 42,
     tolerance: float = 0.05,
 ) -> dict[str, Any]:
-    """Run the synthetic positive control through validate, split_halves, and ceiling."""
+    """Run the synthetic positive control through validate, split_halves, and reliability_ceiling.
+
+    Args:
+        reliability: Target full-length reliability injected into the synthetic dataset.
+        n_units: Number of synthetic units to generate.
+        n_trials: Number of synthetic trials per unit.
+        seed: Random seed for synthetic dataset generation.
+        tolerance: Maximum allowed absolute difference between recovered and injected reliability.
+
+    Returns:
+        Dictionary with keys ``injected``, ``recovered``, ``passed``, ``n_units``,
+        ``n_trials``, and ``tolerance``.
+    """
     units, responses = make_tables(
         n_units=n_units,
         n_trials=n_trials,
@@ -290,7 +427,7 @@ def positive_control(
         conditions=val["evaluated_conditions"],
         active_units=active_units,
     )
-    ceil = ceiling(halves, "tau", center=False)
+    ceil = reliability_ceiling(halves, "tau", center=False)
     injected = float(reliability)
     recovered = float(ceil["rho"])
     return {
@@ -304,7 +441,14 @@ def positive_control(
 
 
 def census(validate_result: dict[str, Any]) -> dict[str, Any]:
-    """Extract the independence-accounting census from validate()'s return dict."""
+    """Extract the independence-accounting census from validate()'s return dict.
+
+    Args:
+        validate_result: Dictionary returned by ``contract.validate``.
+
+    Returns:
+        Dictionary of hierarchy, inclusion, condition, and trial counts.
+    """
     evaluated_conditions = list(validate_result["evaluated_conditions"])
     inc = validate_result["inclusion"]
     units_in_tables = int(validate_result["n_units"])
@@ -341,7 +485,27 @@ def run(
     conditions: dict[str, Condition] | None = None,
     spikes: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """Validate inputs, run the positive control, and compute within-session ceilings."""
+    """Validate inputs, run the positive control, and compute within-session reliability ceilings.
+
+    Args:
+        units: Recording-unit table.
+        responses: Trial-level response table.
+        measures: Measure column names to evaluate.
+        post_stim_window_s: Declared post-stimulus window in seconds.
+        load_duration_s: Conditioning load duration in seconds.
+        n_perm: Number of stratified permutations for the null distribution.
+        injected_r: Target reliability for the synthetic positive control.
+        tolerance: Pass tolerance for the synthetic positive control.
+        seed: Random seed for the positive control and permutation null.
+        preparation: Optional validated ``Preparation`` metadata model.
+        conditions: Optional mapping of condition labels to ``Condition`` metadata models.
+        spikes: Optional spike-timestamp DataFrame.
+
+    Returns:
+        Dictionary containing status, versions, parameters, census, inclusion,
+        metadata, positive_control, and (when the positive control passes) per-measure
+        reliability ceilings and null distributions.
+    """
     measure_list = list(measures)
     val = validate(
         units,
@@ -386,12 +550,12 @@ def run(
     for m in measure_list:
         per_cond: dict[str, Any] = {}
         for c in evaluated_conditions:
-            cond_ceil = ceiling(halves[cond_level == c], m, False)
+            cond_ceil = reliability_ceiling(halves[cond_level == c], m, False)
             cond_ceil["variance"] = variance_components(responses, m, c, active_units[c])
             per_cond[c] = cond_ceil
         pooled = {
-            "uncentered": ceiling(halves, m, False),
-            "centered": ceiling(halves, m, True),
+            "uncentered": reliability_ceiling(halves, m, False),
+            "centered": reliability_ceiling(halves, m, True),
         }
         if len(evaluated_conditions) >= 2:
             headline = {
@@ -438,7 +602,15 @@ def run(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the within-session reliability ceiling CLI."""
+    """Run the within-session reliability ceiling CLI.
+
+    Args:
+        argv: Optional list of CLI argument strings (defaults to ``sys.argv[1:]``).
+
+    Returns:
+        Process exit code (0 on success, 1 on contract violation, 2 on input error,
+        3 on positive-control failure).
+    """
     from .metadata import load_conditions, load_preparation
 
     parser = argparse.ArgumentParser(

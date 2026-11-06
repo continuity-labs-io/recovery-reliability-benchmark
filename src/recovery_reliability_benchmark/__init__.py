@@ -12,7 +12,7 @@ from .contract import (
     validate,
 )
 from .evaluate import (
-    ceiling,
+    reliability_ceiling,
     run,
     split_halves,
 )
@@ -44,9 +44,9 @@ __all__ = [
     "Requirement",
     "Train",
     "__version__",
-    "ceiling",
     "default_pulse",
     "read_tables",
+    "reliability_ceiling",
     "run",
     "split_halves",
     "validate",
