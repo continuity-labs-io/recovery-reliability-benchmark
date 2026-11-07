@@ -87,3 +87,81 @@ def test_build_recording_tables_hand_built_units() -> None:
     stim_times = responses.sort_values("trial_index")["stim_time_ns"].unique().tolist()
     assert stim_times == [0, 5_000_000_000, 10_000_000_000]
     assert all(t % 5_000_000_000 == 0 for t in responses["stim_time_ns"])
+    assert list(responses.columns) == [
+        "unit_id",
+        "trial_index",
+        "stim_time_ns",
+        "condition",
+        "firing_rate_hz",
+    ]
+
+
+def test_build_recording_tables_transforms(tmp_path: Path) -> None:
+    sharf = _load_sharf2022_g0()
+    fs = 20000.0
+    raw_units = [
+        SimpleNamespace(
+            unit_id=10,
+            spike_train=np.array([10000, 50000, 200000, 240000, 299999, 340000], dtype=np.int64),
+            x_max=100.0,
+            y_max=200.0,
+        ),
+        SimpleNamespace(
+            unit_id=20,
+            spike_train=np.array(120000, dtype=np.int64),
+            x_max=110.0,
+            y_max=210.0,
+        ),
+        SimpleNamespace(
+            unit_id=30,
+            spike_train=np.array([], dtype=np.int64),
+            x_max=120.0,
+            y_max=220.0,
+        ),
+    ]
+
+    for epoch_s in (5.0, 2.5):
+        built = sharf.build_recording_tables(
+            raw_units=raw_units,
+            fs=fs,
+            epoch_s=epoch_s,
+            stem="2950",
+            preparation_id="L2",
+            transforms=True,
+        )
+        responses = built["responses"]
+        assert list(responses.columns) == [
+            "unit_id",
+            "trial_index",
+            "stim_time_ns",
+            "condition",
+            "firing_rate_hz",
+            "log_firing_rate_hz",
+            "sqrt_firing_rate_hz",
+            "rank_firing_rate_hz",
+        ]
+        rate = responses["firing_rate_hz"].to_numpy(dtype=float)
+        np.testing.assert_allclose(responses["log_firing_rate_hz"], np.log10(rate + 1.0 / epoch_s))
+        np.testing.assert_allclose(responses["sqrt_firing_rate_hz"], np.sqrt(rate))
+
+    built_5s = sharf.build_recording_tables(
+        raw_units=raw_units, fs=fs, epoch_s=5.0, stem="2950", preparation_id="L2", transforms=True
+    )
+    resp_5s = built_5s["responses"]
+    ranks_by_epoch = {
+        int(k): grp.sort_values("unit_id")["rank_firing_rate_hz"].to_list()
+        for k, grp in resp_5s.groupby("trial_index")
+    }
+    assert ranks_by_epoch == {
+        0: [3.0, 1.5, 1.5],
+        1: [1.5, 3.0, 1.5],
+        2: [3.0, 1.5, 1.5],
+    }
+
+    sample_row = dict.fromkeys(sharf.TRANSFORM_COLUMNS, "0.990")
+    sample_row.update(organoid="L2", stem="2950", n_units=173, rho_max_minus_min="0.004")
+    md_path = sharf.write_transforms_markdown([sample_row], tmp_path)
+    lines = md_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 3
+    assert "rho_max_minus_min" in lines[0]
+    assert "0.004" in lines[2]
