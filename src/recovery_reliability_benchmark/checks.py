@@ -8,6 +8,7 @@ from pandas.api.types import is_numeric_dtype
 
 from . import contract
 from .contract import ContractViolation, Requirement, ValidationContext
+from .frozen import register
 
 
 def check_required_columns(ctx: ValidationContext) -> None:
@@ -194,9 +195,7 @@ def check_active_units(ctx: ValidationContext) -> None:
         ContractViolation: With Requirement.MD3 if no condition with >= MD2_MUST trials has >= MD3_MUST active units (or RuntimeError if check_trials_per_condition has not run).
     """
     if not ctx.conditions_info:
-        raise RuntimeError(
-            "check_active_units requires check_trials_per_condition to have run; CHECKS order guarantees this"
-        )
+        raise RuntimeError("check_active_units requires check_trials_per_condition to have run; CHECKS order guarantees this")  # fmt: skip
     eval_conds = [c for c, info in ctx.conditions_info.items() if info["n_trials"] >= contract.MD2_MUST]
     best_eval_cond = max(eval_conds, key=lambda c: ctx.conditions_info[c]["n_units_active"])
     if (max_active := ctx.conditions_info[best_eval_cond]["n_units_active"]) < contract.MD3_MUST:
@@ -267,9 +266,7 @@ def check_post_stimulus_window(ctx: ValidationContext) -> None:
         msg = f"Post-stimulus window {ctx.post_stim_window_s:.1f} s, requires {req_min:.1f} s."
         raise ContractViolation(Requirement.MD6, msg, found=float(ctx.post_stim_window_s), required=req_min)
     if ctx.trials is None:
-        raise RuntimeError(
-            "check_post_stimulus_window requires check_stimulus_timeline to have run; CHECKS order guarantees this"
-        )
+        raise RuntimeError("check_post_stimulus_window requires check_stimulus_timeline to have run; CHECKS order guarantees this")  # fmt: skip
     trials_by_time = ctx.trials.sort_values(["stim_time_ns", "trial_index"]).reset_index(drop=True)
     onsets = trials_by_time["stim_time_ns"].astype(int).to_list()
     trial_indices = trials_by_time["trial_index"].astype(int).to_list()
@@ -297,3 +294,5 @@ CHECKS: tuple[tuple[Requirement, str, Callable[[ValidationContext], None]], ...]
     (Requirement.MD5, "one_row_per_unit_trial", check_one_row_per_unit_trial),
     (Requirement.MD6, "post_stimulus_window", check_post_stimulus_window),
 )
+for _req, _, _fn in CHECKS:
+    register(_fn, "SPEC " + _req.value)

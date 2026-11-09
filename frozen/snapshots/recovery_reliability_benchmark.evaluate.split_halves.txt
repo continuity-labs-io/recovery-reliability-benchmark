@@ -1,0 +1,31 @@
+@frozen('METHOD split')
+def split_halves(responses: pd.DataFrame, measures: Sequence[str], conditions: Sequence[str], active_units: dict[str, set[str]] | None=None) -> pd.DataFrame:
+    measure_list = list(measures)
+    cols = [*(f'{m}_{h}' for m in measure_list for h in ('odd', 'even')), 'n_odd', 'n_even']
+    sub = responses[responses['condition'].isin(set(conditions))].copy()
+    if sub.empty:
+        return pd.DataFrame(columns=cols, index=pd.MultiIndex.from_arrays([[], []], names=['unit_id', 'condition']))
+    sub['unit_id'] = sub['unit_id'].astype(str)
+    sub['condition'] = sub['condition'].astype(str)
+    if active_units is not None:
+        active_sets = {str(c): {str(u) for u in us} for c, us in active_units.items()}
+        keep = [u in active_sets.get(c, set()) for u, c in zip(sub['unit_id'], sub['condition'], strict=False)]
+        sub = sub[keep]
+        if sub.empty:
+            return pd.DataFrame(columns=cols, index=pd.MultiIndex.from_arrays([[], []], names=['unit_id', 'condition']))
+    sub = sub.sort_values(['unit_id', 'condition', 'trial_index'], kind='mergesort')
+    position = sub.groupby(['unit_id', 'condition'], sort=False).cumcount() + 1
+    grp_odd = sub[position % 2 == 1].groupby(['unit_id', 'condition'], sort=True)
+    grp_even = sub[position % 2 == 0].groupby(['unit_id', 'condition'], sort=True)
+    n_odd, n_even = (grp_odd.size(), grp_even.size())
+    common_idx = n_odd.index.intersection(n_even.index)
+    common_idx.names = ['unit_id', 'condition']
+    means_odd = grp_odd[measure_list].mean().reindex(common_idx)
+    means_even = grp_even[measure_list].mean().reindex(common_idx)
+    out_cols: dict[str, Any] = {}
+    for m in measure_list:
+        out_cols[f'{m}_odd'] = means_odd[m].astype(float)
+        out_cols[f'{m}_even'] = means_even[m].astype(float)
+    out_cols['n_odd'] = n_odd.reindex(common_idx).astype(int)
+    out_cols['n_even'] = n_even.reindex(common_idx).astype(int)
+    return pd.DataFrame(out_cols, index=common_idx)

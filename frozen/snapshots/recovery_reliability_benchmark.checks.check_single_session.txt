@@ -1,0 +1,7 @@
+def check_single_session(ctx: ValidationContext) -> None:
+    for col in ('preparation_id', 'session_id', 'recording_id'):
+        n_distinct = int(ctx.units[col].nunique())
+        if n_distinct != 1:
+            vals = ', '.join((f"'{v}'" for v in ctx.units[col].unique()))
+            msg = f'{n_distinct} distinct {col} values ({vals}), requires exactly 1.'
+            raise ContractViolation(Requirement.MD1, msg, found=n_distinct, required=1)

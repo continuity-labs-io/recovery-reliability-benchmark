@@ -1,0 +1,12 @@
+def check_measures_allowed_and_numeric(ctx: ValidationContext) -> None:
+    if not ctx.measures:
+        raise ContractViolation(Requirement.SCHEMA, 'measures must not be empty.')
+    for measure in ctx.measures:
+        if measure not in ctx.responses.columns:
+            raise ContractViolation(Requirement.SCHEMA, f"measure '{measure}' is not a column of responses.")
+        if measure in ctx.forbidden:
+            raise ContractViolation(Requirement.SCHEMA, f"'{measure}' is not allowed as a measure.")
+        if not is_numeric_dtype(ctx.responses[measure]):
+            raise ContractViolation(Requirement.SCHEMA, f"measure '{measure}' is not numeric.")
+        if ctx.responses[measure].isna().all():
+            raise ContractViolation(Requirement.SCHEMA, f"measure '{measure}' is entirely null.")

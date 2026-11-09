@@ -1,0 +1,36 @@
+def check_sidecars(ctx: ValidationContext) -> None:
+    if ctx.preparation is not None:
+        prep_id = ctx.preparation.preparation_id
+        if str(prep_id) not in set(ctx.units['preparation_id'].astype(str)):
+            u_prep = str(ctx.units['preparation_id'].iloc[0]) if len(ctx.units) > 0 else ''
+            msg = f"preparation.json preparation_id '{prep_id}' does not match units ('{u_prep}')."
+            raise ContractViolation(Requirement.SCHEMA, msg, found=prep_id, required=u_prep)
+        present_units = set(ctx.units['unit_id'])
+        present_trials = set(ctx.responses['trial_index'].astype(str))
+        for excl in ctx.preparation.exclusions:
+            if excl.kind == 'unit' and excl.id in present_units:
+                msg = f"exclusions lists unit '{excl.id}' as excluded but it is present in units."
+                raise ContractViolation(Requirement.SCHEMA, msg, found=excl.id)
+            if excl.kind == 'trial' and excl.id in present_trials:
+                msg = f"exclusions lists trial '{excl.id}' as excluded but it is present in responses."
+                raise ContractViolation(Requirement.SCHEMA, msg, found=excl.id)
+    if ctx.conditions is not None:
+        for cond in ctx.responses['condition'].astype(str).unique():
+            if cond not in ctx.conditions:
+                msg = f"condition '{cond}' in responses has no entry in conditions.json."
+                raise ContractViolation(Requirement.SCHEMA, msg, found=cond)
+    if ctx.spikes is not None:
+        for col in contract.SPIKES_REQUIRED:
+            if col not in ctx.spikes.columns:
+                raise ContractViolation(Requirement.SCHEMA, f"spikes is missing required column '{col}'.")
+        null_spike_time = int(ctx.spikes['spike_time_ns'].isna().sum())
+        if null_spike_time > 0:
+            msg = f'{null_spike_time} spikes rows have a null spike_time_ns, requires 0.'
+            raise ContractViolation(Requirement.SCHEMA, msg, found=null_spike_time, required=0)
+        ctx.spikes['unit_id'] = ctx.spikes['unit_id'].astype(str)
+        orphan_spikes = ~ctx.spikes['unit_id'].isin(set(ctx.units['unit_id']))
+        if orphan_spikes.any():
+            bad_id = ctx.spikes.loc[orphan_spikes, 'unit_id'].iloc[0]
+            count = int((ctx.spikes['unit_id'] == bad_id).sum())
+            msg = f"{count} spikes rows reference unit_id '{bad_id}', which is not in units."
+            raise ContractViolation(Requirement.SCHEMA, msg, found=count, required=0)

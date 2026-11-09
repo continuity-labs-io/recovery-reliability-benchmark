@@ -105,6 +105,8 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 - Every backticked code symbol in `GLOSSARY.md` must resolve; `tests/test_style.py` enforces all of the above.
 - Every reported number must be invariant to row order, unit and condition relabeling, affine transforms of a measure, and index offsets; `tests/test_invariance.py` enforces this.
 
+The functions and constants implementing `METHOD.md` and `SPEC.md` form the frozen layer (`frozen.py`, `frozen/manifest.json`, `frozen/snapshots/`). They do not change in response to any dataset's result; any intentional modification requires a minor version bump in `pyproject.toml`, a `Frozen:` line under that version in `CHANGELOG.md`, and `python scripts/freeze.py --update`. See [FROZEN.md](FROZEN.md).
+
 ---
 
 ## 9. Starting

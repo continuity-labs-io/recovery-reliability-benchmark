@@ -1,0 +1,9 @@
+@frozen('SPEC conformance levels')
+def validate(units: pd.DataFrame, responses: pd.DataFrame, measures: list[str], post_stim_window_s: float, load_duration_s: float=0.0, extra_forbidden: set[str] | None=None, preparation: Preparation | None=None, conditions: dict[str, Condition] | None=None, spikes: pd.DataFrame | None=None) -> dict[str, Any]:
+    from .checks import CHECKS
+    _validate_durations(post_stim_window_s, load_duration_s)
+    units_copy = units.assign(**{c: units[c].astype(str) for c in ID_COLUMNS if c in units.columns})
+    ctx = ValidationContext(units=units_copy, responses=responses.copy(), measures=list(measures), post_stim_window_s=post_stim_window_s, load_duration_s=load_duration_s, forbidden=FORBIDDEN_MEASURES | frozenset(extra_forbidden or ()), preparation=preparation, conditions=conditions, spikes=spikes.copy() if spikes is not None else None)
+    for _, _, check_fn in CHECKS:
+        check_fn(ctx)
+    return build_report(ctx)

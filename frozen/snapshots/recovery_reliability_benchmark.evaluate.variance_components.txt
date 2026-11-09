@@ -1,0 +1,16 @@
+@frozen('METHOD variance components')
+def variance_components(responses: pd.DataFrame, measure: str, condition: str, active_units: Iterable[str] | dict[str, Iterable[str]] | None=None) -> dict[str, Any]:
+    sub = responses.loc[responses['condition'].astype(str) == str(condition)]
+    if active_units is not None:
+        raw_units = active_units.get(str(condition), ()) if isinstance(active_units, dict) else active_units
+        sub = sub.loc[sub['unit_id'].astype(str).isin({str(u) for u in raw_units})]
+    g = sub.groupby(sub['unit_id'].astype(str), sort=False)[measure]
+    unit_means, unit_vars, unit_counts = (g.mean(), g.var(ddof=1), g.count())
+    var_between = float(unit_means.var(ddof=1)) if len(unit_means) >= 2 else 0.0
+    var_within = float(unit_vars.mean()) if len(unit_vars) >= 1 else 0.0
+    n_trials = float(unit_counts.median()) if len(unit_counts) >= 1 else 0.0
+    if var_between > 0.0 and n_trials > 0.0:
+        moments_reliability: float | None = float(max(0.0, (var_between - var_within / n_trials) / var_between))
+    else:
+        moments_reliability = None
+    return {'var_between': var_between, 'var_within': var_within, 'n_trials': n_trials, 'moments_reliability': moments_reliability}

@@ -1,0 +1,10 @@
+@frozen('METHOD positive control')
+def positive_control(reliability: float=POSITIVE_CONTROL_RELIABILITY, n_units: int=POSITIVE_CONTROL_UNITS, n_trials: int=POSITIVE_CONTROL_TRIALS, seed: int=42, tolerance: float=POSITIVE_CONTROL_TOLERANCE) -> dict[str, Any]:
+    units, responses = make_tables(n_units=n_units, n_trials=n_trials, reliability=reliability, seed=seed)
+    val = validate(units, responses, measures=['tau'], post_stim_window_s=2.0)
+    active_units = {c: set(val['conditions'][c]['active_units']) for c in val['evaluated_conditions']}
+    halves = split_halves(responses, measures=['tau'], conditions=val['evaluated_conditions'], active_units=active_units)
+    ceil = reliability_ceiling(halves, 'tau', center=False)
+    injected = float(reliability)
+    recovered = float(ceil['rho'])
+    return {'injected': injected, 'recovered': recovered, 'passed': bool(abs(recovered - injected) <= tolerance), 'n_units': int(n_units), 'n_trials': int(n_trials), 'tolerance': float(tolerance)}

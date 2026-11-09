@@ -1,0 +1,19 @@
+def check_trials_per_condition(ctx: ValidationContext) -> None:
+    n_units_in_tables = int(len(ctx.units))
+    complete = ctx.responses[ctx.measures].notna().all(axis=1)
+    g = ctx.responses.assign(complete=complete).groupby(['condition', 'unit_id'], sort=False)
+    n_tr, all_complete = (g['trial_index'].nunique(), g['complete'].all())
+    n_trials_cond = ctx.responses.groupby('condition')['trial_index'].nunique()
+    unit_active = (n_tr.to_numpy() == n_tr.index.get_level_values('condition').map(n_trials_cond).to_numpy()) & all_complete
+    ctx.conditions_info = {}
+    for cond in ctx.responses['condition'].unique():
+        n_trials_c = int(n_trials_cond[cond])
+        cond_active = unit_active.loc[cond] if n_trials_c > 0 and cond in unit_active.index else None
+        active_units = sorted((str(u) for u in cond_active.index[cond_active])) if cond_active is not None else []
+        present_cells = int(n_tr.loc[cond].sum()) if cond_active is not None else 0
+        n_active_c = len(active_units)
+        ctx.conditions_info[str(cond)] = {'n_trials': n_trials_c, 'n_units_active': n_active_c, 'active_units': active_units, 'n_units_in_tables': n_units_in_tables, 'n_units_excluded_by_rule': n_units_in_tables - n_active_c, 'n_rows_missing': n_units_in_tables * n_trials_c - present_cells}
+    best_trial_cond = max(ctx.conditions_info, key=lambda c: ctx.conditions_info[c]['n_trials'])
+    if (max_trials := ctx.conditions_info[best_trial_cond]['n_trials']) < contract.MD2_MUST:
+        msg = f"At most {max_trials} trials in any condition (condition '{best_trial_cond}'), requires {contract.MD2_MUST}."
+        raise ContractViolation(Requirement.MD2, msg, found=max_trials, required=contract.MD2_MUST)

@@ -10,13 +10,18 @@ import numpy as np
 import pandas as pd
 
 from . import contract
+from .frozen import freeze_constant, frozen
 
 logger = logging.getLogger(__name__)
 
 # the SHOULD threshold of min-dataset-2; rho_at_20 is the ceiling a fully conforming session would show
 REFERENCE_N_TRIALS = contract.MD2_SHOULD
+DEFAULT_CONFIDENCE = 0.95
+freeze_constant(__name__, "REFERENCE_N_TRIALS", "METHOD trial-count standardization")
+freeze_constant(__name__, "DEFAULT_CONFIDENCE", "METHOD Spearman-Brown and interval")
 
 
+@frozen("METHOD split")
 def split_halves(
     responses: pd.DataFrame,
     measures: Sequence[str],
@@ -26,23 +31,17 @@ def split_halves(
     """Partition trials into odd and even halves by 1-based position within each (unit_id, condition) group.
 
     Within each ``(unit_id, condition)`` group, trials are sorted by ``trial_index``
-    and assigned 1-based positions ``1, 2, 3, ...``; positions ``1, 3, 5, ...`` form
-    the odd half and positions ``2, 4, 6, ...`` form the even half. Trials are ranked
-    within each group rather than split by global ``trial_index`` parity because
-    interleaved conditions or dropped trials can leave a group with only even or only
-    odd global ``trial_index`` values. Groups where either half is empty are dropped.
+    and assigned 1-based positions ``1, 2, 3, ...``; odd positions form the odd half
+    and even positions form the even half. Groups where either half is empty are dropped.
 
     Args:
-        responses: Trial-level response DataFrame containing ``unit_id``, ``condition``,
-            ``trial_index``, and the measure columns.
+        responses: Trial-level response DataFrame (unit_id, condition, trial_index, measures).
         measures: Measure column names to average within each half.
         conditions: Condition labels to include in the partition.
-        active_units: Optional mapping from condition label to the set of active
-            ``unit_id`` values to retain in that condition.
+        active_units: Optional mapping from condition label to active unit_id values to retain.
 
     Returns:
-        DataFrame indexed by ``(unit_id, condition)`` with columns ``f"{m}_odd"``
-        and ``f"{m}_even"`` for each measure ``m``, plus ``n_odd`` and ``n_even``.
+        DataFrame indexed by ``(unit_id, condition)`` with ``{m}_odd``, ``{m}_even``, ``n_odd``, ``n_even``.
     """
     measure_list = list(measures)
     cols = [*(f"{m}_{h}" for m in measure_list for h in ("odd", "even")), "n_odd", "n_even"]
@@ -86,41 +85,25 @@ def split_halves(
     return pd.DataFrame(out_cols, index=common_idx)
 
 
+@frozen("METHOD Spearman-Brown and interval")
 def reliability_ceiling(
     halves: pd.DataFrame,
     measure: str,
     center: bool = False,
-    confidence: float = 0.95,
+    confidence: float = DEFAULT_CONFIDENCE,
 ) -> dict[str, Any]:
     """Compute the split-half Pearson correlation, Spearman-Brown reliability ceiling, and Fisher-z interval.
 
     Args:
-        halves: DataFrame of per-unit, per-condition odd and even half means as
-            returned by ``split_halves``.
-        measure: Measure name prefix to evaluate (reads ``f"{measure}_odd"`` and
-            ``f"{measure}_even"``).
-        center: If True, subtract each condition's mean over units within each
-            half separately before correlating.
-        confidence: Confidence level in ``(0, 1)`` for the two-sided Fisher-z
-            interval (default ``0.95``).
+        halves: DataFrame of per-unit, per-condition odd and even half means from ``split_halves``.
+        measure: Measure name prefix to evaluate (reads ``{measure}_odd`` and ``{measure}_even``).
+        center: If True, subtract each condition's mean over units within each half before correlating.
+        confidence: Confidence level in ``(0, 1)`` for the two-sided Fisher-z interval (default ``0.95``).
 
     Returns:
         Dictionary with keys r_half, r_ci_low, r_ci_high, rho, rho_ci_low, rho_ci_high,
         n_eff, n_trials_group, rho_single_trial, rho_at_20, n_pairs, n_units, n_conditions,
         r_undefined, r_nonpositive, odd_trials, and center.
-
-    Notes:
-        The Fisher-z standard error uses ``n_eff = n_units`` rather than ``n_pairs``
-        because pooled ``(unit_id, condition)`` pairs share physical units across
-        conditions and are not independent observations; counting distinct units is
-        the conservative choice.
-
-        The ceiling ``rho`` is floored at ``0.0`` when ``r_half`` is undefined or
-        non-positive because reliability is a variance ratio in ``[0, 1]`` and the
-        Spearman-Brown formula ``2r / (1 + r)`` is not meaningful for ``r <= 0``
-        (diverging as ``r`` approaches ``-1``). Ceilings from sessions with
-        different trial counts are compared through ``rho_single_trial`` or
-        ``rho_at_20``, not through ``rho``.
     """
     from scipy.stats import norm
 
@@ -217,6 +200,7 @@ def reliability_ceiling(
     }
 
 
+@frozen("METHOD variance components")
 def variance_components(
     responses: pd.DataFrame,
     measure: str,
@@ -225,20 +209,14 @@ def variance_components(
 ) -> dict[str, Any]:
     """Compute between-unit and within-unit variance components and moments reliability.
 
-    A ceiling driven by between-unit heterogeneity shows up as large ``var_between``
-    relative to ``var_within``; ``moments_reliability`` is the ANOVA-style estimate of
-    the same quantity the split-half ceiling estimates, and the two should agree.
-
     Args:
         responses: Trial-level response DataFrame.
         measure: Measure column name to analyze.
         condition: Condition label to filter on.
-        active_units: Optional iterable of active ``unit_id`` values (or mapping from
-            condition label to active ``unit_id`` values).
+        active_units: Optional iterable of active ``unit_id`` values (or mapping by condition).
 
     Returns:
-        Dictionary with keys ``var_between``, ``var_within``, ``n_trials``, and
-        ``moments_reliability``.
+        Dictionary with keys ``var_between``, ``var_within``, ``n_trials``, and ``moments_reliability``.
     """
     sub = responses.loc[responses["condition"].astype(str) == str(condition)]
     if active_units is not None:
@@ -265,6 +243,33 @@ def variance_components(
         "n_trials": n_trials,
         "moments_reliability": moments_reliability,
     }
+
+
+@frozen("METHOD headline rule")
+def headline(
+    evaluated_conditions: Sequence[str],
+    best_condition: str,
+    per_condition: dict[str, dict[str, Any]],
+    pooled: dict[str, dict[str, Any]],
+) -> tuple[dict[str, Any], str]:
+    """Select the headline ceiling and its kind from per-condition and pooled estimates.
+
+    Args:
+        evaluated_conditions: Sequence of evaluated condition labels.
+        best_condition: Best evaluated condition label from ``validate()``.
+        per_condition: Mapping from condition label to per-condition ceiling dict.
+        pooled: Mapping with ``"uncentered"`` and ``"centered"`` pooled ceiling dicts.
+
+    Returns:
+        Tuple of ``(headline_dict, headline_kind)`` where ``headline_kind`` is
+        ``"pooled_centered"`` (two or more conditions) or ``"per_condition"``.
+    """
+    if len(evaluated_conditions) >= 2:
+        return (
+            {**pooled["centered"], "variance": per_condition[best_condition]["variance"]},
+            "pooled_centered",
+        )
+    return per_condition[best_condition], "per_condition"
 
 
 if __name__ == "__main__":

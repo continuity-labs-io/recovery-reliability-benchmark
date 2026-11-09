@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from .frozen import freeze_constant, frozen
+
 if TYPE_CHECKING:
     from .metadata import Condition, Preparation
 
@@ -25,6 +27,14 @@ MD2_SHOULD = 20
 MD3_MUST = 8
 MD3_SHOULD = 30
 MD6_MUST = 2.0
+for _const, _ref in (
+    ("MD2_MUST", "SPEC min-dataset-2"),
+    ("MD2_SHOULD", "SPEC min-dataset-2"),
+    ("MD3_MUST", "SPEC min-dataset-3"),
+    ("MD3_SHOULD", "SPEC min-dataset-3"),
+    ("MD6_MUST", "SPEC min-dataset-6"),
+):
+    freeze_constant(__name__, _const, _ref)
 
 CONFORMING = "conforming"
 FULLY_CONFORMING = "fully_conforming"
@@ -36,13 +46,7 @@ INCLUSION_RULE = (
 
 
 class Requirement(StrEnum):
-    """Minimum dataset (`min-dataset-*`) requirements from SPEC.md.
-
-    A dataset must satisfy every minimum dataset requirement's MUST threshold to be
-    "conforming" and every SHOULD threshold to be "fully_conforming".
-    validate() checks them in numeric order and raises ContractViolation
-    on the first failure.
-    """
+    """Minimum dataset (`min-dataset-*`) requirements from SPEC.md."""
 
     SCHEMA = "SCHEMA"
     MD1 = "min-dataset-1"
@@ -141,6 +145,7 @@ class ValidationContext:
     gaps_s: list[float] = field(default_factory=list)
 
 
+@frozen("SPEC conformance levels")
 def build_report(ctx: ValidationContext) -> dict[str, Any]:
     """Build the conformance report dictionary from a validated context.
     Args:
@@ -237,6 +242,7 @@ def build_report(ctx: ValidationContext) -> dict[str, Any]:
     }
 
 
+@frozen("SPEC conformance levels")
 def validate(
     units: pd.DataFrame,
     responses: pd.DataFrame,
@@ -260,10 +266,7 @@ def validate(
         conditions: Optional mapping of condition labels to Condition sidecar models.
         spikes: Optional spike-timestamp DataFrame.
     Returns:
-        Conformance report dict with keys: spec_version, n_preparations, n_sessions, n_recordings,
-        n_units, n_units_active, n_conditions, n_trials, trials_per_unit_condition, conditions,
-        evaluated_conditions, best_condition, should_failed, conformance, post_stim_window_s,
-        load_duration_s, min_inter_stimulus_s, inclusion, metadata.
+        Conformance report dictionary with counts, evaluated conditions, conformance level, and metadata.
     """
     from .checks import CHECKS
 

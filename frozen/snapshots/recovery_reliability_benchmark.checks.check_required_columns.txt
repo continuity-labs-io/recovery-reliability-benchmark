@@ -1,0 +1,7 @@
+def check_required_columns(ctx: ValidationContext) -> None:
+    for col in contract.UNITS_REQUIRED:
+        if col not in ctx.units.columns:
+            raise ContractViolation(Requirement.SCHEMA, f"units is missing required column '{col}'.")
+    for col in contract.RESPONSES_REQUIRED:
+        if col not in ctx.responses.columns:
+            raise ContractViolation(Requirement.SCHEMA, f"responses is missing required column '{col}'.")

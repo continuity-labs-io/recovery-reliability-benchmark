@@ -1,0 +1,20 @@
+def check_identifiers(ctx: ValidationContext) -> None:
+    for col in contract.ID_COLUMNS:
+        ctx.units[col] = ctx.units[col].astype(str)
+    ctx.responses['unit_id'] = ctx.responses['unit_id'].astype(str)
+    unit_counts = ctx.units['unit_id'].value_counts(sort=False)
+    duplicates = unit_counts[unit_counts > 1]
+    if not duplicates.empty:
+        bad_id, count = (duplicates.index[0], int(duplicates.iloc[0]))
+        msg = f"unit_id '{bad_id}' appears {count} times in units, requires 1."
+        raise ContractViolation(Requirement.SCHEMA, msg, found=count, required=1)
+    orphan_mask = ~ctx.responses['unit_id'].isin(set(ctx.units['unit_id']))
+    if orphan_mask.any():
+        bad_id = ctx.responses.loc[orphan_mask, 'unit_id'].iloc[0]
+        count = int((ctx.responses['unit_id'] == bad_id).sum())
+        msg = f"{count} responses rows reference unit_id '{bad_id}', which is not in units."
+        raise ContractViolation(Requirement.SCHEMA, msg, found=count, required=0)
+    null_trial_index = int(ctx.responses['trial_index'].isna().sum())
+    if null_trial_index > 0:
+        msg = f'{null_trial_index} responses rows have a null trial_index, requires 0.'
+        raise ContractViolation(Requirement.SCHEMA, msg, found=null_trial_index, required=0)

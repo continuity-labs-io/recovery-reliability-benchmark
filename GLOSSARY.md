@@ -114,6 +114,8 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Reliability ceiling (ceiling).** Reliability as an upper bound: by the attenuation theorem, no correlation between a measure and anything else can exceed the measure's correlation with itself. A low ceiling means downstream results built on the measure are uninterpretable before they are run. METHOD §1; `evaluate.reliability_ceiling`.
 
+**Sensitivity.** The standardized shift of a measure under a declared manipulation: d = (mean of per-unit means in the treated condition − mean in the control condition) / pooled SD across units within condition, with a bootstrap confidence interval over units. Computed on the same per-unit means as reliability. Reliability is blind to the condition effect by construction (pooled centering subtracts it), so a measure can be reliable and insensitive; baseline firing rate is the reference row. Measurement noise attenuates the observed d by √ρ. Planned for v0.2.0, not computed at v0.1.x; whether to use the paired form over units active in both conditions is decided when the first two-condition dataset arrives.
+
 **Attenuation theorem.** r(X, Y) ≤ sqrt(reliability(X) × reliability(Y)); the observed correlation between two noisy measures is attenuated by their reliabilities. The reason "ceiling" is the right word. METHOD §1.
 
 **Split-half.** Dividing one session's trials into two halves, computing the measure on each, and correlating the two results across units. Two measurements of the same vector from one recording. METHOD §3; `evaluate.split_halves`.
@@ -134,7 +136,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Condition-centering (centered).** Subtracting each condition's mean over units, within each half, before correlating the pooled pairs. Removes between-condition variance (for example a dose effect) that would otherwise inflate the pooled ceiling. Has no effect on a per-condition estimate. METHOD §4.
 
-**Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `run.run`.
+**Headline.** The ceiling reported first for a measure: pooled-centered when two or more conditions are evaluated, otherwise the per-condition estimate on the best condition. `evaluate.headline`; `run.run`.
 
 **Fisher z interval.** The confidence interval on `r_half` (`r_ci_low`, `r_ci_high`) obtained by transforming r to z = atanh(r), using standard error 1/sqrt(n − 3) and normal critical value `z_crit`, and transforming back; then applied through Spearman-Brown to give `rho_ci_low`, `rho_ci_high`. METHOD §3.
 
@@ -220,6 +222,8 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Benchmark (as used here).** A fixed computation that every contributed dataset is scored by. The measures are what get scored; the datasets are the test set; the spec is the admission rule for the test set. Closer to an inter-laboratory ring trial than to an ImageNet-style benchmark. README.
 
+**Frozen layer.** The functions and constants that implement the `METHOD.md` and `SPEC.md` procedure (`checks.CHECKS`, `contract.validate`, `contract.build_report`, `evaluate.split_halves`, `evaluate.reliability_ceiling`, `evaluate.variance_components`, `evaluate.headline`, `controls.permutation_null`, `controls.positive_control`, `controls.census`, `synthetic.make_tables`, `protocol.Protocol.fingerprint`, and the threshold and control constants), registered in `frozen.FROZEN_FUNCTIONS` and `frozen.FROZEN_CONSTANTS` and snapshotted under `frozen/`. Never modified in response to a dataset's result; any change requires a minor version bump, a `Frozen:` entry in `CHANGELOG.md`, and `python scripts/freeze.py --update`. `FROZEN.md`; `frozen.py`.
+
 **Ring trial (inter-laboratory study).** Several laboratories run the same procedure on their own material and the results are compared. The benchmark's multi-lab phase is one.
 
 **Test set.** The contributed datasets. A result on one dataset and a result on another are comparable only because both passed the same conformance spec.
@@ -246,7 +250,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Functional endpoint.** An endpoint based on what the tissue does (fires, beats, recovers) rather than on what it is made of (markers, viability, morphology).
 
-**Surrogate endpoint.** A measurable stand-in for an outcome that is slow or hard to observe directly. The long-term aim is for a recovery measure to serve as a surrogate for tissue health and, in model organisms, for lifespan outcomes.
+**Surrogate endpoint.** A measurable stand-in for an outcome that is slow or hard to observe directly. The long-term aim is for a recovery measure to serve as a surrogate for the effect of an intervention: a measure whose change under a treatment tracks the treatment's effect on function and, in model organisms, on lifespan. Reliability is a precondition for that use, not evidence of it.
 
 **Pharmacology screening (safety pharmacology, neurotoxicity screening).** Testing compounds on cultured tissue for adverse functional effects. Current MEA endpoints are statistics of spontaneous activity (firing rate, bursts, synchrony, field potential duration); recovery after a standardized load is not among them. `claude/assay-landscape.md`.
 

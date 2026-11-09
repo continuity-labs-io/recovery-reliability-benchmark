@@ -1,0 +1,19 @@
+def check_post_stimulus_window(ctx: ValidationContext) -> None:
+    if ctx.post_stim_window_s < contract.MD6_MUST:
+        req_min = contract.MD6_MUST
+        msg = f'Post-stimulus window {ctx.post_stim_window_s:.1f} s, requires {req_min:.1f} s.'
+        raise ContractViolation(Requirement.MD6, msg, found=float(ctx.post_stim_window_s), required=req_min)
+    if ctx.trials is None:
+        raise RuntimeError('check_post_stimulus_window requires check_stimulus_timeline to have run; CHECKS order guarantees this')
+    trials_by_time = ctx.trials.sort_values(['stim_time_ns', 'trial_index']).reset_index(drop=True)
+    onsets = trials_by_time['stim_time_ns'].astype(int).to_list()
+    trial_indices = trials_by_time['trial_index'].astype(int).to_list()
+    ctx.gaps_s = []
+    for i in range(len(onsets) - 1):
+        gap_s = (onsets[i + 1] - onsets[i]) / 1000000000.0
+        ctx.gaps_s.append(gap_s)
+        available = gap_s - ctx.load_duration_s
+        if available < ctx.post_stim_window_s:
+            req_w = float(ctx.post_stim_window_s)
+            msg = f'Trial {trial_indices[i]} has {available:.3f} s available before the next stimulus (gap {gap_s:.3f} s minus load {ctx.load_duration_s:.3f} s), requires {req_w:.3f} s.'
+            raise ContractViolation(Requirement.MD6, msg, found=float(available), required=req_w)

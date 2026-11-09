@@ -1,0 +1,3 @@
+def fingerprint(self) -> str:
+    payload = self.model_dump_json(exclude={'name'})
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()

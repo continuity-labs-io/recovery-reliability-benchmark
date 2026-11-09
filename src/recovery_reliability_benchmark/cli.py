@@ -82,8 +82,11 @@ def _emit_report(
     result: dict[str, Any] | None = None,
     violation: dict[str, Any] | None = None,
 ) -> None:
+    from . import __version__
+
     doc: dict[str, Any] = {
         "spec_version": SPEC_VERSION,
+        "package_version": __version__,
         "status": status,
         "inputs": inputs_meta,
         "arguments": arguments_meta,
@@ -166,7 +169,10 @@ def check_main(argv: list[str] | None = None) -> int:
     if args.as_json:
         _emit_report(result["conformance"], inputs_meta, arguments_meta, result=result)
     else:
+        from . import __version__
+
         print(f"{result['conformance']} (SPEC v{result['spec_version']})")
+        print(f"package_version: {__version__}")
         for key, value in result.items():
             if key == "conditions":
                 continue
@@ -249,6 +255,7 @@ def evaluate_main(argv: list[str] | None = None) -> int:
     if args.as_json:
         _emit_report(result["status"], inputs_meta, arguments_meta, result=result)
     else:
+        print(f"package_version: {result['package_version']} (SPEC v{result['spec_version']})")
         print("census:")
         for key, value in result["census"].items():
             print(f"  {key}: {value}")

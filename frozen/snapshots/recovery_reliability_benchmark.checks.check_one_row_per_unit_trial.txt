@@ -1,0 +1,7 @@
+def check_one_row_per_unit_trial(ctx: ValidationContext) -> None:
+    pair_counts = ctx.responses.groupby(['unit_id', 'trial_index'], sort=False).size()
+    dup_pairs = pair_counts[pair_counts > 1]
+    if not dup_pairs.empty:
+        (bad_unit, bad_trial), count = (dup_pairs.index[0], int(dup_pairs.iloc[0]))
+        msg = f"{count} rows for trial {int(bad_trial)} on unit '{bad_unit}', requires 1."
+        raise ContractViolation(Requirement.MD5, msg, found=count, required=1)

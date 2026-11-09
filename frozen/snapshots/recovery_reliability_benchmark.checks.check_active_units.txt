@@ -1,0 +1,8 @@
+def check_active_units(ctx: ValidationContext) -> None:
+    if not ctx.conditions_info:
+        raise RuntimeError('check_active_units requires check_trials_per_condition to have run; CHECKS order guarantees this')
+    eval_conds = [c for c, info in ctx.conditions_info.items() if info['n_trials'] >= contract.MD2_MUST]
+    best_eval_cond = max(eval_conds, key=lambda c: ctx.conditions_info[c]['n_units_active'])
+    if (max_active := ctx.conditions_info[best_eval_cond]['n_units_active']) < contract.MD3_MUST:
+        msg = f"At most {max_active} units active in every trial of any condition with enough trials (condition '{best_eval_cond}'), requires {contract.MD3_MUST}."
+        raise ContractViolation(Requirement.MD3, msg, found=max_active, required=contract.MD3_MUST)

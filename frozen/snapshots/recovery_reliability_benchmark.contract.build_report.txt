@@ -1,0 +1,25 @@
+@frozen('SPEC conformance levels')
+def build_report(ctx: ValidationContext) -> dict[str, Any]:
+    conditions_info = ctx.conditions_info
+    evaluated_conditions = sorted((c for c, info in conditions_info.items() if info['n_trials'] >= MD2_MUST and info['n_units_active'] >= MD3_MUST))
+    n_units_active = max((conditions_info[c]['n_units_active'] for c in evaluated_conditions))
+    min_inter_stimulus_s = float(min(ctx.gaps_s))
+    evaluated_set = set(evaluated_conditions)
+    for cond, info in conditions_info.items():
+        if cond in evaluated_set:
+            failed: list[str] = []
+            if info['n_trials'] < MD2_SHOULD:
+                failed.append(Requirement.MD2.value)
+            if info['n_units_active'] < MD3_SHOULD:
+                failed.append(Requirement.MD3.value)
+            info['should_failed'] = failed
+        else:
+            info['should_failed'] = None
+    best_condition = min(evaluated_conditions, key=lambda c: (len(conditions_info[c]['should_failed']), -conditions_info[c]['n_units_active'], -conditions_info[c]['n_trials'], c))
+    should_failed = list(conditions_info[best_condition]['should_failed'])
+    conformance = FULLY_CONFORMING if not should_failed else CONFORMING
+    cond_meta = {label: {'fingerprint': cond.fingerprint, **cond.model_dump(exclude={'protocol'})} for label, cond in ctx.conditions.items()} if ctx.conditions is not None else None
+    metadata = {'preparation': ctx.preparation.model_dump() if ctx.preparation is not None else None, 'conditions': cond_meta, 'n_spikes': int(len(ctx.spikes)) if ctx.spikes is not None else None}
+    declared_exclusions = {'units': sum((1 for e in ctx.preparation.exclusions if e.kind == 'unit')) if ctx.preparation else 0, 'trials': sum((1 for e in ctx.preparation.exclusions if e.kind == 'trial')) if ctx.preparation else 0}
+    inclusion = {'rule': INCLUSION_RULE, 'per_condition': {cond: {'n_units_in_tables': info['n_units_in_tables'], 'n_units_included': info['n_units_active'], 'n_units_excluded_by_rule': info['n_units_excluded_by_rule'], 'n_rows_missing': info['n_rows_missing'], 'n_trials': info['n_trials']} for cond, info in conditions_info.items()}, 'declared': declared_exclusions}
+    return {'spec_version': SPEC_VERSION, 'n_preparations': int(ctx.units['preparation_id'].nunique()), 'n_sessions': int(ctx.units['session_id'].nunique()), 'n_recordings': int(ctx.units['recording_id'].nunique()), 'n_units': int(len(ctx.units)), 'n_units_active': int(n_units_active), 'n_conditions': int(ctx.responses['condition'].nunique()), 'n_trials': int(ctx.responses['trial_index'].nunique()), 'trials_per_unit_condition': float(ctx.responses.groupby(['unit_id', 'condition']).size().median()), 'conditions': conditions_info, 'evaluated_conditions': evaluated_conditions, 'best_condition': best_condition, 'should_failed': should_failed, 'conformance': conformance, 'post_stim_window_s': float(ctx.post_stim_window_s), 'load_duration_s': float(ctx.load_duration_s), 'min_inter_stimulus_s': min_inter_stimulus_s, 'inclusion': inclusion, 'metadata': metadata}

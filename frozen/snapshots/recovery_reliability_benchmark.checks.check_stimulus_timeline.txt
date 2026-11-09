@@ -1,0 +1,28 @@
+def check_stimulus_timeline(ctx: ValidationContext) -> None:
+    null_stim = int(ctx.responses['stim_time_ns'].isna().sum())
+    if null_stim > 0:
+        msg = f'{null_stim} responses rows have a null stim_time_ns, requires 0.'
+        raise ContractViolation(Requirement.MD4, msg, found=null_stim, required=0)
+    by_trial = ctx.responses.groupby('trial_index')
+    bad_cond = by_trial['condition'].nunique(dropna=False).loc[lambda s: s != 1]
+    if not bad_cond.empty:
+        trial_idx, n_cond = (int(bad_cond.index[0]), int(bad_cond.iloc[0]))
+        trial_rows = ctx.responses[ctx.responses['trial_index'] == trial_idx]
+        vals = ', '.join((f"'{v}'" for v in sorted(trial_rows['condition'].astype(str).unique())))
+        msg = f'trial_index {trial_idx} has {n_cond} distinct condition values ({vals}), requires 1.'
+        raise ContractViolation(Requirement.MD4, msg, found=n_cond, required=1)
+    bad_time = by_trial['stim_time_ns'].nunique().loc[lambda s: s != 1]
+    if not bad_time.empty:
+        trial_idx, n_times = (int(bad_time.index[0]), int(bad_time.iloc[0]))
+        msg = f'trial_index {trial_idx} has {n_times} distinct stim_time_ns values, requires 1.'
+        raise ContractViolation(Requirement.MD4, msg, found=n_times, required=1)
+    cols = ['trial_index', 'condition', 'stim_time_ns']
+    ctx.trials = ctx.responses[cols].drop_duplicates().sort_values('trial_index').reset_index(drop=True)
+    for cond, cond_trials in ctx.trials.groupby('condition', sort=False):
+        prev_trial, prev_time = (None, None)
+        for row in cond_trials.itertuples(index=False):
+            curr_trial, curr_time = (int(row.trial_index), int(row.stim_time_ns))
+            if prev_time is not None and curr_time <= prev_time:
+                msg = f"stim_time_ns is not strictly increasing within condition '{cond}': trial {curr_trial} at {curr_time} ns does not exceed trial {prev_trial} at {prev_time} ns."
+                raise ContractViolation(Requirement.MD4, msg, found=curr_time, required=prev_time)
+            prev_trial, prev_time = (curr_trial, curr_time)

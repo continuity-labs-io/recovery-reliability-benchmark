@@ -1,0 +1,7 @@
+@frozen('METHOD independence accounting')
+def census(validate_result: dict[str, Any]) -> dict[str, Any]:
+    evaluated_conditions = list(validate_result['evaluated_conditions'])
+    inc = validate_result['inclusion']
+    units_in_tables = int(validate_result['n_units'])
+    units_included = int(max((inc['per_condition'][c]['n_units_included'] for c in evaluated_conditions)))
+    return {'preparations': int(validate_result['n_preparations']), 'sessions': int(validate_result['n_sessions']), 'recordings': int(validate_result['n_recordings']), 'units': int(validate_result['n_units']), 'units_active': int(validate_result['n_units_active']), 'units_in_tables': units_in_tables, 'units_included': units_included, 'units_excluded_by_rule': units_in_tables - units_included, 'rows_missing': int(sum((inc['per_condition'][c]['n_rows_missing'] for c in evaluated_conditions))), 'declared_exclusions': dict(inc['declared']), 'conditions': int(validate_result['n_conditions']), 'evaluated_conditions': evaluated_conditions, 'trials': int(validate_result['n_trials']), 'trials_per_unit_condition': float(validate_result['trials_per_unit_condition'])}

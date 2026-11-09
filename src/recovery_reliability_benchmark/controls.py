@@ -10,7 +10,22 @@ import pandas as pd
 from . import evaluate
 from .contract import validate
 from .evaluate import reliability_ceiling, split_halves
+from .frozen import freeze_constant, frozen
 from .synthetic import make_tables
+
+POSITIVE_CONTROL_UNITS = 1000
+POSITIVE_CONTROL_TRIALS = 20
+POSITIVE_CONTROL_RELIABILITY = 0.85
+POSITIVE_CONTROL_TOLERANCE = 0.05
+DEFAULT_N_PERM = 1000
+for _const, _ref in (
+    ("POSITIVE_CONTROL_UNITS", "METHOD positive control"),
+    ("POSITIVE_CONTROL_TRIALS", "METHOD positive control"),
+    ("POSITIVE_CONTROL_RELIABILITY", "METHOD positive control"),
+    ("POSITIVE_CONTROL_TOLERANCE", "METHOD positive control"),
+    ("DEFAULT_N_PERM", "METHOD null"),
+):
+    freeze_constant(__name__, _const, _ref)
 
 
 # Algorithm: within each condition, draw a random permutation of that
@@ -20,6 +35,7 @@ from .synthetic import make_tables
 # n_perm times. Pairings never cross conditions. This is a stratified pairing
 # permutation, the same null scipy.stats.permutation_test(permutation_type="pairings")
 # computes for a single stratum.
+@frozen("METHOD null")
 def permutation_null(
     halves: pd.DataFrame,
     measure: str,
@@ -87,12 +103,13 @@ def permutation_null(
     }
 
 
+@frozen("METHOD positive control")
 def positive_control(
-    reliability: float = 0.85,
-    n_units: int = 1000,
-    n_trials: int = 20,
+    reliability: float = POSITIVE_CONTROL_RELIABILITY,
+    n_units: int = POSITIVE_CONTROL_UNITS,
+    n_trials: int = POSITIVE_CONTROL_TRIALS,
     seed: int = 42,
-    tolerance: float = 0.05,
+    tolerance: float = POSITIVE_CONTROL_TOLERANCE,
 ) -> dict[str, Any]:
     """Run the synthetic positive control through validate, split_halves, and reliability_ceiling.
 
@@ -134,6 +151,7 @@ def positive_control(
     }
 
 
+@frozen("METHOD independence accounting")
 def census(validate_result: dict[str, Any]) -> dict[str, Any]:
     """Extract the independence-accounting census from validate()'s return dict.
 

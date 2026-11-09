@@ -1,0 +1,8 @@
+def check_measures_vary_within_groups(ctx: ValidationContext) -> None:
+    g = ctx.responses.groupby(['unit_id', 'condition'], sort=False, dropna=False)
+    for measure in ctx.measures:
+        nun, cnt = (g[measure].nunique(), g[measure].count())
+        eligible = cnt >= 2
+        if eligible.any() and (nun[eligible] <= 1).all():
+            msg = f"measure '{measure}' is constant within every (unit_id, condition) group and carries no trial-to-trial information, requires variation in at least one group."
+            raise ContractViolation(Requirement.SCHEMA, msg)

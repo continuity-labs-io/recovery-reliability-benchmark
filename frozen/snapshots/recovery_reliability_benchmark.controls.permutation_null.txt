@@ -1,0 +1,27 @@
+@frozen('METHOD null')
+def permutation_null(halves: pd.DataFrame, measure: str, center: bool, n_perm: int, rng: np.random.Generator) -> dict[str, Any]:
+    if not isinstance(rng, np.random.Generator):
+        raise TypeError(f'rng must be a numpy.random.Generator, got {type(rng).__name__}.')
+    present_measures = [col.removesuffix('_even') for col in halves.columns if col.endswith('_even') and col != 'n_even']
+    moved_cols = [f'{m}_even' for m in present_measures]
+    if 'n_even' in halves.columns:
+        moved_cols.append('n_even')
+    assert len(present_measures) > 0 and len(moved_cols) > 0, "halves must contain at least one '<measure>_even' column."
+    observed = evaluate.reliability_ceiling(halves, measure, center)['rho']
+    even_arrays = {col: halves[col].to_numpy(copy=True) for col in moved_cols}
+    cond_level = 'condition' if 'condition' in halves.index.names else 1
+    cond_vals = halves.index.get_level_values(cond_level)
+    cond_groups = [np.flatnonzero(cond_vals == c) for c in cond_vals.unique()]
+    perm_idx = np.empty(len(halves), dtype=int)
+    rhos = np.empty(n_perm, dtype=float)
+    rs = np.empty(n_perm, dtype=float)
+    permuted = halves.copy()
+    for i in range(n_perm):
+        for grp in cond_groups:
+            perm_idx[grp] = rng.permutation(grp)
+        for col, arr in even_arrays.items():
+            permuted[col] = arr[perm_idx]
+        res = evaluate.reliability_ceiling(permuted, measure, center)
+        rhos[i] = res['rho']
+        rs[i] = res['r_half']
+    return {'median_rho': float(np.nanmedian(rhos)), 'p95_rho': float(np.nanpercentile(rhos, 95)), 'median_r': float(np.nanmedian(rs)), 'p95_r': float(np.nanpercentile(rs, 95)), 'frac_rho_ge_observed': float(np.mean(rhos >= observed)), 'n_perm': int(n_perm)}

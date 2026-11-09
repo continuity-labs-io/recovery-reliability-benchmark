@@ -1,0 +1,5 @@
+@frozen('METHOD headline rule')
+def headline(evaluated_conditions: Sequence[str], best_condition: str, per_condition: dict[str, dict[str, Any]], pooled: dict[str, dict[str, Any]]) -> tuple[dict[str, Any], str]:
+    if len(evaluated_conditions) >= 2:
+        return ({**pooled['centered'], 'variance': per_condition[best_condition]['variance']}, 'pooled_centered')
+    return (per_condition[best_condition], 'per_condition')

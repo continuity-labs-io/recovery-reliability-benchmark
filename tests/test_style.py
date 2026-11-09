@@ -24,6 +24,7 @@ PACKAGE_MODULES = (
     "metadata",
     "synthetic",
     "thresholds",
+    "frozen",
 )
 
 

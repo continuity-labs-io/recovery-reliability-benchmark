@@ -10,7 +10,7 @@ import pandas as pd
 
 from . import controls
 from .contract import SPEC_VERSION, validate
-from .evaluate import reliability_ceiling, split_halves, variance_components
+from .evaluate import headline, reliability_ceiling, split_halves, variance_components
 
 if TYPE_CHECKING:
     from .metadata import Condition, Preparation
@@ -74,10 +74,14 @@ def run(
         "split_mode": "odd_even",
     }
 
+    from . import __version__
+
     pc = controls.positive_control(reliability=injected_r, tolerance=tolerance, seed=seed)
     if not pc["passed"]:
         return {
             "status": "positive_control_failed",
+            "spec_version": SPEC_VERSION,
+            "package_version": __version__,
             "positive_control": pc,
             "census": census_dict,
             "inclusion": val["inclusion"],
@@ -102,19 +106,11 @@ def run(
             "uncentered": reliability_ceiling(halves, m, False),
             "centered": reliability_ceiling(halves, m, True),
         }
-        if len(evaluated_conditions) >= 2:
-            headline = {
-                **pooled["centered"],
-                "variance": per_cond[best_condition]["variance"],
-            }
-            headline_kind = "pooled_centered"
-            headline_frame = halves
-            headline_center = True
-        else:
-            headline = per_cond[best_condition]
-            headline_kind = "per_condition"
-            headline_frame = halves[cond_level == best_condition]
-            headline_center = False
+        headline_val, headline_kind = headline(evaluated_conditions, best_condition, per_cond, pooled)
+        headline_frame = (
+            halves if headline_kind == "pooled_centered" else halves[cond_level == best_condition]
+        )
+        headline_center = headline_kind == "pooled_centered"
 
         null = controls.permutation_null(
             headline_frame,
@@ -124,14 +120,12 @@ def run(
             rng=np.random.default_rng(seed),
         )
         measures_out[m] = {
-            "headline": headline,
+            "headline": headline_val,
             "headline_kind": headline_kind,
             "per_condition": per_cond,
             "pooled": pooled,
             "null": null,
         }
-
-    from . import __version__
 
     return {
         "status": "ok",

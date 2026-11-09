@@ -1,0 +1,108 @@
+{
+  "version": "0.1.0",
+  "python": "3.13",
+  "functions": {
+    "recovery_reliability_benchmark.checks.check_active_units": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_active_units.txt",
+      "sha256": "615e60cc9d5ca0206d590e7e8dffa7e6398a3d913867534b980c4f598108f6c8"
+    },
+    "recovery_reliability_benchmark.checks.check_identifiers": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_identifiers.txt",
+      "sha256": "cd059c6878c6078ceaad686f72aed323c0f77415c112f4b8a86ede2c01eac068"
+    },
+    "recovery_reliability_benchmark.checks.check_measures_allowed_and_numeric": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_measures_allowed_and_numeric.txt",
+      "sha256": "e9016c7baaac6bbd3a1709acc232ab4d620487554a35c2af312256123865168c"
+    },
+    "recovery_reliability_benchmark.checks.check_measures_vary_within_groups": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_measures_vary_within_groups.txt",
+      "sha256": "78510b0027d333c15f3d8c66890227d448eca4fb51f36139c150a636e669f944"
+    },
+    "recovery_reliability_benchmark.checks.check_one_row_per_unit_trial": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_one_row_per_unit_trial.txt",
+      "sha256": "f8c9b875513525e4a0b35924baa6808638dbfe7952b262037d3e933f9b5f6076"
+    },
+    "recovery_reliability_benchmark.checks.check_post_stimulus_window": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_post_stimulus_window.txt",
+      "sha256": "3a8d75a750bc05eb1ba6a522372a43056b6185e996a3087c12ff8b2f3ef60a82"
+    },
+    "recovery_reliability_benchmark.checks.check_required_columns": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_required_columns.txt",
+      "sha256": "d3fe25231885fc76f88dde1755dbe1b7e37278e02d71b15035ed1a5073d8e2cd"
+    },
+    "recovery_reliability_benchmark.checks.check_sidecars": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_sidecars.txt",
+      "sha256": "a521a100923929f24796b6afd7d60820c9d4ed601444134374ccc5250802121a"
+    },
+    "recovery_reliability_benchmark.checks.check_single_session": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_single_session.txt",
+      "sha256": "615a75e34d258a637ddb8af450b4fc0381aa4699fa8989223725f29fa019fb53"
+    },
+    "recovery_reliability_benchmark.checks.check_stimulus_timeline": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_stimulus_timeline.txt",
+      "sha256": "0508303861c301b0fd5dd80ec5cc3bbcbc6de604cc57f6c5d27bfb24b8d1ceec"
+    },
+    "recovery_reliability_benchmark.checks.check_trials_per_condition": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_trials_per_condition.txt",
+      "sha256": "f8caf17d18c66a79b314055cfa8f29b521b4e7c74bce5414067f263af986f6c8"
+    },
+    "recovery_reliability_benchmark.contract.build_report": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.contract.build_report.txt",
+      "sha256": "4f2a4bb960a57554021e8bf0366b7486ae278136672bd54fd79a81c4a0fcfbb0"
+    },
+    "recovery_reliability_benchmark.contract.validate": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.contract.validate.txt",
+      "sha256": "f05436b6089672be9875434d5adf1035ed8cb07682e4864da37ba8c96df9859c"
+    },
+    "recovery_reliability_benchmark.controls.census": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.controls.census.txt",
+      "sha256": "9a40e6f1f320fb1f75d97d3d7d371833a5a5c9c41264b8773402df2db7bf124c"
+    },
+    "recovery_reliability_benchmark.controls.permutation_null": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.controls.permutation_null.txt",
+      "sha256": "5f8a42710b68292d0e15b72cc6b890dab117aa668af40315a706a27bb0da8fe1"
+    },
+    "recovery_reliability_benchmark.controls.positive_control": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.controls.positive_control.txt",
+      "sha256": "70db67ec1054a6cf032e8e1e209c2d96674bc9c6d500d1e5197a4488c839dc94"
+    },
+    "recovery_reliability_benchmark.evaluate.headline": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.evaluate.headline.txt",
+      "sha256": "5b398566390bf47dc144584428df95435699d6a31996815113cc4cff25a91629"
+    },
+    "recovery_reliability_benchmark.evaluate.reliability_ceiling": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.evaluate.reliability_ceiling.txt",
+      "sha256": "4c3c445829213b4777a01bb295125c555839fe7249083118dc15303a4c4d1182"
+    },
+    "recovery_reliability_benchmark.evaluate.split_halves": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.evaluate.split_halves.txt",
+      "sha256": "a20b416f2cb69b6b4ce22426e2dc91b29b28e1f78b6392e96a63ce4127c5ae1d"
+    },
+    "recovery_reliability_benchmark.evaluate.variance_components": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.evaluate.variance_components.txt",
+      "sha256": "815df09760c149c33edabeb14c25025267b105443f65f2616621020b899d44ea"
+    },
+    "recovery_reliability_benchmark.protocol.Protocol.fingerprint": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.protocol.Protocol.fingerprint.txt",
+      "sha256": "284e903ca520215f2bb10c3961746292042671538876a9a8b29b2b0621938068"
+    },
+    "recovery_reliability_benchmark.synthetic.make_tables": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.synthetic.make_tables.txt",
+      "sha256": "814c093cdfd8222ab85e3761b64d575846b00498575e0af88a12bc2ac1365488"
+    }
+  },
+  "constants": {
+    "recovery_reliability_benchmark.contract.MD2_MUST": 10,
+    "recovery_reliability_benchmark.contract.MD2_SHOULD": 20,
+    "recovery_reliability_benchmark.contract.MD3_MUST": 8,
+    "recovery_reliability_benchmark.contract.MD3_SHOULD": 30,
+    "recovery_reliability_benchmark.contract.MD6_MUST": 2.0,
+    "recovery_reliability_benchmark.controls.DEFAULT_N_PERM": 1000,
+    "recovery_reliability_benchmark.controls.POSITIVE_CONTROL_RELIABILITY": 0.85,
+    "recovery_reliability_benchmark.controls.POSITIVE_CONTROL_TOLERANCE": 0.05,
+    "recovery_reliability_benchmark.controls.POSITIVE_CONTROL_TRIALS": 20,
+    "recovery_reliability_benchmark.controls.POSITIVE_CONTROL_UNITS": 1000,
+    "recovery_reliability_benchmark.evaluate.DEFAULT_CONFIDENCE": 0.95,
+    "recovery_reliability_benchmark.evaluate.REFERENCE_N_TRIALS": 20
+  }
+}

@@ -7,7 +7,10 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
+from .frozen import frozen
 
+
+@frozen("METHOD positive control generator")
 def make_tables(
     n_units: int = 8,
     n_trials: int = 10,

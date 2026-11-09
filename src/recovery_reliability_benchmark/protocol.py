@@ -1,10 +1,9 @@
 """Commanded stimulation protocol schema for the Recovery Reliability Benchmark.
 
 This schema describes the commanded stimulation protocol so two labs can assert they delivered the
-same conditioning load. It does not describe the delivered dose at the tissue, which also depends on
-electrode count, impedance and return configuration.
-Timing convention: an interval is onset-to-onset; a gap is end-to-onset. intra_burst_frequency_hz
-and inter_burst_interval_ms are intervals; inter_train_gap_s is a gap.
+same conditioning load (not the delivered dose at the tissue, which depends on impedance and geometry).
+Timing: an interval is onset-to-onset (`intra_burst_frequency_hz`, `inter_burst_interval_ms`);
+a gap is end-to-onset (`inter_train_gap_s`).
 """
 
 from __future__ import annotations
@@ -15,15 +14,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .frozen import register
+
 CHARGE_BALANCE_REL_TOL = 1e-6
 
 
 class Pulse(BaseModel):
     """Single stimulation pulse waveform parameters.
 
-    In current mode, biphasic pulses are checked for charge balance between phase 1 and phase 2.
-    Delivered charge in voltage mode depends on electrode impedance and is not known from the
-    protocol, so no charge balance check is performed in voltage mode.
+    In current mode, biphasic pulses are checked for charge balance between phase 1 and phase 2;
+    in voltage mode delivered charge depends on impedance and is not checked.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -217,10 +217,7 @@ class Train(BaseModel):
 
 
 class Protocol(BaseModel):
-    """Complete commanded stimulation protocol consisting of one or more trains.
-
-    Pass ``total_duration_s`` as ``load_duration_s`` to ``contract.validate()``.
-    """
+    """Complete commanded stimulation protocol consisting of one or more trains."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -295,3 +292,6 @@ class Protocol(BaseModel):
         return cls(
             name="theta_burst", train=train, trains_per_protocol=trains, inter_train_gap_s=inter_train_gap_s
         )
+
+
+register(Protocol.fingerprint, "SPEC conditions.json fingerprint")
