@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 - Zenodo DOIs recorded: concept 10.5281/zenodo.24020731, v0.1.0 10.5281/zenodo.24020732.
+- measures.py: PSTH recovery measures from spike times (t_peak, peak_rate, t_half_peak, t_return, residual, overshoot, baseline variance), pure functions; synthetic spike-train generator; not yet wired into rrb-evaluate.
 
 ## [0.1.0] - 2026-11-06
 

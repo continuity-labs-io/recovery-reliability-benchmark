@@ -40,9 +40,13 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Load duration (`load_duration_s`).** The length of the conditioning load itself. When declared, the post-stimulus window is required after the load ends rather than after its onset, which only tightens min-dataset-6. Equal to `Protocol.total_duration_s`.
 
+**Time zero (load end).** The reference timestamp `onset + load_duration_s` for post-stimulus latencies on each trial; spikes occurring during the conditioning load (`onset <= t < onset + load_duration_s`) are not latencies. `measures.trial_latencies`.
+
 **Inter-stimulus interval.** Onset-to-onset time between consecutive stimuli. `min_inter_stimulus_s` in the conformance report is the smallest one in the dataset.
 
-**Baseline.** The pre-load level of the response variable (for example firing rate) that recovery is measured against. Needs a pre-stimulus window, which the contract does not check yet; see Phase 2 in the plan.
+**Baseline.** The pre-load level of the response variable (for example firing rate) that recovery is measured against, computed over the pre-stimulus window `measures.AnalysisParams.pre_stim_window_s`, 1.0 s default (`measures.baseline_hz`).
+
+**Baseline variance (`baseline_variance_hz2`).** Sample variance (`ddof=1`, in Hz²) across trials of a unit's pre-stimulus firing rate (`pre_counts / pre_stim_window_s`); `NaN` when fewer than two trials are present. `measures.baseline_variance_hz2`.
 
 **Drift.** Slow change in a preparation's state across a session. Odd/even splitting exposes both halves to drift equally, which is why it is the default split.
 
@@ -84,7 +88,11 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **PSTH (peri-stimulus time histogram).** Spike counts in time bins after stimulus onset, pooled over a set of trials and divided by trial count and bin width to give a rate. The pilot's recovery measures are read off a PSTH, not off single trials. `gate1.measures()`.
 
-**PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time: `t_return` (time the rate last exceeds a multiple of baseline), `t_half_peak` (time from the peak bin to half the peak), `residual` (rate over the last part of the window as a multiple of baseline), `peak_rate`, `t_peak`. These need the per-trial rows to carry binned counts so the half's PSTH can be built; that is the v0.2.0 extension.
+**PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time, computed by `measures.recovery_measures`: `t_peak` (bin center of the maximum rate), `peak_rate` (that maximum), `t_half_peak` (first bin center after the peak bin with rate at or below `baseline + half_peak_frac * (peak_rate - baseline)`), `t_return` (right edge of the last bin exceeding `return_x_baseline * baseline`), `residual` (mean rate over bins whose center is at least `post_stim_window_s - residual_s`, divided by baseline), and `overshoot`. Unresolved recovery inside the window is censored at `post_stim_window_s` with `t_half_peak_censored` or `t_return_censored` (never `NaN`); if no bin exceeds threshold, `t_return` is `0.0` with `no_response`. When baseline is `0.0`, `t_return`, `residual`, and `overshoot` are `NaN` with `baseline_zero` set while `t_peak`, `peak_rate`, and `t_half_peak` are still computed.
+
+**Overshoot.** Largest downward excursion of the post-stimulus PSTH rate below baseline after `t_return`, computed as `(baseline - min_rate_after_t_return) / baseline` floored at `0.0`; `NaN` with `overshoot_undefined` when `t_return` is censored, no bin follows `t_return`, or baseline is zero. `measures.recovery_measures`.
+
+**Analysis parameters (`measures.AnalysisParams`).** The frozen dataclass holding the PSTH and recovery-measure parameters (`post_stim_window_s`, `pre_stim_window_s`, `load_duration_s`, `bin_edges_s`, `return_x_baseline`, `half_peak_frac`, `residual_s`) and its SHA-256 JSON `fingerprint()`. `measures.py`.
 
 **Bin edges.** The boundaries of the PSTH time bins, log-spaced in the pilot so that early fast dynamics and late slow return are both resolved. A declared analysis parameter, recorded in the report.
 

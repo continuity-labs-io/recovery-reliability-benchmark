@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from .frozen import frozen
+
+if TYPE_CHECKING:
+    from .measures import AnalysisParams
 
 
 @frozen("METHOD positive control generator")
@@ -104,3 +108,92 @@ def make_tables(
             responses[measure] = np.repeat(t_true, rows_per_unit) + trial_offsets + err
 
     return units, responses
+
+
+def exponential_recovery(
+    baseline_hz: float,
+    peak_hz: float,
+    tau_s: float,
+    dip_hz: float = 0.0,
+    dip_s: float = 0.0,
+) -> Callable[[np.ndarray], np.ndarray]:
+    """Build a synthetic post-stimulus firing-rate curve ``rate(t_s)`` in Hz.
+
+    Evaluates ``baseline_hz + peak_hz * exp(-t / tau_s)`` for ``t >= 0``, subtracts
+    ``dip_hz`` on ``3 * tau_s <= t < 3 * tau_s + dip_s``, and floors at ``0.0``.
+
+    Args:
+        baseline_hz: Asymptotic resting firing rate in Hz.
+        peak_hz: Peak elevation above baseline at ``t = 0`` in Hz.
+        tau_s: Exponential recovery time constant in seconds.
+        dip_hz: Downward dip amplitude in Hz subtracted during the dip window.
+        dip_s: Duration of the post-recovery dip window in seconds starting at ``3 * tau_s``.
+
+    Returns:
+        Callable mapping a 1D array of latencies ``t_s`` (seconds) to firing rates (Hz).
+    """
+
+    def _rate(t_s: np.ndarray) -> np.ndarray:
+        t = np.asarray(t_s, dtype=float)
+        rate = np.where(t >= 0.0, baseline_hz + peak_hz * np.exp(-np.maximum(t, 0.0) / tau_s), baseline_hz)
+        if dip_hz != 0.0 and dip_s > 0.0:
+            in_dip = (t >= 3.0 * tau_s) & (t < 3.0 * tau_s + dip_s)
+            rate = np.where(in_dip, rate - dip_hz, rate)
+        return np.maximum(rate, 0.0)
+
+    return _rate
+
+
+def make_spike_trains(
+    rate_fns: Sequence[Callable[[np.ndarray], np.ndarray]],
+    n_trials: int,
+    params: AnalysisParams,
+    isi_s: float,
+    seed: int,
+) -> tuple[list[np.ndarray], np.ndarray]:
+    """Generate inhomogeneous Poisson spike trains on a 1 ms grid for multiple units.
+
+    Stimulus onsets are placed at ``isi_s * (k + 1)`` for ``k in range(n_trials)``.
+    Within each post-stimulus window ``[onset + load_duration_s, onset + load_duration_s +
+    post_stim_window_s)``, the unit's rate is ``rate_fn(latency)``; elsewhere it equals
+    ``rate_fn(np.array([1e9]))``.
+
+    Args:
+        rate_fns: Sequence of per-unit rate functions ``rate_fn(latency_s) -> rate_hz``.
+        n_trials: Number of stimulus trials to simulate.
+        params: Analysis parameters defining load duration and post-stimulus window.
+        isi_s: Inter-stimulus interval in seconds between consecutive trial onsets.
+        seed: Random seed passed to ``numpy.random.default_rng``.
+
+    Returns:
+        Tuple of ``(spike_trains, onsets_s)`` where ``spike_trains`` is a list of sorted
+        1D float64 spike-timestamp arrays (one per unit) and ``onsets_s`` is the 1D
+        float64 array of trial onset times in seconds.
+    """
+    rng = np.random.default_rng(seed)
+    dt = 0.001
+    onsets = np.asarray([isi_s * (k + 1) for k in range(n_trials)], dtype=float)
+    t_end = float(onsets[-1]) + params.load_duration_s + params.post_stim_window_s + 1.0
+    n_steps = int(np.round(t_end / dt))
+    grid_t = np.arange(n_steps, dtype=float) * dt
+
+    win_slices: list[tuple[int, int, np.ndarray]] = []
+    for onset in onsets:
+        t0 = float(onset) + params.load_duration_s
+        i0 = int(np.searchsorted(grid_t, t0, side="left"))
+        i1 = int(np.searchsorted(grid_t, t0 + params.post_stim_window_s, side="left"))
+        win_slices.append((i0, i1, grid_t[i0:i1] - t0))
+
+    trains: list[np.ndarray] = []
+    for rate_fn in rate_fns:
+        base_rate = float(np.asarray(rate_fn(np.array([1e9], dtype=float)), dtype=float)[0])
+        rate = np.full(n_steps, base_rate, dtype=float)
+        for i0, i1, lat in win_slices:
+            rate[i0:i1] = rate_fn(lat)
+        counts = rng.poisson(np.maximum(rate, 0.0) * dt)
+        nonzero = np.flatnonzero(counts)
+        step_idx = np.repeat(nonzero, counts[nonzero])
+        spikes = np.sort(grid_t[step_idx] + rng.uniform(0.0, dt, size=len(step_idx)))
+        trains.append(np.asarray(spikes, dtype=float))
+
+    return trains, onsets

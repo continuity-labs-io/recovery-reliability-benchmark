@@ -25,6 +25,7 @@ PACKAGE_MODULES = (
     "synthetic",
     "thresholds",
     "frozen",
+    "measures",
 )
 
 
