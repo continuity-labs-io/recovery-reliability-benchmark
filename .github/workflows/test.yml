@@ -35,8 +35,8 @@ jobs:
       - run: python -c "import json; r=json.load(open('report.json')); assert r['status']=='fully_conforming', r['status']"
       - run: rrb-evaluate examples/units.csv examples/responses.csv --measures tau,amplitude --post-stim-window-s 2.0 --n-perm 100 --json > evaluate.json
       - run: python -c "import json; r=json.load(open('evaluate.json')); assert r['status']=='ok', r['status']"
-      - run: rrb-check examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_return,t_half_peak,peak_rate,spikes_per_trial
-      - run: rrb-evaluate examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_return,t_half_peak,peak_rate,spikes_per_trial --n-perm 100 --json > evaluate_spikes.json
+      - run: rrb-check examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_half_excess,excess_per_trial,spikes_per_trial
+      - run: rrb-evaluate examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_half_excess,excess_per_trial,spikes_per_trial --n-perm 100 --json > evaluate_spikes.json
       - run: python -c "import json; r=json.load(open('evaluate_spikes.json')); assert r['status']=='ok', r['status']"
 
   frozen-core:

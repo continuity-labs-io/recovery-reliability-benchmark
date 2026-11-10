@@ -8,94 +8,31 @@ baseline; baseline is pooled pre-stimulus counts over the trial set.
 
 from __future__ import annotations
 
-import hashlib
-import json
-from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
-from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 
+from .analysis import DEFAULT_BIN_EDGES_S, FLAG_KEYS, AnalysisParams
+from .excess import excess_measures
+
+__all__ = [
+    "DEFAULT_BIN_EDGES_S",
+    "FLAG_KEYS",
+    "AnalysisParams",
+    "FloatArray",
+    "IntArray",
+    "baseline_hz",
+    "baseline_variance_hz2",
+    "bin_counts",
+    "pre_counts",
+    "psth_rate",
+    "recovery_measures",
+    "trial_latencies",
+    "unit_measures",
+]
+
 FloatArray = Sequence[float] | np.ndarray
 IntArray = Sequence[int] | np.ndarray
-DEFAULT_BIN_EDGES_S: tuple[float, ...] = tuple(float(x) for x in np.round(np.geomspace(0.003, 10.0, 41), 6))
-FLAG_KEYS: tuple[str, ...] = (
-    "t_half_peak_censored",
-    "t_return_censored",
-    "no_response",
-    "overshoot_undefined",
-    "baseline_zero",
-)
-
-
-@dataclass(frozen=True)
-class AnalysisParams:
-    """Parameters governing PSTH construction and recovery-kinetics measures.
-
-    Time zero for every latency is ``onset + load_duration_s``; spikes during the load are not latencies.
-    """
-
-    post_stim_window_s: float
-    pre_stim_window_s: float = 1.0
-    load_duration_s: float = 0.0
-    bin_edges_s: tuple[float, ...] = DEFAULT_BIN_EDGES_S
-    return_x_baseline: float = 1.5
-    half_peak_frac: float = 0.5
-    residual_s: float = 1.0
-
-    def __post_init__(self) -> None:
-        """Validate parameter ranges and coerce bin_edges_s to a tuple of floats."""
-        edges = tuple(float(e) for e in self.bin_edges_s)
-        object.__setattr__(self, "bin_edges_s", edges)
-        if self.post_stim_window_s <= 0.0:
-            raise ValueError(f"post_stim_window_s must be > 0, got {self.post_stim_window_s}.")
-        if self.pre_stim_window_s <= 0.0:
-            raise ValueError(f"pre_stim_window_s must be > 0, got {self.pre_stim_window_s}.")
-        if self.load_duration_s < 0.0:
-            raise ValueError(f"load_duration_s must be >= 0, got {self.load_duration_s}.")
-        if (
-            len(edges) < 2
-            or edges[0] < 0.0
-            or edges[0] >= self.post_stim_window_s
-            or any(b <= a for a, b in zip(edges, edges[1:], strict=False))
-        ):
-            raise ValueError(f"bin_edges_s must be strictly increasing from >= 0, got {self.bin_edges_s}.")
-        if not (0.0 < self.half_peak_frac < 1.0):
-            raise ValueError(f"half_peak_frac must be in (0, 1), got {self.half_peak_frac}.")
-        if self.return_x_baseline <= 1.0:
-            raise ValueError(f"return_x_baseline must be > 1, got {self.return_x_baseline}.")
-        if not (0.0 < self.residual_s <= self.post_stim_window_s):
-            raise ValueError(f"residual_s must be in (0, post_stim_window_s], got {self.residual_s}.")
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize parameters to a JSON-compatible dictionary."""
-        return {**asdict(self), "bin_edges_s": list(self.bin_edges_s)}
-
-    @classmethod
-    def from_dict(cls, d: Mapping[str, Any]) -> AnalysisParams:
-        """Construct an AnalysisParams instance from a dictionary."""
-        kw = dict(d)
-        if "bin_edges_s" in kw:
-            kw["bin_edges_s"] = tuple(float(e) for e in kw["bin_edges_s"])
-        return cls(**kw)
-
-    def fingerprint(self) -> str:
-        """Return the SHA-256 hex digest of ``json.dumps(to_dict(), sort_keys=True)``."""
-        return hashlib.sha256(json.dumps(self.to_dict(), sort_keys=True).encode("utf-8")).hexdigest()
-
-    def effective_edges(self) -> np.ndarray:
-        """Return stored edges below ``post_stim_window_s`` followed by the window end.
-
-        If the gap from the last stored edge below ``post_stim_window_s`` to the window end
-        is less than half the width of the preceding bin, that last edge is dropped before
-        appending the window end: a sliver bin has the fewest spikes and the noisiest rate,
-        and it sits where ``t_return``, ``residual``, and ``overshoot`` are read.
-        """
-        win = float(self.post_stim_window_s)
-        inside = [e for e in self.bin_edges_s if e < win]
-        if len(inside) >= 2 and (win - inside[-1]) < 0.5 * (inside[-1] - inside[-2]):
-            inside.pop()
-        return np.asarray([*inside, win], dtype=float)
 
 
 def trial_latencies(
@@ -270,7 +207,7 @@ def recovery_measures(
 def unit_measures(
     spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams
 ) -> tuple[dict[str, float], dict[str, bool]]:
-    """Run the full PSTH measure chain for one unit over one set of trials.
+    """Run the full PSTH and bin-free measure chain for one unit over one set of trials.
 
     ``spikes_per_trial`` is the mean over trials of ``len(latencies)`` from
     ``trial_latencies``, so every spike in ``[0, post_stim_window_s)`` counts, not
@@ -282,8 +219,9 @@ def unit_measures(
         params: Analysis parameters.
 
     Returns:
-        Tuple of ``(values, flags)`` dictionaries for the unit, including ``baseline_hz``,
-        ``baseline_variance_hz2``, and ``spikes_per_trial`` in ``values``.
+        Tuple of ``(values, flags)`` dictionaries for the unit, including ``t_half_excess``,
+        ``excess_per_trial``, ``baseline_hz``, ``baseline_variance_hz2``, and
+        ``spikes_per_trial`` in ``values`` and ``no_excess`` in ``flags``.
     """
     edges = params.effective_edges()
     pre = pre_counts(spike_times_s, onsets_s, params)
@@ -291,6 +229,9 @@ def unit_measures(
     lats = trial_latencies(spike_times_s, onsets_s, params)
     rate = psth_rate(bin_counts(lats, edges), edges)
     values, flags = recovery_measures(rate, edges, base, params)
+    ex_values, ex_flags = excess_measures(lats, base, params)
+    values.update(ex_values)
+    flags.update(ex_flags)
     values["baseline_hz"] = base
     values["baseline_variance_hz2"] = baseline_variance_hz2(pre, params)
     values["spikes_per_trial"] = (

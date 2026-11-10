@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pytest
 
+from recovery_reliability_benchmark.excess import excess_measures
 from recovery_reliability_benchmark.measures import (
     AnalysisParams,
     baseline_hz,
@@ -23,7 +24,7 @@ from recovery_reliability_benchmark.synthetic import (
     make_spike_trains,
 )
 
-PINNED_DEFAULT_FINGERPRINT_2S = "6104346b680fbaac2f56d1a142bd14454303dc0e60916c1a1778f50808547694"
+PINNED_DEFAULT_FINGERPRINT_2S = "2fe0111e220a4963da320333b9d23b2addb5a716d070c8b6395066e0f5b1c02a"
 
 
 def test_effective_edges_end_at_window() -> None:
@@ -64,6 +65,8 @@ def test_params_validation() -> None:
         AnalysisParams(post_stim_window_s=2.0, return_x_baseline=1.0)
     with pytest.raises(ValueError, match="residual_s"):
         AnalysisParams(post_stim_window_s=2.0, residual_s=2.5)
+    with pytest.raises(ValueError, match="min_excess_z"):
+        AnalysisParams(post_stim_window_s=2.0, min_excess_z=0.0)
 
 
 def test_psth_constant_rate() -> None:
@@ -176,6 +179,9 @@ def test_unit_measures_matches_pieces() -> None:
     counts = bin_counts(lats, edges)
     rate = psth_rate(counts, edges)
     expected_values, expected_flags = recovery_measures(rate, edges, base, params)
+    ex_values, ex_flags = excess_measures(lats, base, params)
+    expected_values.update(ex_values)
+    expected_flags.update(ex_flags)
     expected_values["baseline_hz"] = base
     expected_values["baseline_variance_hz2"] = base_var
     expected_values["spikes_per_trial"] = float(np.mean([len(lat) for lat in lats]))

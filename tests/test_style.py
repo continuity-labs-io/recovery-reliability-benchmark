@@ -25,6 +25,8 @@ PACKAGE_MODULES = (
     "synthetic",
     "thresholds",
     "frozen",
+    "analysis",
+    "excess",
     "measures",
     "spikes",
     "checks_spikes",

@@ -54,20 +54,20 @@ The first line of output is the conformance level (`conforming` or `fully_confor
 
 ### From spikes
 
-When the benchmark computes PSTH recovery measures directly from spike timestamps, pass the three tables (`units.csv`, `trials_responses.csv` carrying the trial columns, and `spikes.csv`) together with `analysis.json`:
+When the benchmark computes recovery measures directly from spike timestamps, pass the three tables (`units.csv`, `trials_responses.csv` carrying the trial columns, and `spikes.csv`) together with `analysis.json`:
 
 ```bash
 # contract conformance check on the spikes path (includes min-dataset-7)
 rrb-check examples/units.csv examples/trials_responses.csv \
 --spikes examples/spikes.csv \
 --analysis examples/analysis.json \
---measures t_return,t_half_peak,peak_rate,spikes_per_trial
+--measures t_half_excess,excess_per_trial,spikes_per_trial
 
 # within-session reliability ceiling evaluator from spikes
 rrb-evaluate examples/units.csv examples/trials_responses.csv \
 --spikes examples/spikes.csv \
 --analysis examples/analysis.json \
---measures t_return,t_half_peak,peak_rate,spikes_per_trial
+--measures t_half_excess,excess_per_trial,spikes_per_trial
 ```
 
 ## Repository layout

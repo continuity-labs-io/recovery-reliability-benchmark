@@ -17,6 +17,8 @@ MEASURE_KEYS: tuple[str, ...] = (
     "t_return",
     "residual",
     "overshoot",
+    "t_half_excess",
+    "excess_per_trial",
     "baseline_hz",
     "baseline_variance_hz2",
     "spikes_per_trial",

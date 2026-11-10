@@ -90,7 +90,15 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **PSTH (peri-stimulus time histogram).** Spike counts in time bins after stimulus onset, pooled over a set of trials and divided by trial count and bin width to give a rate. The pilot's recovery measures are read off a PSTH, not off single trials. `measures.psth_rate`.
 
-**PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time, computed by `measures.recovery_measures`: `t_peak` (bin center of the maximum rate), `peak_rate` (that maximum), `t_half_peak` (first bin center after the peak bin with rate at or below `baseline + half_peak_frac * (peak_rate - baseline)`), `t_return` (right edge of the last bin exceeding `return_x_baseline * baseline`), `residual` (mean rate over bins whose center is at least `post_stim_window_s - residual_s`, divided by baseline), and `overshoot`. Unresolved recovery inside the window is censored at `post_stim_window_s` with `t_half_peak_censored` or `t_return_censored` (never `NaN`); if no bin exceeds threshold, `t_return` is `0.0` with `no_response`. When baseline is `0.0`, `t_return`, `residual`, and `overshoot` are `NaN` with `baseline_zero` set while `t_peak`, `peak_rate`, and `t_half_peak` are still computed.
+**PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time, computed by `measures.recovery_measures`: `t_peak` (bin center of the maximum rate), `peak_rate` (that maximum), `t_half_peak` (first bin center after the peak bin with rate at or below `baseline + half_peak_frac * (peak_rate - baseline)`), `t_return` (right edge of the last bin exceeding `return_x_baseline * baseline`), `residual` (mean rate over bins whose center is at least `post_stim_window_s - residual_s`, divided by baseline), and `overshoot`. Reads single bins, so it needs many spikes per bin; on the synthetic example at 20 trials `peak_rate`, `t_peak` and `t_half_peak` score near zero. Unresolved recovery inside the window is censored at `post_stim_window_s` with `t_half_peak_censored` or `t_return_censored` (never `NaN`); if no bin exceeds threshold, `t_return` is `0.0` with `no_response`. When baseline is `0.0`, `t_return`, `residual`, and `overshoot` are `NaN` with `baseline_zero` set while `t_peak`, `peak_rate`, and `t_half_peak` are still computed.
+
+**Bin-free measure.** A recovery measure built on the running post-stimulus spike count without time bins (`excess.excess_measures`: `t_half_excess` and `excess_per_trial`, plus `spikes_per_trial`), invariant to `bin_edges_s`.
+
+**Excess spikes.** Post-stimulus spikes above the count expected from the pre-stimulus baseline firing rate over the window: `excess_total = N - baseline * n * post_stim_window_s`, where `N` is the pooled post-stimulus spike count across `n` trials in `[0, post_stim_window_s)`. `excess.excess_measures`.
+
+**`t_half_excess`.** Latency of the first pooled post-stimulus spike `k` (`k = 1..N`, sorted across `n` trials) whose running excess count `k - baseline * n * pooled[k - 1]` reaches `0.5 * excess_total`. For an exponential recovery with time constant `tau` and a window much longer than `tau`, `t_half_excess` estimates `tau * ln 2`. `NaN` with flag `no_excess` when `excess_total <= min_excess_z * sqrt(max(N, 1))`. `excess.excess_measures`.
+
+**`excess_per_trial`.** Mean excess post-stimulus spikes per trial over `[0, post_stim_window_s)`, `excess_total / n`. Never `NaN` for `n >= 1`; may be negative. `excess.excess_measures`.
 
 **Overshoot.** Pooled firing-rate deficit below baseline after `t_return`, computed over bins with center `> t_return` as `max(0, (baseline - r_after) / baseline)` where `r_after = sum(rate_i * width_i) / sum(width_i)`; `NaN` with `overshoot_undefined` when `t_return` is censored, no bin follows `t_return`, or baseline is zero. `measures.recovery_measures`.
 
@@ -100,7 +108,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Scored unit.** On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." (`spikes.scored_units`, non-`NaN`); a silent unit has no baseline and is excluded (`checks_spikes.check_scored_units`). SPEC "Inclusion and exclusion".
 
-**Analysis parameters (`measures.AnalysisParams`).** The frozen dataclass holding the PSTH and recovery-measure parameters (`post_stim_window_s`, `pre_stim_window_s`, `load_duration_s`, `bin_edges_s`, `return_x_baseline`, `half_peak_frac`, `residual_s`) and its SHA-256 JSON `fingerprint()`. `measures.py`.
+**Analysis parameters (`measures.AnalysisParams`).** The frozen dataclass holding the PSTH and recovery-measure parameters (`post_stim_window_s`, `pre_stim_window_s`, `load_duration_s`, `bin_edges_s`, `return_x_baseline`, `half_peak_frac`, `residual_s`, `min_excess_z`) and its SHA-256 JSON `fingerprint()`. `analysis.py`; `measures.py`.
 
 **Bin edges.** The boundaries of the PSTH time bins, log-spaced in the pilot so that early fast dynamics and late slow return are both resolved. A declared analysis parameter, recorded in the report.
 
