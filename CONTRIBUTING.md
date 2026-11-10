@@ -10,15 +10,24 @@ This is a statement of how the benchmark operates, not a legal agreement. If you
 
 ---
 
-## 1. What you provide
+## 1. What to send
 
-**One conforming dataset.** Six requirements, verifiable on your own machine before anything is shared. See the [conformance specification](SPEC.md).
+**One conforming dataset.** On the spikes path, the dataset directory written by `writer.write_dataset` (via an adapter built from `scripts/adapter_template.py`): `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json`, checked locally with `rrb-check` and previewed with `rrb-report` before anything is shared (`min-dataset-1` through `min-dataset-7`; see [SPEC.md](SPEC.md)). Pre-computed per-trial measure tables (`units.csv` and `responses.csv`, `min-dataset-1` through `min-dataset-6`) remain accepted for modalities without event timestamps.
 
-**Minimal metadata.** Species or cell source, age or days in vitro, instrument, recording modality, and the stimulus protocol as actually run. Not as planned.
+**Metadata sidecars (`preparation.json` and `conditions.json`).** Species, preparation type, age or days in vitro, anonymized line or donor identifier, instrument, any pre-submission unit or trial exclusions, and the stimulus protocol as actually run (not as planned) with any compound, dose, and vehicle.
 
 **One contact** who can answer questions about how the recording was made.
 
 That is the whole ask. If a dataset does not conform, there is nothing to discuss and no further time is spent.
+
+---
+
+## Protocol advice
+
+- **2.0 s after and 1.0 s before each stimulus.** Record at least 2.0 s after every conditioning load ends (`min-dataset-6`) and leave at least 1.0 s of quiet before every stimulus onset (`min-dataset-7`), including before the first stimulus on the recording clock.
+- **20 or more trials per condition.** Ten trials is the admission floor (`min-dataset-2`); 20 or more trials per condition are recommended, and weak or sparse firing benefits from 40.
+- **The same load on every trial.** Deliver the identical conditioning load on every trial within a condition. When multiple stimulation loads or compounds are run in the same session, give each regime its own condition label.
+- **The protocol recorded in `conditions.json`.** Encode the commanded `Protocol` (`protocol.py`) as actually delivered in `conditions.json`, alongside any compound, dose, and vehicle, so each condition carries a reproducible protocol fingerprint.
 
 ---
 

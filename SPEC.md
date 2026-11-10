@@ -165,9 +165,37 @@ Identifiers are compared as strings. A unit that appears in `responses.csv` MUST
 
 These rules are checks on the container, reported under the name SCHEMA. They are not among the six requirements.
 
-**Evaluating from spikes.** When `rrb-check` or `rrb-evaluate` is invoked with `--spikes` and `--analysis`, `responses.csv` carries the trial columns (`trial_index`, `stim_time_ns`, `condition`), any measure columns in `responses.csv` are ignored, the benchmark computes the requested measures per half from `spikes.csv` under `analysis.json`, and `min-dataset-7` applies.
+**Evaluating from spikes.** When `rrb-check`, `rrb-evaluate`, or `rrb-report` is invoked with `--spikes` and `--analysis`, `responses.csv` carries the trial columns (`trial_index`, `stim_time_ns`, `condition`), any measure columns in `responses.csv` are ignored, the benchmark computes the requested measures per half from `spikes.csv` under `analysis.json`, and `min-dataset-7` applies.
 
 **Reference writer.** `writer.write_dataset` (`src/recovery_reliability_benchmark/writer.py`) is the reference writer for the spikes-path file layout (`units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`), converting seconds on the recording clock to integer nanoseconds with `int(round(t * 1e9))` and ordering `spikes.csv` by `unit_ids` with ascending timestamps.
+
+---
+
+## Measures computed by the benchmark
+
+On the spikes path (`measures.py`, `excess.py`), the benchmark computes the following measures per unit on each half's pooled trials (with window `W = post_stim_window_s` measured from load end `onset + load_duration_s` and baseline rate `b = baseline_hz` measured over `[onset - pre_stim_window_s, onset)`):
+
+| name | one-line definition | status |
+|---|---|---|
+| `t_half_excess` | Smallest post-load time `t` at which cumulative excess spikes reach half of total window excess (`NaN` when excess fails `min_excess_z`) | Lead |
+| `excess_per_trial` | Mean post-load spikes per trial above pre-stimulus baseline expectation over `[0, W)` | Lead |
+| `baseline_hz` | Pooled pre-stimulus firing rate over `[onset - pre_stim_window_s, onset)`, always reported as a comparison row | Reference |
+| `t_return` | Right edge of the last PSTH bin exceeding `return_x_baseline * b` (censored at `W`; `0.0` if none exceed; `NaN` if `b == 0`) | Secondary (histogram bin; needs many spikes per bin) |
+| `t_half_peak` | Center of the first PSTH bin after the peak at or below `b + half_peak_frac * (peak_rate - b)` (censored at `W`) | Secondary (histogram bin; needs many spikes per bin) |
+| `peak_rate` | Maximum PSTH bin firing rate in `[0, W)` | Secondary (histogram bin; needs many spikes per bin) |
+| `t_peak` | Center of the PSTH bin attaining `peak_rate` | Secondary (histogram bin; needs many spikes per bin) |
+| `residual` | Mean PSTH rate over bins with center `>= W - residual_s`, divided by `b` (`NaN` if `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
+| `overshoot` | Pooled relative firing-rate deficit below `b` over bins with center `> t_return` (`NaN` when `t_return` is censored, no bin follows, or `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
+| `spikes_per_trial` | Mean post-load spike count per trial in `[0, W)` | Auxiliary (bin-free) |
+| `baseline_variance_hz2` | Sample variance (`ddof=1`, in Hz²) across trials of per-trial pre-stimulus firing rate | Auxiliary (pre-stimulus) |
+
+The secondary PSTH measures read single histogram bins (or trailing bin subsets) and need many spikes per bin before discretization noise subsides. The lead measure `t_half_excess` acts directly on the sorted post-load spike times across the `n` trials in the half:
+
+    N(t) = spikes over all n trials within t seconds of the load
+    E(t) = N(t) - b * n * t
+    t_half_excess = smallest t with E(t) >= E(W) / 2
+
+When `E(W) <= min_excess_z * sqrt(max(N(W), 1))` (or `b` is `NaN`), `t_half_excess` is `NaN` with flag `no_excess`.
 
 ---
 
@@ -276,6 +304,12 @@ A null measure value means the measure was not computed for that unit and trial,
 ## 16. Scope of conformance
 
 Conformance is necessary, not sufficient. A conforming dataset supports the computation. It does not guarantee that any measure computed from it clears any threshold, and it makes no claim about the tissue.
+
+---
+
+## What conformance guarantees on the spikes path
+
+The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by simulation for per-trial scalar measures (`docs/thresholds.md`); on the spikes path, reliability also depends on how many spikes each unit contributes to each half. From `docs/spikes_path_checks.json` (`t_half_excess`) at 20 trials: strong responses reach 0.97 with 29 of 30 units scored; weak responses reach 0.68 with 21 of 30; sparse firing reaches 0.73 with 20 of 30; at 40 trials the last two reach 0.81. The confidence interval, the shuffled null, and the units-scored counts in the report are the guide; conformance does not promise a narrow interval.
 
 ---
 

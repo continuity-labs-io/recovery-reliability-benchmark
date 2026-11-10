@@ -89,6 +89,12 @@ Ceilings from sessions with different trial counts are compared through `rho_sin
 
 ---
 
+## Split-half on pooled measures
+
+On the spikes path (`spikes.py`), each half's measure is computed once from that half's pooled trials rather than averaged over per-trial estimates, and the Spearman-Brown correction (`2r / (1 + r)`) is applied to the odd-versus-even correlation across units just as on the tables path. Checked against the test-retest correlation between two independent sessions of the same units (`docs/spikes_path_checks.json`): within 0.01 for strong responses on every measure; for weak responses `t_half_excess` reads 0.05 low (0.68 against 0.73 at 20 trials), so the correction errs low for the lead measure; other measures stay within about 0.02.
+
+---
+
 ## 4. Condition-centering
 
 Without centering, variance between conditions inflates the apparent reliability of the measure itself. A measure that only tracks which condition was delivered will produce a high uncentered ceiling while carrying no information about units.
@@ -194,6 +200,8 @@ Summarized as `median_abs_z = median(z_u)`, `frac_beyond_2 = mean(z_u > 2)`, `me
 The ceiling states whether a measure can distinguish a preparation from a repeat of itself within one session. It says nothing about whether the measure repeats across days, responds to an intervention, or relates to any property of the tissue.
 
 A high ceiling means the measure is worth testing further. A low ceiling means a cross-session result computed from that measure is uninterpretable, and that finding arrives before anything is built on top of it.
+
+On the spikes path, a low ceiling can come from too few spikes per unit rather than from the tissue. Sensitivity's per-unit noise estimate has two degrees of freedom, which is why every sensitivity value is printed beside its shuffled null.
 
 ---
 

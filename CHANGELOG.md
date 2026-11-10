@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Docs for the spikes path: measures table, what conformance guarantees, split-half on pooled measures.
 - writer.py: reference dataset writer (write_dataset, read_dataset) and scripts/adapter_template.py.
 - rrb-report: evaluate.json, summary.md and a figure from one command; two-condition example.
 - Sensitivity axis between condition pairs, with a shuffled null; reported for every measure and the reference row.

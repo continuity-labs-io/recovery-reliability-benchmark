@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -9,12 +11,23 @@ import pytest
 
 from recovery_reliability_benchmark.contract import (
     INCLUSION_RULE,
+    MD2_MUST,
+    MD2_SHOULD,
+    MD3_MUST,
+    MD3_SHOULD,
+    MD6_MUST,
+    MD7_MUST,
     SPEC_VERSION,
     ContractViolation,
     Requirement,
     validate,
 )
+from recovery_reliability_benchmark.metadata import load_conditions
+from recovery_reliability_benchmark.run import run
+from recovery_reliability_benchmark.spikes import MEASURE_KEYS
+from recovery_reliability_benchmark.summary import build_summary
 from recovery_reliability_benchmark.synthetic import make_tables
+from recovery_reliability_benchmark.writer import read_dataset
 
 ROOT = Path(__file__).resolve().parent.parent
 MEASURES = ["tau", "amplitude"]
@@ -154,13 +167,25 @@ def test_citation_cff() -> None:
     assert cff_version == pyproject_version
 
 
+def _section_text(markdown: str, heading: str) -> str:
+    after = markdown.split(heading, maxsplit=1)[1]
+    return after.split("\n## ", maxsplit=1)[0]
+
+
 def test_release_docs_sections() -> None:
     changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "## [0.1.0]" in changelog_text
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "## Status" in readme_text
-    assert "## Repository layout" in readme_text
+    ordered_headings = (
+        "## Run the example",
+        "## Run it on your recordings",
+        "## If you only have per-trial numbers",
+        "## What the report does not say",
+        "## Documentation",
+    )
+    positions = [readme_text.index(h) for h in ordered_headings]
+    assert positions == sorted(positions)
     assert "CITATION.cff" in readme_text
 
 
@@ -195,3 +220,125 @@ def test_zenodo_doi_recorded() -> None:
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "zenodo.org/badge/1444426702.svg" in readme_text
     assert "10.5281/zenodo.24020731" in readme_text
+
+
+def test_v020_spikes_docs_sections() -> None:
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    for phrase in (
+        "rrb-report",
+        "examples/two_conditions",
+        "Nothing leaves your machine",
+        "adapter_template",
+        "SPEC.md",
+        "METHOD.md",
+        "GLOSSARY.md",
+        "frozen/README.md",
+        "CONTRIBUTING.md",
+    ):
+        assert phrase in readme_text
+
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    assert "## Measures computed by the benchmark" in spec_text
+    assert "## What conformance guarantees on the spikes path" in spec_text
+    measures_section = _section_text(spec_text, "## Measures computed by the benchmark")
+    for key in MEASURE_KEYS:
+        assert f"`{key}`" in measures_section
+
+    method_text = (ROOT / "METHOD.md").read_text(encoding="utf-8")
+    assert "## Split-half on pooled measures" in method_text
+
+    contributing_text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "## 1. What to send" in contributing_text
+    assert "## Protocol advice" in contributing_text
+
+
+def test_spikes_path_checks_numbers_match_docs() -> None:
+    doc = json.loads((ROOT / "docs" / "spikes_path_checks.json").read_text(encoding="utf-8"))
+    spec_section = _section_text(
+        (ROOT / "SPEC.md").read_text(encoding="utf-8"),
+        "## What conformance guarantees on the spikes path",
+    )
+    method_section = _section_text(
+        (ROOT / "METHOD.md").read_text(encoding="utf-8"),
+        "## Split-half on pooled measures",
+    )
+
+    s20 = doc["strong_20"]["t_half_excess"]
+    w20 = doc["weak_20"]["t_half_excess"]
+    sp20 = doc["sparse_20"]["t_half_excess"]
+    w40 = doc["weak_40"]["t_half_excess"]
+    sp40 = doc["sparse_40"]["t_half_excess"]
+
+    assert (
+        f"strong responses reach {s20['split_half_corrected']:.2f} "
+        f"with {round(s20['units_scored'])} of 30 units scored"
+    ) in spec_section
+    assert (
+        f"weak responses reach {w20['split_half_corrected']:.2f} with {round(w20['units_scored'])} of 30"
+    ) in spec_section
+    assert (
+        f"sparse firing reaches {sp20['split_half_corrected']:.2f} with {round(sp20['units_scored'])} of 30"
+    ) in spec_section
+    assert f"{w40['split_half_corrected']:.2f}" == f"{sp40['split_half_corrected']:.2f}"
+    assert f"at 40 trials the last two reach {w40['split_half_corrected']:.2f}" in spec_section
+
+    expected_spec_decimals = {
+        f"{s20['split_half_corrected']:.2f}",
+        f"{w20['split_half_corrected']:.2f}",
+        f"{sp20['split_half_corrected']:.2f}",
+        f"{w40['split_half_corrected']:.2f}",
+    }
+    assert set(re.findall(r"\b\d+\.\d+\b", spec_section)) == expected_spec_decimals
+
+    max_strong_diff = max(
+        abs(entry["split_half_corrected"] - entry["test_retest"])
+        for case_key in ("strong_20", "strong_40")
+        for entry in doc[case_key].values()
+    )
+    weak_gap = w20["test_retest"] - w20["split_half_corrected"]
+    max_other_diff = max(
+        abs(doc[case_key][m]["split_half_corrected"] - doc[case_key][m]["test_retest"])
+        for case_key in doc
+        for m in ("excess_per_trial", "baseline_hz", "t_return")
+    )
+
+    assert f"within {max_strong_diff:.2f} for strong responses on every measure" in method_section
+    assert (
+        f"reads {weak_gap:.2f} low "
+        f"({w20['split_half_corrected']:.2f} against {w20['test_retest']:.2f} at 20 trials)"
+    ) in method_section
+    assert f"within about {max_other_diff:.2f}" in method_section
+
+    expected_method_decimals = {
+        f"{max_strong_diff:.2f}",
+        f"{weak_gap:.2f}",
+        f"{w20['split_half_corrected']:.2f}",
+        f"{w20['test_retest']:.2f}",
+        f"{max_other_diff:.2f}",
+    }
+    assert set(re.findall(r"\b\d+\.\d+\b", method_section)) == expected_method_decimals
+
+
+def test_readme_example_table_matches_two_conditions() -> None:
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    two_cond_dir = ROOT / "examples" / "two_conditions"
+    units, trials, spikes, analysis = read_dataset(two_cond_dir)
+    conditions = load_conditions(two_cond_dir / "conditions.json")
+    result = run(
+        units,
+        trials,
+        ["t_half_excess", "excess_per_trial", "t_return"],
+        conditions=conditions,
+        spikes=spikes,
+        analysis=analysis,
+    )
+    summary_md = build_summary(result)
+    table_lines = [line for line in summary_md.splitlines() if line.startswith("| ")]
+    assert len(table_lines) == 6
+    assert "\n".join(table_lines) in readme_text
+
+    recordings_section = _section_text(readme_text, "## Run it on your recordings")
+    assert f"{MD6_MUST:.1f} s of recording after each stimulus" in recordings_section
+    assert f"{MD7_MUST:.1f} s of quiet before each stimulus" in recordings_section
+    assert f"{MD2_SHOULD} trials per condition recommended ({MD2_MUST} minimum" in recordings_section
+    assert f"{MD3_SHOULD} units recommended ({MD3_MUST} minimum" in recordings_section
