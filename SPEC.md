@@ -167,6 +167,8 @@ These rules are checks on the container, reported under the name SCHEMA. They ar
 
 **Evaluating from spikes.** When `rrb-check` or `rrb-evaluate` is invoked with `--spikes` and `--analysis`, `responses.csv` carries the trial columns (`trial_index`, `stim_time_ns`, `condition`), any measure columns in `responses.csv` are ignored, the benchmark computes the requested measures per half from `spikes.csv` under `analysis.json`, and `min-dataset-7` applies.
 
+**Reference writer.** `writer.write_dataset` (`src/recovery_reliability_benchmark/writer.py`) is the reference writer for the spikes-path file layout (`units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`), converting seconds on the recording clock to integer nanoseconds with `int(round(t * 1e9))` and ordering `spikes.csv` by `unit_ids` with ascending timestamps.
+
 ---
 
 ## 10. Preparation and condition metadata

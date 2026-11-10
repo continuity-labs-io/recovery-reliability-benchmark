@@ -3,6 +3,7 @@ data/
 repomix*.json
 repomix-output.xml
 output/
+docs/ai/arrive
 docs/ai/audit
 .DS_Store
 .vscode/

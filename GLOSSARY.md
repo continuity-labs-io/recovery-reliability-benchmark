@@ -82,6 +82,10 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **`analysis.json`.** Sidecar JSON file declaring `measures.AnalysisParams` before the run, loaded by `metadata.load_analysis` and written by `metadata.write_analysis`; its SHA-256 fingerprint is printed in the report. SPEC "Preparation and condition metadata".
 
+**Adapter.** A format-conversion script (starting from `scripts/adapter_template.py`) that reads a laboratory's native recording file, extracts `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock, and delegates file formatting to `writer.write_dataset`. An adapter contains no analysis and does not change what conformance means. SPEC §8; CONTRIBUTING "Writing an adapter".
+
+**Reference writer (`writer.write_dataset`).** Single writer for the benchmark's spikes-path files (`units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`), converting seconds to integer nanoseconds with `int(round(t * 1e9))`, ordering `spikes.csv` by `unit_ids` with ascending timestamps, and rejecting malformed inputs with `ValueError` while leaving contract conformance checks to `rrb-check`; paired with `writer.read_dataset`. SPEC §9; `writer.py`.
+
 **Fate table (`fate.csv`).** Optional later observations of the same preparation (date, status, measure, value), so atlas rows can carry outcome labels. Defined, not yet checked. SPEC "Fate".
 
 **Measure.** A scalar computed per unit per trial from the post-stimulus response; a column of `responses.csv`. Examples: time to return to baseline, peak rate, spike count in the window. SPEC §2.

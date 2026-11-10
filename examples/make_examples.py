@@ -17,6 +17,7 @@ from recovery_reliability_benchmark.synthetic import (
     make_tables,
     make_two_condition_spike_trains,
 )
+from recovery_reliability_benchmark.writer import write_dataset
 
 N_UNITS = 30  # MD3_SHOULD fully-conforming unit count
 N_TRIALS = 20  # MD2_SHOULD fully-conforming trial count
@@ -114,7 +115,6 @@ def main() -> None:
     spikes_df.to_csv(examples_dir / "spikes.csv", index=False)
 
     two_cond_dir = examples_dir / "two_conditions"
-    two_cond_dir.mkdir(parents=True, exist_ok=True)
     rate_fns_slowed = [
         exponential_recovery(
             baseline_hz=float(baselines_hz[(BASELINE_STRIDE * i) % N_UNITS]),
@@ -132,53 +132,29 @@ def main() -> None:
         seed=EXAMPLE_SEED,
     )
     unit_ids = [f"u{i:02d}" for i in range(N_UNITS)]
-    two_cond_units = pd.DataFrame(
-        {
-            "unit_id": unit_ids,
-            "recording_id": "rec0",
-            "session_id": "sess0",
-            "preparation_id": "prep0",
-        }
-    )
-    two_cond_units.to_csv(two_cond_dir / "units.csv", index=False)
-
-    two_cond_trials = pd.DataFrame(
-        {
-            "trial_index": list(range(len(onsets_two_s))),
-            "stim_time_ns": [int(round(float(t) * 1e9)) for t in onsets_two_s],
-            "condition": ["control"] * n_first + ["slowed"] * (len(onsets_two_s) - n_first),
-        }
-    )
-    two_cond_trials.to_csv(two_cond_dir / "trials_responses.csv", index=False)
-
-    two_cond_spike_rows = [
-        {"unit_id": uid, "spike_time_ns": int(round(float(t_s) * 1e9))}
-        for uid, train in zip(unit_ids, trains_two, strict=True)
-        for t_s in train
-    ]
-    two_cond_spikes = pd.DataFrame(two_cond_spike_rows, columns=["unit_id", "spike_time_ns"])
-    two_cond_spikes.to_csv(two_cond_dir / "spikes.csv", index=False)
-
-    write_analysis(analysis, two_cond_dir / "analysis.json")
-    two_conditions = {
-        "control": Condition(
-            protocol=Protocol.standard_hfs(),
-            compound=None,
-            dose=None,
-            dose_unit=None,
-            vehicle=None,
-        ).model_dump(),
-        "slowed": Condition(
-            protocol=Protocol.standard_hfs(),
-            compound="synthetic slowing",
-            dose=SLOWING_FACTOR,
-            dose_unit="x tau",
-            vehicle=None,
-        ).model_dump(),
-    }
-    (two_cond_dir / "conditions.json").write_text(
-        json.dumps(two_conditions, indent=2) + "\n",
-        encoding="utf-8",
+    write_dataset(
+        two_cond_dir,
+        unit_ids=unit_ids,
+        spike_times_s=dict(zip(unit_ids, trains_two, strict=True)),
+        onsets_s=onsets_two_s,
+        conditions=["control"] * n_first + ["slowed"] * (len(onsets_two_s) - n_first),
+        analysis=analysis,
+        condition_metadata={
+            "control": Condition(
+                protocol=Protocol.standard_hfs(),
+                compound=None,
+                dose=None,
+                dose_unit=None,
+                vehicle=None,
+            ),
+            "slowed": Condition(
+                protocol=Protocol.standard_hfs(),
+                compound="synthetic slowing",
+                dose=SLOWING_FACTOR,
+                dose_unit="x tau",
+                vehicle=None,
+            ),
+        },
     )
 
 

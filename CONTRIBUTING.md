@@ -94,6 +94,12 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 
 ---
 
+## Writing an adapter
+
+Before writing an adapter for a laboratory's recording format, check two things in the format description: at least 2.0 s of recording after each stimulus (`min-dataset-6`), and at least 8 units (`min-dataset-3`). Copy `scripts/adapter_template.py` and implement `load_recording(path)` returning `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock. An adapter contains no analysis: it extracts identifiers, spike timestamps, stimulus onsets, and condition labels and hands them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`, then prints the `rrb-check` and `rrb-report` commands to run locally.
+
+---
+
 ## Code guidelines
 
 - Source files stay under 300 lines; split by responsibility, not by line count.
