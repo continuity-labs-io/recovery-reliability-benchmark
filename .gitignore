@@ -1,4 +1,6 @@
 data/
+.repomix/
+repomix*.json
 repomix-output.xml
 output/
 docs/ai/audit

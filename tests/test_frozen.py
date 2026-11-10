@@ -69,7 +69,7 @@ def test_snapshots_match() -> None:
             pytest.fail(
                 f"Frozen function {name} changed. If this is intended: bump the "
                 "version in pyproject.toml, add a 'Frozen:' line under that version in CHANGELOG.md, "
-                f"run python scripts/freeze.py --update. See FROZEN.md.\n{diff}",
+                f"run python scripts/freeze.py --update. See frozen/README.md.\n{diff}",
                 pytrace=False,
             )
 
@@ -89,9 +89,9 @@ def test_manifest_version_matches_package() -> None:
 
 
 def test_frozen_md_lists_every_name() -> None:
-    frozen_md = (ROOT / "FROZEN.md").read_text(encoding="utf-8")
+    frozen_md = (ROOT / "frozen" / "README.md").read_text(encoding="utf-8")
     for name in (*sorted(FROZEN_FUNCTIONS), *sorted(FROZEN_CONSTANTS)):
-        assert f"`{name}`" in frozen_md, f"{name} is missing inside backticks in FROZEN.md"
+        assert f"`{name}`" in frozen_md, f"{name} is missing inside backticks in frozen/README.md"
 
 
 def test_update_version_only_refresh(tmp_path: Path) -> None:

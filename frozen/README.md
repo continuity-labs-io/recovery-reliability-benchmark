@@ -70,4 +70,4 @@ git config core.hooksPath .githooks
 
 ---
 
-This document is licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS).
+This document is licensed under CC BY 4.0; see [LICENSE-DOCS](../LICENSE-DOCS).

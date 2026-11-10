@@ -4,7 +4,7 @@ This repository implements the Recovery Reliability Benchmark: a data contract (
 
 ## Frozen-layer rule
 
-Read `FROZEN.md` before modifying any code.
+Read `frozen/README.md` before modifying any code.
 
 - Never edit frozen functions, frozen constants, `frozen/snapshots/`, or `frozen/manifest.json` to make a test pass.
 - Never tune thresholds, split rules, inclusion rules, or measure definitions in response to a dataset's result.
