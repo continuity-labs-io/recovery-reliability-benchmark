@@ -215,7 +215,7 @@ Contributors MUST NOT exclude units or trials after seeing results. Any exclusio
 
 Every report prints: units in the tables, units included by rule, units excluded by rule, rows missing from the full grid, and contributor-declared exclusions.
 
-From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path, a unit is scored in a condition when every requested measure is computed in both halves; a silent unit has no baseline and is excluded.
+From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." A silent unit has no baseline and is excluded.
 
 ---
 

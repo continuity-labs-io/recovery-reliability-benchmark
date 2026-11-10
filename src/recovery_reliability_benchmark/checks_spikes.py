@@ -59,20 +59,38 @@ def check_pre_stimulus_window(
             raise ContractViolation(Requirement.MD7, msg, found=float(available), required=pre_w)
 
 
-def check_scored_units(scored: Mapping[str, Set[str]], condition: str) -> None:
-    """Check min-dataset-3 on the spikes path: at least ``MD3_MUST`` scored units in ``condition``.
+def check_scored_units(
+    scored: Mapping[str, Mapping[str, Set[str]]] | Mapping[str, Set[str]],
+    measure: str,
+    condition: str,
+) -> None:
+    """Check min-dataset-3 on the spikes path: at least ``MD3_MUST`` scored units for ``measure``.
 
     Args:
-        scored: Mapping from condition label to set of scored ``unit_id`` strings.
+        scored: Mapping from measure name to per-condition sets of scored ``unit_id`` strings
+            (or a per-condition mapping for a single measure).
+        measure: Measure name to verify.
         condition: Condition label to verify.
 
     Raises:
         ContractViolation: With ``Requirement.MD3`` when fewer than ``MD3_MUST`` units are scored.
     """
-    n_scored = len(scored.get(condition, set()))
+    first_val = next(iter(scored.values()), None)
+    if isinstance(first_val, Mapping):
+        nested: Mapping[str, Mapping[str, Set[str]]] = scored  # type: ignore[assignment]
+        if measure not in nested and condition in nested:
+            measure, condition = condition, measure
+        cond_map: Mapping[str, Set[str]] = nested.get(measure, {})
+    else:
+        flat: Mapping[str, Set[str]] = scored  # type: ignore[assignment]
+        if condition not in flat and measure in flat:
+            measure, condition = condition, measure
+        cond_map = flat
+
+    n_scored = len(cond_map.get(condition, set()))
     if n_scored < contract.MD3_MUST:
         msg = (
-            f"{n_scored} units with every measure computed in both halves "
+            f"{n_scored} units with {measure} computed in both halves "
             f"for condition '{condition}', requires {contract.MD3_MUST}."
         )
         raise ContractViolation(Requirement.MD3, msg, found=n_scored, required=contract.MD3_MUST)

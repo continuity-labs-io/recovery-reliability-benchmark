@@ -128,18 +128,18 @@ def _print_evaluate_human(result: dict[str, Any]) -> None:
     eval_conds = result["census"]["evaluated_conditions"]
     _print_inclusion_lines(result["inclusion"], eval_conds)
     if "spikes_path" in result["inclusion"]:
-        sp_per_cond = result["inclusion"]["spikes_path"]["per_condition"]
-        for cond in eval_conds:
-            sp_inc = sp_per_cond[cond]
-            print(f"{cond}: units scored {sp_inc['n_units_scored']} of {sp_inc['n_units_in_tables']}")
+        sp_inc = result["inclusion"]["spikes_path"]
+        for m in result["measures"]:
+            for cond in eval_conds:
+                c_inc = sp_inc.get("per_measure", sp_inc)[m][cond]
+                print(f"{cond} ({m}): units scored {c_inc['n_units_scored']} of {c_inc['n_units_in_tables']}")
     for m, m_res in result["measures"].items():
+        if m_res.get("status") == "not_scored":
+            print(f"{m}: not_scored")
+            continue
         h, kind, null = m_res["headline"], m_res["headline_kind"], m_res["null"]
-        var = h["variance"]
-        ci_str = (
-            f"[{h['rho_ci_low']:.3f}, {h['rho_ci_high']:.3f}]"
-            if h["rho_ci_low"] is not None and h["rho_ci_high"] is not None
-            else "[None, None]"
-        )
+        var, lo, hi = h["variance"], h["rho_ci_low"], h["rho_ci_high"]
+        ci_str = f"[{lo:.3f}, {hi:.3f}]" if lo is not None and hi is not None else "[None, None]"
         line = (
             f"{m}: rho={h['rho']:.3f} ci={ci_str} rho_at_20={h['rho_at_20']:.3f} "
             f"({kind}; r_half={h['r_half']:.3f}, n_units={h['n_units']}, n_pairs={h['n_pairs']}) "
@@ -148,10 +148,9 @@ def _print_evaluate_human(result: dict[str, Any]) -> None:
         if var is not None:
             line += f" between={var['var_between']:.3g} within={var['var_within']:.3g}"
         print(line)
-        if "flags" in m_res:
-            n_censored = sum(cf.get(f"{m}_censored", 0) for cf in m_res["flags"].values())
-            if n_censored > 0:
-                print(f"  {m} censored in {n_censored} units")
+        n_censored = sum(cf.get(f"{m}_censored", 0) for cf in m_res.get("flags", {}).values())
+        if n_censored > 0:
+            print(f"  {m} censored in {n_censored} units")
 
 
 def check_main(argv: list[str] | None = None) -> int:

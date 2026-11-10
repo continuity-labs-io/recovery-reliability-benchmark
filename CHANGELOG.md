@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- spikes path: inclusion is per measure; a measure with too few scored units is reported as not scored.
 - rrb-evaluate --spikes --analysis: measures computed per half from spike times; spikes-path inclusion reported.
 - spikes.py: per-half measures from spikes in the evaluator's halves format; min-dataset-7 pre-stimulus window requirement; analysis.json loader. Not yet wired into rrb-evaluate.
 - Zenodo DOIs recorded: concept 10.5281/zenodo.24020731, v0.1.0 10.5281/zenodo.24020732.

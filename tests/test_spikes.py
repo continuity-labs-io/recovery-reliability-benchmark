@@ -183,13 +183,12 @@ def test_scored_units_excludes_silent_unit() -> None:
     units_with_silent = pd.concat([units, silent_row], ignore_index=True)
     halves, _flags = halves_from_spikes(units_with_silent, trials, spikes, params, ["t_return", "peak_rate"])
 
-    scored_t_return = scored_units(halves, ["t_return"])
-    assert "u_silent" not in scored_t_return["baseline"]
-    assert len(scored_t_return["baseline"]) == 5
+    scored = scored_units(halves, ["t_return", "peak_rate"])
+    assert "u_silent" not in scored["t_return"]["baseline"]
+    assert len(scored["t_return"]["baseline"]) == 5
 
-    scored_peak = scored_units(halves, ["peak_rate"])
-    assert "u_silent" in scored_peak["baseline"]
-    assert len(scored_peak["baseline"]) == 6
+    assert "u_silent" in scored["peak_rate"]["baseline"]
+    assert len(scored["peak_rate"]["baseline"]) == 6
 
 
 def test_pre_window_violations() -> None:
@@ -237,12 +236,15 @@ def test_pre_window_violations() -> None:
 
 
 def test_check_scored_units_md3() -> None:
-    scored = {"A": {f"u{i:02d}" for i in range(5)}}
+    scored = {"t_return": {"A": {f"u{i:02d}" for i in range(6)}}}
     with pytest.raises(ContractViolation) as exc_info:
-        check_scored_units(scored, "A")
+        check_scored_units(scored, "t_return", "A")
     assert exc_info.value.requirement is Requirement.MD3
-    assert "requires 8" in exc_info.value.message
-    assert exc_info.value.found == 5
+    assert (
+        exc_info.value.message
+        == "6 units with t_return computed in both halves for condition 'A', requires 8."
+    )
+    assert exc_info.value.found == 6
     assert exc_info.value.required == 8
 
 

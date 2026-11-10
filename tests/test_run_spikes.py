@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from recovery_reliability_benchmark.contract import ContractViolation, Requirement
+from recovery_reliability_benchmark.contract import (
+    ContractViolation,
+    Requirement,
+    read_spikes,
+    read_tables,
+)
 from recovery_reliability_benchmark.measures import FLAG_KEYS, AnalysisParams
+from recovery_reliability_benchmark.metadata import load_analysis
 from recovery_reliability_benchmark.run import run
 from recovery_reliability_benchmark.spikes import per_trial_counts_table
 from recovery_reliability_benchmark.synthetic import (
@@ -17,6 +24,8 @@ from recovery_reliability_benchmark.synthetic import (
     make_spike_trains,
     make_tables,
 )
+
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 
 def _build_spike_dataset(
@@ -109,10 +118,14 @@ def test_spikes_path_reports() -> None:
     sp_inc = res["inclusion"]["spikes_path"]
     assert (
         sp_inc["rule"]
-        == "A unit is scored in a condition when every requested measure is computed in both halves."
+        == "A unit is scored for a measure in a condition when that measure is computed in both halves."
     )
-    assert "baseline" in sp_inc["per_condition"]
-    assert sp_inc["per_condition"]["baseline"] == {
+    assert sp_inc["t_return"]["baseline"] == {
+        "n_units_in_tables": 30,
+        "n_units_scored": 30,
+        "n_units_excluded_by_rule": 0,
+    }
+    assert sp_inc["peak_rate"]["baseline"] == {
         "n_units_in_tables": 30,
         "n_units_scored": 30,
         "n_units_excluded_by_rule": 0,
@@ -150,23 +163,53 @@ def test_spikes_path_reports() -> None:
         )
 
 
-def test_t_return_reliability_bounds() -> None:
-    taus_spread = np.geomspace(0.05, 0.5, 30)
-    units_s, trials_s, spikes_s, params_s = _build_spike_dataset(taus_spread, n_trials=100, isi_s=5.0, seed=0)
-    res_spread = run(
-        units_s,
-        trials_s,
-        measures=["t_return"],
-        spikes=spikes_s,
-        analysis=params_s,
-        n_perm=50,
-    )
-    rho_spread = res_spread["measures"]["t_return"]["headline"]["rho"]
-    assert rho_spread > 0.9
+def test_per_measure_inclusion_and_not_scored() -> None:
+    units_ex, trials_ex = read_tables(EXAMPLES_DIR / "units.csv", EXAMPLES_DIR / "trials_responses.csv")
+    spikes_ex = read_spikes(EXAMPLES_DIR / "spikes.csv")
+    analysis_ex = load_analysis(EXAMPLES_DIR / "analysis.json")
 
+    res_alone = run(
+        units_ex,
+        trials_ex,
+        measures=["t_return"],
+        spikes=spikes_ex,
+        analysis=analysis_ex,
+        n_perm=20,
+    )
+    res_with_overshoot = run(
+        units_ex,
+        trials_ex,
+        measures=["t_return", "overshoot"],
+        spikes=spikes_ex,
+        analysis=analysis_ex,
+        n_perm=20,
+    )
+    h_alone = res_alone["measures"]["t_return"]["headline"]
+    h_both = res_with_overshoot["measures"]["t_return"]["headline"]
+    assert h_alone["rho"] == h_both["rho"]
+    assert h_alone["n_units"] == h_both["n_units"] == 30
+    assert res_with_overshoot["measures"]["overshoot"]["headline"]["n_units"] == 27
+
+    taus_partial = [0.05 + 0.01 * i for i in range(6)] + [10.0] * 24
+    units_p, trials_p, spikes_p, params_p = _build_spike_dataset(taus_partial, n_trials=20, isi_s=5.0, seed=0)
+    res_partial = run(
+        units_p,
+        trials_p,
+        measures=["t_return", "overshoot"],
+        spikes=spikes_p,
+        analysis=params_p,
+        n_perm=20,
+    )
+    assert res_partial["measures"]["overshoot"]["status"] == "not_scored"
+    assert res_partial["measures"]["overshoot"]["per_condition"]["baseline"]["n_units_scored"] == 6
+    assert res_partial["measures"]["t_return"]["headline"]["n_units"] == 30
+    assert res_partial["measures"]["t_return"]["headline"]["rho"] > 0.0
+
+
+def test_identical_taus_score_near_zero() -> None:
     taus_identical = [0.2] * 30
     units_i, trials_i, spikes_i, params_i = _build_spike_dataset(
-        taus_identical, n_trials=100, isi_s=5.0, seed=0
+        taus_identical, n_trials=20, isi_s=5.0, seed=0
     )
     res_identical = run(
         units_i,
@@ -178,6 +221,26 @@ def test_t_return_reliability_bounds() -> None:
     )
     rho_identical = res_identical["measures"]["t_return"]["headline"]["rho"]
     assert rho_identical < 0.3
+
+
+def test_t_return_converges_with_trials() -> None:
+    taus_spread = np.geomspace(0.05, 0.5, 30)
+    rhos: dict[int, float] = {}
+    for n_trials in (20, 50, 100):
+        units_s, trials_s, spikes_s, params_s = _build_spike_dataset(
+            taus_spread, n_trials=n_trials, isi_s=5.0, seed=0
+        )
+        res_s = run(
+            units_s,
+            trials_s,
+            measures=["t_return"],
+            spikes=spikes_s,
+            analysis=params_s,
+            n_perm=50,
+        )
+        rhos[n_trials] = res_s["measures"]["t_return"]["headline"]["rho"]
+    assert rhos[100] > rhos[20]
+    assert rhos[100] > 0.9
 
 
 def test_md7_from_run() -> None:

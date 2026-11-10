@@ -10,7 +10,7 @@ import pandas as pd
 
 from . import checks_spikes, controls
 from . import spikes as spikes_mod
-from .contract import SPEC_VERSION, validate
+from .contract import SPEC_VERSION, ContractViolation, validate
 from .evaluate import headline, reliability_ceiling, split_halves, variance_components
 from .measures import FLAG_KEYS, AnalysisParams
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from .metadata import Condition, Preparation
 
 SPIKES_INCLUSION_RULE = (
-    "A unit is scored in a condition when every requested measure is computed in both halves."
+    "A unit is scored for a measure in a condition when that measure is computed in both halves."
 )
 
 
@@ -32,25 +32,45 @@ def _evaluate_measures(
     responses: pd.DataFrame | None = None,
     active_units: dict[str, set[str]] | None = None,
     flags_by_condition: dict[str, dict[str, int]] | None = None,
+    scored: dict[str, dict[str, set[str]]] | None = None,
+    not_scored_measures: set[str] | None = None,
+    per_measure_inc: dict[str, dict[str, dict[str, int]]] | None = None,
 ) -> dict[str, Any]:
-    cond_level = halves.index.get_level_values("condition")
     measures_out: dict[str, Any] = {}
     for m in measure_list:
+        if not_scored_measures is not None and m in not_scored_measures:
+            assert per_measure_inc is not None
+            m_entry: dict[str, Any] = {
+                "status": "not_scored",
+                "per_condition": {c: dict(per_measure_inc[m][c]) for c in evaluated_conditions},
+                "counts": {c: dict(per_measure_inc[m][c]) for c in evaluated_conditions},
+            }
+            if flags_by_condition is not None:
+                m_entry["flags"] = {c: dict(flags_by_condition[c]) for c in evaluated_conditions}
+            measures_out[m] = m_entry
+            continue
+
+        if scored is not None:
+            keep = [str(u) in scored[m][str(c)] for u, c in halves.index]
+            m_halves = halves.loc[keep]
+        else:
+            m_halves = halves
+        cond_level = m_halves.index.get_level_values("condition")
         per_cond: dict[str, Any] = {}
         for c in evaluated_conditions:
-            cond_ceil = reliability_ceiling(halves[cond_level == c], m, False)
+            cond_ceil = reliability_ceiling(m_halves[cond_level == c], m, False)
             if responses is not None and active_units is not None:
                 cond_ceil["variance"] = variance_components(responses, m, c, active_units[c])
             else:
                 cond_ceil["variance"] = None
             per_cond[c] = cond_ceil
         pooled = {
-            "uncentered": reliability_ceiling(halves, m, False),
-            "centered": reliability_ceiling(halves, m, True),
+            "uncentered": reliability_ceiling(m_halves, m, False),
+            "centered": reliability_ceiling(m_halves, m, True),
         }
         headline_val, headline_kind = headline(evaluated_conditions, best_condition, per_cond, pooled)
         headline_frame = (
-            halves if headline_kind == "pooled_centered" else halves[cond_level == best_condition]
+            m_halves if headline_kind == "pooled_centered" else m_halves[cond_level == best_condition]
         )
         headline_center = headline_kind == "pooled_centered"
 
@@ -61,7 +81,7 @@ def _evaluate_measures(
             n_perm=n_perm,
             rng=np.random.default_rng(seed),
         )
-        m_entry: dict[str, Any] = {
+        m_entry = {
             "headline": headline_val,
             "headline_kind": headline_kind,
             "per_condition": per_cond,
@@ -148,22 +168,37 @@ def run(
         evaluated_conditions = val["evaluated_conditions"]
         eval_trials = trials[trials["condition"].astype(str).isin(set(evaluated_conditions))]
         halves, flags = spikes_mod.halves_from_spikes(units, eval_trials, spikes, analysis, measure_list)
-        scored = spikes_mod.scored_units(halves, measure_list)
-        for c in evaluated_conditions:
-            checks_spikes.check_scored_units(scored, c)
-        keep = [str(u) in scored[str(c)] for u, c in halves.index]
-        halves = halves.loc[keep]
+        scored: dict[str, dict[str, set[str]]] | None = spikes_mod.scored_units(halves, measure_list)
+        assert scored is not None
+        not_scored_measures: set[str] | None = set()
+        first_md3_violation: ContractViolation | None = None
+        for m in measure_list:
+            try:
+                for c in evaluated_conditions:
+                    checks_spikes.check_scored_units(scored, m, c)
+            except ContractViolation as exc:
+                not_scored_measures.add(m)
+                if first_md3_violation is None:
+                    first_md3_violation = exc
+        if measure_list and len(not_scored_measures) == len(measure_list):
+            assert first_md3_violation is not None
+            raise first_md3_violation
         n_units_in_tables = int(len(units))
-        val["inclusion"]["spikes_path"] = {
-            "rule": SPIKES_INCLUSION_RULE,
-            "per_condition": {
+        per_measure_inc: dict[str, dict[str, dict[str, int]]] | None = {
+            m: {
                 c: {
                     "n_units_in_tables": n_units_in_tables,
-                    "n_units_scored": len(scored[c]),
-                    "n_units_excluded_by_rule": n_units_in_tables - len(scored[c]),
+                    "n_units_scored": len(scored[m][c]),
+                    "n_units_excluded_by_rule": n_units_in_tables - len(scored[m][c]),
                 }
                 for c in evaluated_conditions
-            },
+            }
+            for m in measure_list
+        }
+        val["inclusion"]["spikes_path"] = {
+            "rule": SPIKES_INCLUSION_RULE,
+            "per_measure": per_measure_inc,
+            **per_measure_inc,
         }
         flags_cond = flags.index.get_level_values("condition")
         flags_by_condition: dict[str, dict[str, int]] | None = {
@@ -199,6 +234,9 @@ def run(
         halves = split_halves(responses, measure_list, evaluated_conditions, active_units=active_units)
         flags_by_condition = None
         var_responses = responses
+        scored = None
+        not_scored_measures = None
+        per_measure_inc = None
 
     census_dict = controls.census(val)
     parameters: dict[str, Any] = {
@@ -241,6 +279,9 @@ def run(
         responses=var_responses,
         active_units=active_units,
         flags_by_condition=flags_by_condition,
+        scored=scored,
+        not_scored_measures=not_scored_measures,
+        per_measure_inc=per_measure_inc,
     )
 
     return {

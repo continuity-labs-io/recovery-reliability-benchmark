@@ -192,26 +192,31 @@ def halves_from_spikes(
     return halves_df, flags_df
 
 
-def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, set[str]]:
-    """Return per-condition sets of units with non-NaN values in both halves for every measure.
+def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, dict[str, set[str]]]:
+    """Return per-measure, per-condition sets of units with non-NaN values in both halves.
 
-    Implements the inclusion rule on the spikes path: a unit is scored in a condition when
-    every requested measure is computed in both halves; a silent unit has no baseline and
-    is excluded.
+    Implements the inclusion rule on the spikes path: A unit is scored for a measure in a
+    condition when that measure is computed in both halves; a silent unit has no baseline
+    and is excluded.
 
     Args:
         halves: Halves DataFrame indexed by ``(unit_id, condition)``.
-        measures: Sequence of measure names required to be non-NaN in both halves.
+        measures: Sequence of measure names to score.
 
     Returns:
-        Dictionary mapping each condition label to the set of scored ``unit_id`` strings.
+        Dictionary mapping each measure name to a dictionary mapping each condition label
+        to the set of scored ``unit_id`` strings.
     """
-    measure_cols = [f"{m}_{h}" for m in measures for h in ("odd", "even")]
-    valid = halves[measure_cols].notna().all(axis=1) if measure_cols else pd.Series(True, index=halves.index)
-    out: dict[str, set[str]] = {str(c): set() for c in halves.index.get_level_values("condition").unique()}
-    for (unit_id, cond), is_valid in valid.items():
-        if bool(is_valid):
-            out[str(cond)].add(str(unit_id))
+    conditions = [str(c) for c in halves.index.get_level_values("condition").unique()]
+    out: dict[str, dict[str, set[str]]] = {}
+    for m in measures:
+        m_str = str(m)
+        valid = halves[[f"{m_str}_odd", f"{m_str}_even"]].notna().all(axis=1)
+        per_cond: dict[str, set[str]] = {c: set() for c in conditions}
+        for (unit_id, cond), is_valid in valid.items():
+            if bool(is_valid):
+                per_cond[str(cond)].add(str(unit_id))
+        out[m_str] = per_cond
     return out
 
 
