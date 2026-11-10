@@ -1,0 +1,64 @@
+{
+  "control": {
+    "protocol": {
+      "name": "standard_hfs",
+      "train": {
+        "burst": {
+          "pulse": {
+            "waveform_shape": "biphasic_square",
+            "polarity_order": "cathodic_first",
+            "mode": "current",
+            "phase_1_duration_us": 100.0,
+            "inter_phase_gap_us": 20.0,
+            "phase_2_duration_us": 100.0,
+            "phase_1_amplitude_ua": 50.0,
+            "phase_2_amplitude_ua": 50.0,
+            "phase_1_amplitude_mv": null,
+            "phase_2_amplitude_mv": null
+          },
+          "pulses_per_burst": 100,
+          "intra_burst_frequency_hz": 100.0
+        },
+        "bursts_per_train": 1,
+        "inter_burst_interval_ms": 0.0
+      },
+      "trains_per_protocol": 1,
+      "inter_train_gap_s": 0.0
+    },
+    "compound": null,
+    "dose": null,
+    "dose_unit": null,
+    "vehicle": null
+  },
+  "slowed": {
+    "protocol": {
+      "name": "standard_hfs",
+      "train": {
+        "burst": {
+          "pulse": {
+            "waveform_shape": "biphasic_square",
+            "polarity_order": "cathodic_first",
+            "mode": "current",
+            "phase_1_duration_us": 100.0,
+            "inter_phase_gap_us": 20.0,
+            "phase_2_duration_us": 100.0,
+            "phase_1_amplitude_ua": 50.0,
+            "phase_2_amplitude_ua": 50.0,
+            "phase_1_amplitude_mv": null,
+            "phase_2_amplitude_mv": null
+          },
+          "pulses_per_burst": 100,
+          "intra_burst_frequency_hz": 100.0
+        },
+        "bursts_per_train": 1,
+        "inter_burst_interval_ms": 0.0
+      },
+      "trains_per_protocol": 1,
+      "inter_train_gap_s": 0.0
+    },
+    "compound": "synthetic slowing",
+    "dose": 1.5,
+    "dose_unit": "x tau",
+    "vehicle": null
+  }
+}

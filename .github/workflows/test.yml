@@ -26,7 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: pip install -e . pytest ruff
+      - run: pip install -e ".[report]" pytest ruff
       - run: pytest -q
       - run: ruff check .
       - run: ruff format --check .
@@ -38,6 +38,10 @@ jobs:
       - run: rrb-check examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_half_excess,excess_per_trial,spikes_per_trial
       - run: rrb-evaluate examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --measures t_half_excess,excess_per_trial,spikes_per_trial --n-perm 100 --json > evaluate_spikes.json
       - run: python -c "import json; r=json.load(open('evaluate_spikes.json')); assert r['status']=='ok', r['status']"
+      - run: rrb-report examples/units.csv examples/trials_responses.csv --spikes examples/spikes.csv --analysis examples/analysis.json --conditions examples/conditions.json --preparation examples/preparation.json --measures t_half_excess,excess_per_trial,spikes_per_trial --n-perm 100 --out report_single
+      - run: test -f report_single/evaluate.json && test -f report_single/summary.md && test -f report_single/halves.png
+      - run: rrb-report examples/two_conditions/units.csv examples/two_conditions/trials_responses.csv --spikes examples/two_conditions/spikes.csv --analysis examples/two_conditions/analysis.json --conditions examples/two_conditions/conditions.json --measures t_half_excess,excess_per_trial,t_return --n-perm 100 --out report_two
+      - run: test -f report_two/evaluate.json && test -f report_two/summary.md && test -f report_two/halves.png
 
   frozen-core:
     runs-on: ubuntu-latest

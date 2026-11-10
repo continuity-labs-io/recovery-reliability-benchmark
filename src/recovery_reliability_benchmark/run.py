@@ -87,7 +87,7 @@ def evaluate_measure(inputs: EvaluationInputs, measure: str, n_perm: int, seed: 
     }
 
 
-def run(
+def run_with_inputs(
     units: pd.DataFrame,
     responses: pd.DataFrame,
     measures: Sequence[str],
@@ -101,8 +101,8 @@ def run(
     conditions: dict[str, Condition] | None = None,
     spikes: pd.DataFrame | None = None,
     analysis: AnalysisParams | None = None,
-) -> dict[str, Any]:
-    """Validate inputs, run the positive control, and compute within-session reliability ceilings.
+) -> tuple[dict[str, Any], EvaluationInputs]:
+    """Validate inputs, run the positive control, and return ``(result, inputs)``.
 
     Args:
         units: Recording-unit table.
@@ -120,9 +120,8 @@ def run(
         analysis: Optional ``AnalysisParams`` enabling the spikes evaluation path.
 
     Returns:
-        Dictionary containing status, versions, parameters, census, inclusion,
-        metadata, positive_control, and (when the positive control passes) per-measure
-        reliability ceilings and null distributions.
+        Tuple ``(result, inputs)`` of the evaluation result dictionary and the prepared
+        ``EvaluationInputs`` carrying the split-half DataFrame and inclusion sets.
 
     Raises:
         ValueError: If ``analysis`` is provided without ``spikes``, if ``post_stim_window_s`` or
@@ -165,7 +164,7 @@ def run(
         "positive_control": pc,
     }
     if not pc["passed"]:
-        return {"status": "positive_control_failed", **base}
+        return {"status": "positive_control_failed", **base}, inputs
 
     measures_out = {m: evaluate_measure(inputs, m, n_perm=n_perm, seed=seed) for m in measure_list}
     ref_m = inputs.reference_measure
@@ -184,4 +183,63 @@ def run(
                 pair_sens["beats_reference"] = (
                     bool(m_z > ref_z) if m_z is not None and ref_z is not None else None
                 )
-    return {"status": "ok", **base, "measures": measures_out, "reference": reference}
+    return {"status": "ok", **base, "measures": measures_out, "reference": reference}, inputs
+
+
+def run(
+    units: pd.DataFrame,
+    responses: pd.DataFrame,
+    measures: Sequence[str],
+    post_stim_window_s: float | None = None,
+    load_duration_s: float | None = None,
+    n_perm: int = 1000,
+    injected_r: float = 0.85,
+    tolerance: float = 0.05,
+    seed: int = 42,
+    preparation: Preparation | None = None,
+    conditions: dict[str, Condition] | None = None,
+    spikes: pd.DataFrame | None = None,
+    analysis: AnalysisParams | None = None,
+) -> dict[str, Any]:
+    """Validate inputs, run the positive control, and compute within-session reliability ceilings.
+
+    Args:
+        units: Recording-unit table.
+        responses: Trial-level response table (or trial timeline table on the spikes path).
+        measures: Measure names to evaluate.
+        post_stim_window_s: Declared post-stimulus window in seconds (optional when ``analysis`` is set).
+        load_duration_s: Conditioning load duration in seconds (optional when ``analysis`` is set).
+        n_perm: Number of stratified permutations for the null distribution.
+        injected_r: Target reliability for the synthetic positive control.
+        tolerance: Pass tolerance for the synthetic positive control.
+        seed: Random seed for the positive control and permutation null.
+        preparation: Optional validated ``Preparation`` metadata model.
+        conditions: Optional mapping of condition labels to ``Condition`` metadata models.
+        spikes: Optional spike-timestamp DataFrame (required when ``analysis`` is provided).
+        analysis: Optional ``AnalysisParams`` enabling the spikes evaluation path.
+
+    Returns:
+        Dictionary containing status, versions, parameters, census, inclusion,
+        metadata, positive_control, and (when the positive control passes) per-measure
+        reliability ceilings and null distributions.
+
+    Raises:
+        ValueError: If ``analysis`` is provided without ``spikes``, if ``post_stim_window_s`` or
+            ``load_duration_s`` disagrees with ``analysis``, or if ``post_stim_window_s`` is
+            omitted on the tables path.
+    """
+    return run_with_inputs(
+        units=units,
+        responses=responses,
+        measures=measures,
+        post_stim_window_s=post_stim_window_s,
+        load_duration_s=load_duration_s,
+        n_perm=n_perm,
+        injected_r=injected_r,
+        tolerance=tolerance,
+        seed=seed,
+        preparation=preparation,
+        conditions=conditions,
+        spikes=spikes,
+        analysis=analysis,
+    )[0]

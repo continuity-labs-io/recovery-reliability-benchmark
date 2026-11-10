@@ -79,6 +79,28 @@ spikes_per_trial: rho=0.993 ci=[0.985, 0.997] rho_at_20=0.993 (per_condition; r_
 reference (baseline_hz): rho=0.991 ci=[0.980, 0.996] n_units=30
 ```
 
+## One command
+
+`rrb-report` writes `evaluate.json`, `summary.md`, and `halves.png` (install with `pip install -e ".[report]"` for the figure) from one invocation:
+
+```bash
+rrb-report examples/two_conditions/units.csv examples/two_conditions/trials_responses.csv \
+  --spikes examples/two_conditions/spikes.csv \
+  --analysis examples/two_conditions/analysis.json \
+  --conditions examples/two_conditions/conditions.json \
+  --measures t_half_excess,excess_per_trial,t_return \
+  --out report/two_conditions
+```
+
+Two-axis table from the generated `summary.md`:
+
+| Measure | Reliability | 95% interval | Shuffled null p95 | Units | Sensitivity, median z | Sensitivity null p95 | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| t_half_excess | 0.976 | [0.950, 0.989] | 0.384 | 30 | 3.08 | 1.05 | — |
+| excess_per_trial | 0.987 | [0.972, 0.994] | 0.362 | 30 | 3.61 | 1.10 | — |
+| t_return | 0.731 | [0.428, 0.874] | 0.357 | 30 | 1.00 | 1.07 | at chance; censored: control 8, slowed 11 |
+| baseline_hz (reference) | 0.989 | [0.977, 0.995] | 0.350 | 30 | 0.59 | 1.13 | at chance |
+
 ## Repository layout
 
 - `src/recovery_reliability_benchmark/contract.py` — Conformance checker for `units.csv`, `responses.csv`, and optional sidecars (`rrb-check`).
@@ -86,6 +108,7 @@ reference (baseline_hz): rho=0.991 ci=[0.980, 0.996] n_units=30
 - `src/recovery_reliability_benchmark/metadata.py` — Pydantic schemas and loaders for `preparation.json` and `conditions.json` sidecars.
 - `src/recovery_reliability_benchmark/synthetic.py` — Synthetic dataset generator with configurable single-session reliability and condition offsets.
 - `src/recovery_reliability_benchmark/evaluate.py` — Odd/even split-half reliability ceiling (`split_halves`, `reliability_ceiling`), Fisher-z interval, permutation null, and positive control (`rrb-evaluate`).
+- `src/recovery_reliability_benchmark/report.py` — One-command report folder writer (`rrb-report`) producing `evaluate.json`, `summary.md` (`summary.py`), and `halves.png`.
 - `src/recovery_reliability_benchmark/thresholds.py` — Monte Carlo simulation of the reliability ceiling across min-dataset-2/min-dataset-3 thresholds (`rrb-thresholds`).
 - `examples/` — Conforming synthetic example tables (`units.csv`, `responses.csv`), metadata sidecars (`preparation.json`, `conditions.json`), and generator script.
 - `scripts/` — CLI wrapper script (`scripts/thresholds.py`) for regenerating threshold simulation outputs.

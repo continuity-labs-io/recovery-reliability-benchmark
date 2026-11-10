@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- rrb-report: evaluate.json, summary.md and a figure from one command; two-condition example.
 - Sensitivity axis between condition pairs, with a shuffled null; reported for every measure and the reference row.
 - spikes path: baseline firing rate reported as a reference row.
 - excess.py: bin-free recovery measures t_half_excess and excess_per_trial.
