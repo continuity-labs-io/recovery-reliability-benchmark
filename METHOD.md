@@ -105,7 +105,7 @@ For a target full-length reliability `rho` across `n = 20` trials on `1000` unit
 
     sigma^2 = n * (1 - rho) / rho
 
-Run the synthetic data through the identical pipeline (`validate` -> `split_halves` -> `reliability_ceiling`) and require recovery within `0.05` (`|recovered - injected| <= tolerance`). The pilot's `gate1.py` used day-1 values plus noise instead; the two constructions agree in expectation.
+Run the synthetic data through the identical pipeline (`validate` -> `split_halves` -> `reliability_ceiling`) and require recovery within `0.05` (`|recovered - injected| <= tolerance`). The pilot analysis built its control from day-1 values plus noise; the two constructions agree in expectation.
 
 **Pass:** `|recovered - injected| <= tolerance`, default `0.05`.
 **Fail:** the pipeline has a defect and every other number in the run is void. This control is evaluated first for that reason.

@@ -34,6 +34,15 @@ def test_effective_edges_end_at_window() -> None:
     assert np.all(np.diff(edges) > 0.0)
 
 
+def test_effective_edges_no_sliver() -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+    edges = params.effective_edges()
+    assert round(float(edges[-2]), 3) == 1.612
+    assert float(edges[-1]) == 2.0
+    widths = np.diff(edges)
+    assert float(widths[-1]) >= 0.5 * float(widths[-2])
+
+
 def test_params_roundtrip_and_fingerprint() -> None:
     params = AnalysisParams(post_stim_window_s=2.0)
     assert AnalysisParams.from_dict(params.to_dict()) == params
@@ -141,15 +150,16 @@ def test_zero_baseline_gives_null() -> None:
     assert values["peak_rate"] > 0.0
 
 
-def test_overshoot_detected() -> None:
+@pytest.mark.parametrize("seed", [70, 0])
+def test_overshoot_detected(seed: int) -> None:
     params = AnalysisParams(post_stim_window_s=2.0)
-    fn_dip = exponential_recovery(baseline_hz=5.0, peak_hz=50.0, tau_s=0.1, dip_hz=5.0, dip_s=0.5)
+    fn_dip = exponential_recovery(baseline_hz=5.0, peak_hz=50.0, tau_s=0.1, dip_hz=5.0, dip_s=1.0)
     fn_no_dip = exponential_recovery(baseline_hz=5.0, peak_hz=50.0, tau_s=0.1, dip_hz=0.0, dip_s=0.0)
-    trains, onsets = make_spike_trains([fn_dip, fn_no_dip], n_trials=300, params=params, isi_s=4.0, seed=0)
+    trains, onsets = make_spike_trains([fn_dip, fn_no_dip], n_trials=300, params=params, isi_s=4.0, seed=seed)
     vals_dip, _ = unit_measures(trains[0], onsets, params)
     vals_no_dip, _ = unit_measures(trains[1], onsets, params)
-    assert vals_dip["overshoot"] > 0.5
-    assert vals_no_dip["overshoot"] < 0.25
+    assert vals_dip["overshoot"] > 0.35
+    assert vals_no_dip["overshoot"] < 0.1
 
 
 def test_unit_measures_matches_pieces() -> None:

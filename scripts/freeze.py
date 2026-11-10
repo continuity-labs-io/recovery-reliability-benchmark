@@ -57,15 +57,25 @@ def _compute_state() -> tuple[dict[str, Any], dict[str, str]]:
     return manifest, sources
 
 
-def _write_state(manifest: dict[str, Any], sources: dict[str, str]) -> None:
-    SNAP_DIR.mkdir(parents=True, exist_ok=True)
+def _write_state(
+    manifest: dict[str, Any],
+    sources: dict[str, str],
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> None:
     for qualname, src in sources.items():
-        (ROOT / manifest["functions"][qualname]["snapshot"]).write_text(src, encoding="utf-8")
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        snap_path = root / manifest["functions"][qualname]["snapshot"]
+        snap_path.parent.mkdir(parents=True, exist_ok=True)
+        snap_path.write_text(src, encoding="utf-8")
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 def _compare_states(
-    old_manifest: dict[str, Any], new_manifest: dict[str, Any], new_sources: dict[str, str]
+    old_manifest: dict[str, Any],
+    new_manifest: dict[str, Any],
+    new_sources: dict[str, str],
+    root: Path = ROOT,
 ) -> list[str]:
     diffs: list[str] = []
     old_fns, new_fns = old_manifest.get("functions", {}), new_manifest["functions"]
@@ -73,7 +83,7 @@ def _compare_states(
         if name not in old_fns or name not in new_fns:
             diffs.append(f"Function {'added' if name in new_fns else 'removed'}: {name}")
             continue
-        snap_path = ROOT / old_fns[name]["snapshot"]
+        snap_path = root / old_fns[name]["snapshot"]
         old_src = snap_path.read_text(encoding="utf-8") if snap_path.is_file() else ""
         if old_src != new_sources[name] or old_fns[name]["sha256"] != new_fns[name]["sha256"]:
             udiff = difflib.unified_diff(
@@ -90,10 +100,10 @@ def _compare_states(
     return diffs
 
 
-def _has_changelog_frozen_line(version: str) -> bool:
+def _has_changelog_frozen_line(version: str, root: Path = ROOT) -> bool:
     pattern = re.compile(rf"^## \[?{re.escape(version)}\]?(?:\s|-|$)")
     in_section = False
-    for line in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").splitlines():
+    for line in (root / "CHANGELOG.md").read_text(encoding="utf-8").splitlines():
         if pattern.match(line):
             in_section = True
         elif in_section and line.startswith("## "):
@@ -101,6 +111,26 @@ def _has_changelog_frozen_line(version: str) -> bool:
         elif in_section and line.strip().lstrip("-* ").startswith("Frozen:"):
             return True
     return False
+
+
+def update_frozen(
+    manifest: dict[str, Any],
+    sources: dict[str, str],
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> int:
+    """Update frozen manifest and snapshots after a version bump."""
+    old_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    diffs = _compare_states(old_manifest, manifest, sources, root=root)
+    if manifest["version"] == old_manifest.get("version"):
+        print("error: pyproject.toml version matches manifest version; bump version first.", file=sys.stderr)
+        return 1
+    if diffs and not _has_changelog_frozen_line(manifest["version"], root=root):
+        print(f"error: CHANGELOG.md has no 'Frozen:' line under {manifest['version']}.", file=sys.stderr)
+        return 1
+    _write_state(manifest, sources, manifest_path=manifest_path, root=root)
+    print("\n".join([f"Updated frozen manifest to {manifest['version']}.", *diffs]))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -122,22 +152,14 @@ def main(argv: list[str] | None = None) -> int:
     if not MANIFEST_PATH.is_file():
         print(f"error: {MANIFEST_PATH} does not exist; run --init first.", file=sys.stderr)
         return 1
-    old_manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    diffs = _compare_states(old_manifest, manifest, sources)
     if args.check:
+        old_manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        diffs = _compare_states(old_manifest, manifest, sources)
         if diffs:
             print("\n".join(diffs))
             return 1
         return 0
-    if manifest["version"] == old_manifest.get("version"):
-        print("error: pyproject.toml version matches manifest version; bump version first.", file=sys.stderr)
-        return 1
-    if not _has_changelog_frozen_line(manifest["version"]):
-        print(f"error: CHANGELOG.md has no 'Frozen:' line under {manifest['version']}.", file=sys.stderr)
-        return 1
-    _write_state(manifest, sources)
-    print("\n".join([f"Updated frozen manifest to {manifest['version']}.", *diffs]))
-    return 0
+    return update_frozen(manifest, sources)
 
 
 if __name__ == "__main__":

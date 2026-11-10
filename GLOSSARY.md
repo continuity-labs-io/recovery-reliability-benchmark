@@ -16,7 +16,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Recording unit (unit).** One spatially distinct channel of measurement: an electrode, a sorted unit, a cell, a region of interest, or a pixel group. The reliability correlation runs across units, so the unit is the axis of the whole computation. On an HD-MEA a unit is usually a sorted neuron or a single electrode; the spec does not care which, but one dataset must use one definition. SPEC §2; `unit_id`.
 
-**Electrode.** A physical recording site. Not the same as a unit: one electrode may carry several sorted units, and one unit may be seen on several electrodes. The pilot analysis (gate1) used electrodes as units.
+**Electrode.** A physical recording site. Not the same as a unit: one electrode may carry several sorted units, and one unit may be seen on several electrodes. The pilot analysis used electrodes as units.
 
 **Spike sorting.** Assigning recorded voltage events to putative neurons. The benchmark accepts already-sorted output and does not sort; adapters that read instrument files will call an external sorter if the lab wants one.
 
@@ -86,11 +86,11 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Per-trial measure.** A measure that exists for a single trial on its own, so that a unit's value over several trials is the mean of per-trial values. Spike count in the window and first-spike latency are per-trial measures. v0.1.0 handles only these.
 
-**PSTH (peri-stimulus time histogram).** Spike counts in time bins after stimulus onset, pooled over a set of trials and divided by trial count and bin width to give a rate. The pilot's recovery measures are read off a PSTH, not off single trials. `gate1.measures()`.
+**PSTH (peri-stimulus time histogram).** Spike counts in time bins after stimulus onset, pooled over a set of trials and divided by trial count and bin width to give a rate. The pilot's recovery measures are read off a PSTH, not off single trials. `measures.psth_rate`.
 
 **PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time, computed by `measures.recovery_measures`: `t_peak` (bin center of the maximum rate), `peak_rate` (that maximum), `t_half_peak` (first bin center after the peak bin with rate at or below `baseline + half_peak_frac * (peak_rate - baseline)`), `t_return` (right edge of the last bin exceeding `return_x_baseline * baseline`), `residual` (mean rate over bins whose center is at least `post_stim_window_s - residual_s`, divided by baseline), and `overshoot`. Unresolved recovery inside the window is censored at `post_stim_window_s` with `t_half_peak_censored` or `t_return_censored` (never `NaN`); if no bin exceeds threshold, `t_return` is `0.0` with `no_response`. When baseline is `0.0`, `t_return`, `residual`, and `overshoot` are `NaN` with `baseline_zero` set while `t_peak`, `peak_rate`, and `t_half_peak` are still computed.
 
-**Overshoot.** Largest downward excursion of the post-stimulus PSTH rate below baseline after `t_return`, computed as `(baseline - min_rate_after_t_return) / baseline` floored at `0.0`; `NaN` with `overshoot_undefined` when `t_return` is censored, no bin follows `t_return`, or baseline is zero. `measures.recovery_measures`.
+**Overshoot.** Pooled firing-rate deficit below baseline after `t_return`, computed over bins with center `> t_return` as `max(0, (baseline - r_after) / baseline)` where `r_after = sum(rate_i * width_i) / sum(width_i)`; `NaN` with `overshoot_undefined` when `t_return` is censored, no bin follows `t_return`, or baseline is zero. `measures.recovery_measures`.
 
 **Analysis parameters (`measures.AnalysisParams`).** The frozen dataclass holding the PSTH and recovery-measure parameters (`post_stim_window_s`, `pre_stim_window_s`, `load_duration_s`, `bin_edges_s`, `return_x_baseline`, `half_peak_frac`, `residual_s`) and its SHA-256 JSON `fingerprint()`. `measures.py`.
 
@@ -121,8 +121,6 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 **Per-unit reliability.** Reliability of the vector of per-unit values, as opposed to the reproducibility of a well-level or dish-level average. The benchmark reports per-unit reliability; most published assays report well-level reproducibility or none.
 
 **Reliability ceiling (ceiling).** Reliability as an upper bound: by the attenuation theorem, no correlation between a measure and anything else can exceed the measure's correlation with itself. A low ceiling means downstream results built on the measure are uninterpretable before they are run. METHOD §1; `evaluate.reliability_ceiling`.
-
-**Sensitivity.** The standardized shift of a measure under a declared manipulation: d = (mean of per-unit means in the treated condition − mean in the control condition) / pooled SD across units within condition, with a bootstrap confidence interval over units. Computed on the same per-unit means as reliability. Reliability is blind to the condition effect by construction (pooled centering subtracts it), so a measure can be reliable and insensitive; baseline firing rate is the reference row. Measurement noise attenuates the observed d by √ρ. Planned for v0.2.0, not computed at v0.1.x; whether to use the paired form over units active in both conditions is decided when the first two-condition dataset arrives.
 
 **Attenuation theorem.** r(X, Y) ≤ sqrt(reliability(X) × reliability(Y)); the observed correlation between two noisy measures is attenuated by their reliabilities. The reason "ceiling" is the right word. METHOD §1.
 

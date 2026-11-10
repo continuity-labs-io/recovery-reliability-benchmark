@@ -1,9 +1,9 @@
 """PSTH-based neural recovery measures computed from spike times.
 
-Pure functions on NumPy arrays in seconds. Where ``gate1.py`` fixes a detail (bin time at
-bin center for ``t_peak``, ``t_half_peak``, and ``residual`` window; ``t_return`` as the
-right edge of the last bin exceeding ``return_x_baseline * baseline``; ``residual`` as the
-mean trailing rate divided by baseline; baseline from pooled pre-stimulus counts), it wins.
+Pure functions on NumPy arrays in seconds. Conventions: bin time is the bin center for
+t_peak, t_half_peak and the residual window; t_return is the right edge of the last bin
+above return_x_baseline * baseline; residual is the pooled trailing rate divided by
+baseline; baseline is pooled pre-stimulus counts over the trial set.
 """
 
 from __future__ import annotations
@@ -84,18 +84,24 @@ class AnalysisParams:
         return hashlib.sha256(json.dumps(self.to_dict(), sort_keys=True).encode("utf-8")).hexdigest()
 
     def effective_edges(self) -> np.ndarray:
-        """Return edges strictly inside ``post_stim_window_s`` followed by ``post_stim_window_s``."""
-        inside = [e for e in self.bin_edges_s if e < self.post_stim_window_s]
-        return np.asarray([*inside, float(self.post_stim_window_s)], dtype=float)
+        """Return stored edges below ``post_stim_window_s`` followed by the window end.
+
+        If the gap from the last stored edge below ``post_stim_window_s`` to the window end
+        is less than half the width of the preceding bin, that last edge is dropped before
+        appending the window end: a sliver bin has the fewest spikes and the noisiest rate,
+        and it sits where ``t_return``, ``residual``, and ``overshoot`` are read.
+        """
+        win = float(self.post_stim_window_s)
+        inside = [e for e in self.bin_edges_s if e < win]
+        if len(inside) >= 2 and (win - inside[-1]) < 0.5 * (inside[-1] - inside[-2]):
+            inside.pop()
+        return np.asarray([*inside, win], dtype=float)
 
 
 def trial_latencies(
     spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams
 ) -> list[np.ndarray]:
-    """Extract post-load spike latencies per trial in ``[0, post_stim_window_s)``.
-
-    Time zero is ``onset + params.load_duration_s``; spikes during the load are excluded.
-    Sorted inputs are not assumed.
+    """Extract post-load spike latencies per trial in ``[0, post_stim_window_s)`` (t0 = onset + load_duration_s).
 
     Args:
         spike_times_s: 1D array-like of spike timestamps in seconds.
@@ -109,10 +115,8 @@ def trial_latencies(
     out: list[np.ndarray] = []
     for onset in np.asarray(onsets_s, dtype=float):
         t0 = float(onset) + params.load_duration_s
-        i0 = max(0, int(np.searchsorted(spikes, t0, side="left")) - 1)
-        i1 = min(len(spikes), int(np.searchsorted(spikes, t0 + win, side="right")) + 1)
-        rel = spikes[i0:i1] - t0
-        out.append(rel[(rel >= 0.0) & (rel < win)])
+        i0, i1 = np.searchsorted(spikes, [t0, t0 + win], side="left")
+        out.append(spikes[int(i0) : int(i1)] - t0)
     return out
 
 
@@ -128,18 +132,13 @@ def pre_counts(spike_times_s: FloatArray, onsets_s: FloatArray, params: Analysis
         1D integer array of pre-stimulus spike counts, one per onset.
     """
     spikes, onsets = np.sort(np.asarray(spike_times_s, dtype=float)), np.asarray(onsets_s, dtype=float)
-    counts = np.empty(len(onsets), dtype=int)
-    for idx, onset in enumerate(onsets):
-        t_end, t_start = float(onset), float(onset) - params.pre_stim_window_s
-        i0 = max(0, int(np.searchsorted(spikes, t_start, side="left")) - 1)
-        i1 = min(len(spikes), int(np.searchsorted(spikes, t_end, side="right")) + 1)
-        seg = spikes[i0:i1]
-        counts[idx] = int(np.sum((seg >= t_start) & (seg < t_end)))
-    return counts
+    i0 = np.searchsorted(spikes, onsets - params.pre_stim_window_s, side="left")
+    i1 = np.searchsorted(spikes, onsets, side="left")
+    return np.asarray(i1 - i0, dtype=int)
 
 
 def baseline_hz(pre_counts: IntArray, params: AnalysisParams) -> float:
-    """Compute pooled pre-stimulus baseline firing rate in Hz (matching ``gate1.py``).
+    """Compute pooled pre-stimulus baseline firing rate in Hz.
 
     Args:
         pre_counts: Per-trial spike counts in the pre-stimulus window.
@@ -184,10 +183,7 @@ def bin_counts(latencies: Sequence[np.ndarray], edges_s: FloatArray) -> np.ndarr
 
 
 def psth_rate(counts: np.ndarray, edges_s: FloatArray) -> np.ndarray:
-    """Compute PSTH firing rate in Hz per bin from per-trial bin counts.
-
-    Mean over trials of ``counts`` divided by bin width, equal to pooled counts divided by
-    ``(n_trials * width)`` (matching ``gate1.py``).
+    """Compute PSTH firing rate in Hz per bin (pooled counts divided by ``n_trials * width``).
 
     Args:
         counts: 2D array of shape ``(n_trials, n_bins)`` containing spike counts.
@@ -205,10 +201,14 @@ def recovery_measures(
 ) -> tuple[dict[str, float], dict[str, bool]]:
     """Compute PSTH recovery measures and censoring/status flags.
 
-    Where ``gate1.py`` fixes a detail, it wins: bin time is the bin center for ``t_peak``,
-    ``t_half_peak``, and the ``residual`` window filter; ``t_return`` is the right edge of
-    the last bin with ``rate > return_x_baseline * baseline``; ``residual`` is the mean rate
-    over bins with ``center >= post_stim_window_s - residual_s`` divided by ``baseline``.
+    Bin time is the bin center for ``t_peak``, ``t_half_peak``, and the ``residual`` window
+    filter; ``t_return`` is the right edge of the last bin with
+    ``rate > return_x_baseline * baseline``; ``residual`` is the mean rate over bins with
+    ``center >= post_stim_window_s - residual_s`` divided by ``baseline``. ``overshoot`` uses
+    the pooled rate ``sum(rate_i * width_i) / sum(width_i)`` over bins with
+    ``center > t_return``: the minimum over bins is biased upward by whichever bin has the
+    fewest spikes, so it grows with bin count and noise even when no dip exists; the pooled
+    rate does not.
 
     Args:
         rate_hz: 1D array of PSTH firing rates in Hz per bin.
@@ -220,17 +220,13 @@ def recovery_measures(
         Tuple of ``(values, flags)`` dictionaries.
     """
     rate, edges = np.asarray(rate_hz, dtype=float), np.asarray(edges_s, dtype=float)
-    centers, right_edges = 0.5 * (edges[:-1] + edges[1:]), edges[1:]
+    centers, right_edges, win = 0.5 * (edges[:-1] + edges[1:]), edges[1:], float(params.post_stim_window_s)
     peak_idx = int(np.argmax(rate))
     t_peak, peak_rate, base = float(centers[peak_idx]), float(rate[peak_idx]), float(baseline)
 
     after_peak = np.flatnonzero(rate[peak_idx + 1 :] <= base + params.half_peak_frac * (peak_rate - base))
     t_half_peak_censored = len(after_peak) == 0
-    t_half_peak = (
-        float(params.post_stim_window_s)
-        if t_half_peak_censored
-        else float(centers[peak_idx + 1 + int(after_peak[0])])
-    )
+    t_half_peak = win if t_half_peak_censored else float(centers[peak_idx + 1 + int(after_peak[0])])
 
     nan = float("nan")
     if base == 0.0:
@@ -241,19 +237,17 @@ def recovery_measures(
         exceed = np.flatnonzero(rate > params.return_x_baseline * base)
         no_response = len(exceed) == 0
         t_return_censored = not no_response and int(exceed[-1]) == len(rate) - 1
-        if no_response:
-            t_return = 0.0
-        elif t_return_censored:
-            t_return = float(params.post_stim_window_s)
-        else:
-            t_return = float(right_edges[int(exceed[-1])])
-        res_mask = centers >= (params.post_stim_window_s - params.residual_s)
+        t_return = 0.0 if no_response else (win if t_return_censored else float(right_edges[int(exceed[-1])]))
+        res_mask = centers >= (win - params.residual_s)
         residual = float(np.mean(rate[res_mask]) / base) if np.any(res_mask) else nan
-        after_return = rate[centers > t_return]
-        overshoot_undefined = t_return_censored or len(after_return) == 0
-        overshoot = (
-            nan if overshoot_undefined else float(max(0.0, (base - float(np.min(after_return))) / base))
-        )
+        after_mask = centers > t_return
+        overshoot_undefined = t_return_censored or not bool(np.any(after_mask))
+        if overshoot_undefined:
+            overshoot = nan
+        else:
+            widths = np.diff(edges)[after_mask]
+            r_after = float(np.sum(rate[after_mask] * widths) / np.sum(widths))
+            overshoot = float(max(0.0, (base - r_after) / base))
 
     values = {
         "t_peak": t_peak,
