@@ -70,6 +70,15 @@ rrb-evaluate examples/units.csv examples/trials_responses.csv \
 --measures t_half_excess,excess_per_trial,spikes_per_trial
 ```
 
+Sample summary lines from `rrb-evaluate` on the spikes example (including the always-computed `baseline_hz` reference row):
+
+```text
+t_half_excess: rho=0.954 ci=[0.901, 0.979] rho_at_20=0.954 (per_condition; r_half=0.912, n_units=29, n_pairs=29) null_p95_rho=0.472
+excess_per_trial: rho=0.978 ci=[0.953, 0.989] rho_at_20=0.978 (per_condition; r_half=0.956, n_units=30, n_pairs=30) null_p95_rho=0.467
+spikes_per_trial: rho=0.993 ci=[0.985, 0.997] rho_at_20=0.993 (per_condition; r_half=0.986, n_units=30, n_pairs=30) null_p95_rho=0.456
+reference (baseline_hz): rho=0.991 ci=[0.980, 0.996] n_units=30
+```
+
 ## Repository layout
 
 - `src/recovery_reliability_benchmark/contract.py` — Conformance checker for `units.csv`, `responses.csv`, and optional sidecars (`rrb-check`).

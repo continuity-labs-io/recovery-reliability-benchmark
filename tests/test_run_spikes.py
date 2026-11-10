@@ -116,16 +116,17 @@ def test_spikes_path_reports() -> None:
     assert res["parameters"]["analysis_fingerprint"] == params.fingerprint()
 
     sp_inc = res["inclusion"]["spikes_path"]
+    assert set(sp_inc.keys()) == {"rule", "per_measure"}
     assert (
         sp_inc["rule"]
         == "A unit is scored for a measure in a condition when that measure is computed in both halves."
     )
-    assert sp_inc["t_return"]["baseline"] == {
+    assert sp_inc["per_measure"]["t_return"]["baseline"] == {
         "n_units_in_tables": 30,
         "n_units_scored": 30,
         "n_units_excluded_by_rule": 0,
     }
-    assert sp_inc["peak_rate"]["baseline"] == {
+    assert sp_inc["per_measure"]["peak_rate"]["baseline"] == {
         "n_units_in_tables": 30,
         "n_units_scored": 30,
         "n_units_excluded_by_rule": 0,
@@ -188,7 +189,7 @@ def test_per_measure_inclusion_and_not_scored() -> None:
     h_both = res_with_overshoot["measures"]["t_return"]["headline"]
     assert h_alone["rho"] == h_both["rho"]
     assert h_alone["n_units"] == h_both["n_units"] == 30
-    assert res_with_overshoot["measures"]["overshoot"]["headline"]["n_units"] == 27
+    assert res_with_overshoot["measures"]["overshoot"]["headline"]["n_units"] == 22
 
     taus_partial = [0.05 + 0.01 * i for i in range(6)] + [10.0] * 24
     units_p, trials_p, spikes_p, params_p = _build_spike_dataset(taus_partial, n_trials=20, isi_s=5.0, seed=0)
@@ -287,3 +288,65 @@ def test_tables_path_unchanged() -> None:
     assert res["measures"]["amplitude"]["headline"]["rho"] == pytest.approx(
         0.9044625066512956, rel=0.0, abs=1e-15
     )
+
+
+def test_reference_row_on_example() -> None:
+    units_ex, trials_ex = read_tables(EXAMPLES_DIR / "units.csv", EXAMPLES_DIR / "trials_responses.csv")
+    spikes_ex = read_spikes(EXAMPLES_DIR / "spikes.csv")
+    analysis_ex = load_analysis(EXAMPLES_DIR / "analysis.json")
+
+    res = run(
+        units_ex,
+        trials_ex,
+        measures=["t_half_excess"],
+        spikes=spikes_ex,
+        analysis=analysis_ex,
+        n_perm=50,
+    )
+    ref = res["reference"]
+    assert ref is not None
+    assert ref["measure"] == "baseline_hz"
+    assert ref["headline"]["rho"] > 0.95
+    assert ref["headline"]["n_units"] == 30
+    the = res["measures"]["t_half_excess"]["headline"]
+    assert the["rho"] > 0.9
+    assert the["n_units"] == 29
+
+
+def test_reference_same_when_requested() -> None:
+    units_ex, trials_ex = read_tables(EXAMPLES_DIR / "units.csv", EXAMPLES_DIR / "trials_responses.csv")
+    spikes_ex = read_spikes(EXAMPLES_DIR / "spikes.csv")
+    analysis_ex = load_analysis(EXAMPLES_DIR / "analysis.json")
+
+    res = run(
+        units_ex,
+        trials_ex,
+        measures=["t_half_excess", "baseline_hz"],
+        spikes=spikes_ex,
+        analysis=analysis_ex,
+        n_perm=50,
+    )
+    assert res["reference"]["headline"] == res["measures"]["baseline_hz"]["headline"]
+
+
+def test_reference_none_on_tables_path() -> None:
+    units, responses = make_tables(n_units=30, n_trials=20, reliability=0.8)
+    res = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=20)
+    assert res["reference"] is None
+
+
+def test_reference_does_not_rescue_md3() -> None:
+    taus = np.geomspace(0.05, 0.5, 6)
+    units, trials, spikes, params = _build_spike_dataset(taus, n_trials=10, isi_s=5.0, seed=0, silent_units=4)
+    assert len(units) == 10
+
+    with pytest.raises(ContractViolation) as exc_info:
+        run(
+            units,
+            trials,
+            measures=["t_return"],
+            spikes=spikes,
+            analysis=params,
+            n_perm=20,
+        )
+    assert exc_info.value.requirement is Requirement.MD3

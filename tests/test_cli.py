@@ -236,6 +236,7 @@ def test_cli_evaluate_spikes_analysis_json(capsys: pytest.CaptureFixture[str]) -
     fp12 = doc["result"]["parameters"]["analysis_fingerprint"][:12]
     assert f"path: spikes, analysis {fp12}" in captured_human.out
     assert "units scored 30 of 30" in captured_human.out
+    assert "reference (baseline_hz): rho=" in captured_human.out
 
 
 def test_cli_analysis_requires_spikes_exit_2(capsys: pytest.CaptureFixture[str]) -> None:

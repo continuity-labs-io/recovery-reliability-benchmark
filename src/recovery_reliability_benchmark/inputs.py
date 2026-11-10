@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 SPIKES_INCLUSION_RULE = (
     "A unit is scored for a measure in a condition when that measure is computed in both halves."
 )
+SPIKES_REFERENCE_MEASURE = "baseline_hz"
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class EvaluationInputs:
     best_condition: str
     post_stim_window_s: float
     load_duration_s: float
+    reference_measure: str | None = None
     responses: pd.DataFrame | None = None
     active_units: dict[str, set[str]] | None = None
     scored: dict[str, dict[str, set[str]]] | None = None
@@ -95,6 +97,7 @@ def from_responses(
         best_condition=val["best_condition"],
         post_stim_window_s=post_w,
         load_duration_s=load_s,
+        reference_measure=None,
         responses=responses,
         active_units=active_units,
     )
@@ -145,6 +148,8 @@ def from_spikes(
             f"analysis.load_duration_s ({analysis.load_duration_s})."
         )
     measure_list = list(measures)
+    requested_set = set(measure_list)
+    all_measures = list(dict.fromkeys([*measure_list, SPIKES_REFERENCE_MEASURE]))
     post_w = float(analysis.post_stim_window_s)
     load_s = float(analysis.load_duration_s)
     trials = spikes_mod.trial_table(responses)
@@ -162,19 +167,19 @@ def from_spikes(
     checks_spikes.check_pre_stimulus_window(trials, analysis, load_s)
     evaluated_conditions = val["evaluated_conditions"]
     eval_trials = trials[trials["condition"].astype(str).isin(set(evaluated_conditions))]
-    halves, flags = spikes_mod.halves_from_spikes(units, eval_trials, spikes, analysis, measure_list)
-    scored = spikes_mod.scored_units(halves, measure_list)
+    halves, flags = spikes_mod.halves_from_spikes(units, eval_trials, spikes, analysis, all_measures)
+    scored = spikes_mod.scored_units(halves, all_measures)
     not_scored_set: set[str] = set()
     first_md3_violation: ContractViolation | None = None
-    for m in measure_list:
+    for m in all_measures:
         try:
             for c in evaluated_conditions:
                 checks_spikes.check_scored_units(scored, m, c)
         except ContractViolation as exc:
             not_scored_set.add(m)
-            if first_md3_violation is None:
+            if m in requested_set and first_md3_violation is None:
                 first_md3_violation = exc
-    if first_md3_violation is not None and len(not_scored_set) == len(measure_list):
+    if first_md3_violation is not None and requested_set <= not_scored_set:
         raise first_md3_violation
     n_units_in_tables = int(len(units))
     scored_counts: dict[str, dict[str, dict[str, int]]] = {
@@ -186,12 +191,11 @@ def from_spikes(
             }
             for c in evaluated_conditions
         }
-        for m in measure_list
+        for m in all_measures
     }
     val["inclusion"]["spikes_path"] = {
         "rule": SPIKES_INCLUSION_RULE,
         "per_measure": scored_counts,
-        **scored_counts,
     }
     flags_cond = flags.index.get_level_values("condition")
     flags_by_condition: dict[str, dict[str, int]] = {
@@ -211,6 +215,7 @@ def from_spikes(
         best_condition=val["best_condition"],
         post_stim_window_s=post_w,
         load_duration_s=load_s,
+        reference_measure=SPIKES_REFERENCE_MEASURE,
         scored=scored,
         not_scored=frozenset(not_scored_set),
         scored_counts=scored_counts,

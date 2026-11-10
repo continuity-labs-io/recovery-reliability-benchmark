@@ -17,15 +17,30 @@ from recovery_reliability_benchmark.synthetic import (
     make_tables,
 )
 
+N_UNITS = 30  # MD3_SHOULD fully-conforming unit count
+N_TRIALS = 20  # MD2_SHOULD fully-conforming trial count
+TABLES_RELIABILITY = 0.8
+POST_STIM_WINDOW_S = 2.0
+TAU_MIN_S = 0.05
+TAU_MAX_S = 0.5
+BASELINE_MIN_HZ = 1.0
+BASELINE_MAX_HZ = 20.0
+# Stride coprime to N_UNITS=30 permutes baselines deterministically so baseline_hz
+# varies across units (giving the reference row real signal) without tracking tau_s.
+BASELINE_STRIDE = 7
+PEAK_RATE_HZ = 100.0
+INTER_STIMULUS_INTERVAL_S = 5.0
+EXAMPLE_SEED = 0
+
 
 def main() -> None:
     examples_dir = Path(__file__).resolve().parent
     units, responses = make_tables(
-        n_units=30,
-        n_trials=20,
+        n_units=N_UNITS,
+        n_trials=N_TRIALS,
         conditions=("baseline",),
-        reliability=0.8,
-        seed=0,
+        reliability=TABLES_RELIABILITY,
+        seed=EXAMPLE_SEED,
     )
     units.to_csv(examples_dir / "units.csv", index=False)
     responses.to_csv(examples_dir / "responses.csv", index=False)
@@ -58,12 +73,26 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    analysis = AnalysisParams(post_stim_window_s=2.0)
+    analysis = AnalysisParams(post_stim_window_s=POST_STIM_WINDOW_S)
     write_analysis(analysis, examples_dir / "analysis.json")
 
-    taus = np.geomspace(0.05, 0.5, 30)
-    rate_fns = [exponential_recovery(baseline_hz=5.0, peak_hz=100.0, tau_s=float(tau)) for tau in taus]
-    trains, onsets_s = make_spike_trains(rate_fns, n_trials=20, params=analysis, isi_s=5.0, seed=0)
+    taus_s = np.geomspace(TAU_MIN_S, TAU_MAX_S, N_UNITS)
+    baselines_hz = np.geomspace(BASELINE_MIN_HZ, BASELINE_MAX_HZ, N_UNITS)
+    rate_fns = [
+        exponential_recovery(
+            baseline_hz=float(baselines_hz[(BASELINE_STRIDE * i) % N_UNITS]),
+            peak_hz=PEAK_RATE_HZ,
+            tau_s=float(tau_s),
+        )
+        for i, tau_s in enumerate(taus_s)
+    ]
+    trains, onsets_s = make_spike_trains(
+        rate_fns,
+        n_trials=N_TRIALS,
+        params=analysis,
+        isi_s=INTER_STIMULUS_INTERVAL_S,
+        seed=EXAMPLE_SEED,
+    )
 
     trials_df = pd.DataFrame(
         {

@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- spikes path: baseline firing rate reported as a reference row.
 - excess.py: bin-free recovery measures t_half_excess and excess_per_trial.
 - spikes path: inclusion is per measure; a measure with too few scored units is reported as not scored.
 - rrb-evaluate --spikes --analysis: measures computed per half from spike times; spikes-path inclusion reported.

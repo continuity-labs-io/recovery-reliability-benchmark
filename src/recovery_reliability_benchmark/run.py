@@ -165,4 +165,10 @@ def run(
         return {"status": "positive_control_failed", **base}
 
     measures_out = {m: evaluate_measure(inputs, m, n_perm=n_perm, seed=seed) for m in measure_list}
-    return {"status": "ok", **base, "measures": measures_out}
+    ref_m = inputs.reference_measure
+    reference = (
+        {"measure": ref_m, **evaluate_measure(inputs, ref_m, n_perm=n_perm, seed=seed)}
+        if ref_m is not None
+        else None
+    )
+    return {"status": "ok", **base, "measures": measures_out, "reference": reference}

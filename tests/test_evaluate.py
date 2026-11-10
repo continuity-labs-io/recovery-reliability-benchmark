@@ -340,6 +340,7 @@ def test_cli_prints_inclusion(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert "units included" in captured.out
     assert "between=" in captured.out
     assert "within=" in captured.out
+    assert "reference (" not in captured.out
 
 
 def test_fisher_interval_matches_scipy() -> None:

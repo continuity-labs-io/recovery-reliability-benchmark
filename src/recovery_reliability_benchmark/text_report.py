@@ -59,10 +59,10 @@ def print_evaluate_human(result: dict[str, Any]) -> None:
     eval_conds = result["census"]["evaluated_conditions"]
     print_inclusion_lines(result["inclusion"], eval_conds)
     if "spikes_path" in result["inclusion"]:
-        sp_inc = result["inclusion"]["spikes_path"]
+        sp_inc = result["inclusion"]["spikes_path"]["per_measure"]
         for m in result["measures"]:
             for cond in eval_conds:
-                c_inc = sp_inc.get("per_measure", sp_inc)[m][cond]
+                c_inc = sp_inc[m][cond]
                 print(f"{cond} ({m}): units scored {c_inc['n_units_scored']} of {c_inc['n_units_in_tables']}")
     for m, m_res in result["measures"].items():
         if m_res.get("status") == "not_scored":
@@ -82,3 +82,13 @@ def print_evaluate_human(result: dict[str, Any]) -> None:
         n_censored = sum(cf.get(f"{m}_censored", 0) for cf in m_res.get("flags", {}).values())
         if n_censored > 0:
             print(f"  {m} censored in {n_censored} units")
+    ref = result.get("reference")
+    if ref is not None:
+        ref_m = ref["measure"]
+        if ref.get("status") == "not_scored":
+            print(f"reference ({ref_m}): not_scored")
+        else:
+            h = ref["headline"]
+            lo, hi = h["rho_ci_low"], h["rho_ci_high"]
+            ci_str = f"[{lo:.3f}, {hi:.3f}]" if lo is not None and hi is not None else "[None, None]"
+            print(f"reference ({ref_m}): rho={h['rho']:.3f} ci={ci_str} n_units={h['n_units']}")
