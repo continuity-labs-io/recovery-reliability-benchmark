@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .measures import FLAG_KEYS, AnalysisParams, unit_measures
+from .measures import FLAG_KEYS, AnalysisParams, trial_latencies, unit_measures
 
 MEASURE_KEYS: tuple[str, ...] = (
     "t_peak",
@@ -213,3 +213,51 @@ def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, set
         if bool(is_valid):
             out[str(cond)].add(str(unit_id))
     return out
+
+
+def per_trial_counts_table(
+    units: pd.DataFrame | Iterable[str],
+    trials: pd.DataFrame,
+    spikes: pd.DataFrame,
+    params: AnalysisParams,
+) -> pd.DataFrame:
+    """Build the per-unit, per-trial post-stimulus spike count table validated on the spikes path.
+
+    Args:
+        units: Recording units DataFrame (with ``unit_id`` column) or iterable of ``unit_id`` strings.
+        trials: Trial table DataFrame with ``trial_index``, ``stim_time_ns``, and ``condition`` columns.
+        spikes: Spike timestamps DataFrame with ``unit_id`` and ``spike_time_ns`` columns.
+        params: Analysis parameters defining load duration and post-stimulus window.
+
+    Returns:
+        DataFrame with columns ``["unit_id", "trial_index", "stim_time_ns", "condition", "spike_count"]``,
+        one row per unit and trial, with ``spike_count = len(latency array)`` as integer.
+    """
+    clean_trials = trial_table(trials)
+    unit_ids = (
+        [str(u) for u in units["unit_id"]] if isinstance(units, pd.DataFrame) else [str(u) for u in units]
+    )
+    by_unit = spike_times_by_unit(spikes, unit_ids)
+    onsets_s = clean_trials["stim_time_ns"].to_numpy(dtype=float) / 1e9
+    trial_indices = clean_trials["trial_index"].to_numpy(dtype=int)
+    stim_times_ns = clean_trials["stim_time_ns"].to_numpy(dtype=int)
+    conditions = clean_trials["condition"].astype(str).to_numpy()
+
+    rows: list[dict[str, Any]] = []
+    for uid in unit_ids:
+        lats = trial_latencies(by_unit[uid], onsets_s, params)
+        for ti, stim_ns, cond, lat in zip(trial_indices, stim_times_ns, conditions, lats, strict=False):
+            rows.append(
+                {
+                    "unit_id": uid,
+                    "trial_index": int(ti),
+                    "stim_time_ns": int(stim_ns),
+                    "condition": str(cond),
+                    "spike_count": int(len(lat)),
+                }
+            )
+    cols = ["unit_id", "trial_index", "stim_time_ns", "condition", "spike_count"]
+    df = pd.DataFrame(rows, columns=cols)
+    if not df.empty:
+        df["spike_count"] = df["spike_count"].astype(int)
+    return df

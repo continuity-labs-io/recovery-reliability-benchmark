@@ -165,6 +165,8 @@ Identifiers are compared as strings. A unit that appears in `responses.csv` MUST
 
 These rules are checks on the container, reported under the name SCHEMA. They are not among the six requirements.
 
+**Evaluating from spikes.** When `rrb-check` or `rrb-evaluate` is invoked with `--spikes` and `--analysis`, `responses.csv` carries the trial columns (`trial_index`, `stim_time_ns`, `condition`), any measure columns in `responses.csv` are ignored, the benchmark computes the requested measures per half from `spikes.csv` under `analysis.json`, and `min-dataset-7` applies.
+
 ---
 
 ## 10. Preparation and condition metadata

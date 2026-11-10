@@ -36,6 +36,8 @@ For one session and one condition, the measure is computed per recording unit, p
 
 The correlation therefore runs **across units**, not across trials. Between-unit variance is the signal. If every unit returned the same value there would be nothing to correlate and the method would be undefined, which is also why section 4 matters.
 
+When measures are computed from spike times (`--spikes` and `--analysis`), the trials of each half are pooled into a single PSTH first and each recovery measure (`t_peak`, `peak_rate`, `t_half_peak`, `t_return`, `residual`, `overshoot`, `baseline_hz`, `baseline_variance_hz2`, `spikes_per_trial`) is computed once per half rather than once per trial and averaged. One trial of a 2 Hz unit holds about four spikes in a two-second post-stimulus window, so a return-to-baseline time estimated from four spikes is dominated by discretization noise; pooling ten trials in a half yields roughly forty spikes and a well-defined rate curve while still ending in one number per unit per half for the split-half correlation.
+
 ---
 
 ## 3. Procedure

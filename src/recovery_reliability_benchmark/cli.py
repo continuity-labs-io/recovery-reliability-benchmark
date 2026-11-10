@@ -11,15 +11,11 @@ from typing import Any
 
 import pandas as pd
 
-from .contract import (
-    SPEC_VERSION,
-    ContractViolation,
-    _validate_durations,
-    read_spikes,
-    read_tables,
-    validate,
-)
-from .metadata import load_conditions, load_preparation
+from . import checks_spikes
+from . import spikes as spikes_mod
+from .contract import SPEC_VERSION, ContractViolation, _validate_durations, read_spikes, read_tables, validate
+from .measures import AnalysisParams
+from .metadata import load_analysis, load_conditions, load_preparation
 from .run import run
 
 
@@ -38,40 +34,54 @@ def file_sha256(path: str | Path) -> str:
 def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("units_csv", help="Path to units CSV file.")
     parser.add_argument("responses_csv", help="Path to responses CSV file.")
-    parser.add_argument("--measures", required=True, help="Comma-separated measure column names.")
-    parser.add_argument(
-        "--post-stim-window-s", required=True, type=float, help="Post-stimulus window in seconds."
-    )
-    parser.add_argument(
-        "--load-duration-s", type=float, default=0.0, help="Conditioning load duration in seconds."
-    )
+    parser.add_argument("--measures", default=None, help="Comma-separated measure column names.")
+    parser.add_argument("--post-stim-window-s", default=None, type=float, help="Post-stimulus window (s).")
+    parser.add_argument("--load-duration-s", default=None, type=float, help="Load duration (s).")
     parser.add_argument("--preparation", default=None, help="Path to preparation.json metadata sidecar.")
     parser.add_argument("--conditions", default=None, help="Path to conditions.json metadata sidecar.")
     parser.add_argument("--spikes", default=None, help="Path to spikes.csv table.")
+    parser.add_argument("--analysis", default=None, help="Path to analysis.json parameters sidecar.")
     parser.add_argument("--json", action="store_true", dest="as_json", help="Emit report as JSON.")
 
 
 def _load_cli_inputs(
-    args: argparse.Namespace,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, dict[str, Any]]:
-    _validate_durations(args.post_stim_window_s, args.load_duration_s)
-    units, responses = read_tables(args.units_csv, args.responses_csv)
-    spikes = read_spikes(args.spikes) if args.spikes is not None else None
-    for opt_path in (args.preparation, args.conditions):
+    args: argparse.Namespace, *, require_measures: bool = True
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, AnalysisParams | None, dict[str, Any]]:
+    if args.analysis is not None and args.spikes is None:
+        raise ValueError("--analysis requires --spikes")
+    if (require_measures or args.analysis is None) and not args.measures:
+        raise ValueError("--measures is required")
+    for opt_path in (args.preparation, args.conditions, args.analysis):
         if opt_path is not None and not Path(opt_path).is_file():
             raise FileNotFoundError(opt_path)
 
+    analysis = load_analysis(args.analysis) if args.analysis is not None else None
+    if analysis is not None:
+        w, d = args.post_stim_window_s, args.load_duration_s
+        if w is not None and (_validate_durations(w, 0.0) or float(w) != float(analysis.post_stim_window_s)):
+            raise ValueError(f"--post-stim-window-s ({w}) != {analysis.post_stim_window_s}")
+        if d is not None and (_validate_durations(1.0, d) or float(d) != float(analysis.load_duration_s)):
+            raise ValueError(f"--load-duration-s ({d}) != {analysis.load_duration_s}")
+        args.post_stim_window_s = float(analysis.post_stim_window_s)
+        args.load_duration_s = float(analysis.load_duration_s)
+    else:
+        if args.post_stim_window_s is None:
+            raise ValueError("--post-stim-window-s is required")
+        args.load_duration_s = 0.0 if args.load_duration_s is None else float(args.load_duration_s)
+        _validate_durations(args.post_stim_window_s, args.load_duration_s)
+
+    units, responses = read_tables(args.units_csv, args.responses_csv)
+    spikes = read_spikes(args.spikes) if args.spikes is not None else None
     inputs_meta: dict[str, Any] = {
         "units": {"path": args.units_csv, "sha256": file_sha256(args.units_csv)},
         "responses": {"path": args.responses_csv, "sha256": file_sha256(args.responses_csv)},
+        **{
+            k: {"path": getattr(args, k), "sha256": file_sha256(getattr(args, k))}
+            for k in ("preparation", "conditions", "spikes", "analysis")
+            if getattr(args, k) is not None
+        },
     }
-    if args.preparation is not None:
-        inputs_meta["preparation"] = {"path": args.preparation, "sha256": file_sha256(args.preparation)}
-    if args.conditions is not None:
-        inputs_meta["conditions"] = {"path": args.conditions, "sha256": file_sha256(args.conditions)}
-    if args.spikes is not None:
-        inputs_meta["spikes"] = {"path": args.spikes, "sha256": file_sha256(args.spikes)}
-    return units, responses, spikes, inputs_meta
+    return units, responses, spikes, analysis, inputs_meta
 
 
 def _emit_report(
@@ -90,11 +100,9 @@ def _emit_report(
         "status": status,
         "inputs": inputs_meta,
         "arguments": arguments_meta,
+        **({"violation": violation} if violation is not None else {}),
+        **({"result": result} if result is not None else {}),
     }
-    if violation is not None:
-        doc["violation"] = violation
-    if result is not None:
-        doc["result"] = result
     print(json.dumps(doc, indent=2, sort_keys=True))
 
 
@@ -109,10 +117,45 @@ def _print_inclusion_lines(inclusion: dict[str, Any], evaluated_conditions: list
         )
 
 
+def _print_evaluate_human(result: dict[str, Any]) -> None:
+    print(f"package_version: {result['package_version']} (SPEC v{result['spec_version']})")
+    params = result["parameters"]
+    if params.get("path") == "spikes":
+        print(f"path: spikes, analysis {params['analysis_fingerprint'][:12]}")
+    print("census:")
+    for key, value in result["census"].items():
+        print(f"  {key}: {value}")
+    eval_conds = result["census"]["evaluated_conditions"]
+    _print_inclusion_lines(result["inclusion"], eval_conds)
+    if "spikes_path" in result["inclusion"]:
+        sp_per_cond = result["inclusion"]["spikes_path"]["per_condition"]
+        for cond in eval_conds:
+            sp_inc = sp_per_cond[cond]
+            print(f"{cond}: units scored {sp_inc['n_units_scored']} of {sp_inc['n_units_in_tables']}")
+    for m, m_res in result["measures"].items():
+        h, kind, null = m_res["headline"], m_res["headline_kind"], m_res["null"]
+        var = h["variance"]
+        ci_str = (
+            f"[{h['rho_ci_low']:.3f}, {h['rho_ci_high']:.3f}]"
+            if h["rho_ci_low"] is not None and h["rho_ci_high"] is not None
+            else "[None, None]"
+        )
+        line = (
+            f"{m}: rho={h['rho']:.3f} ci={ci_str} rho_at_20={h['rho_at_20']:.3f} "
+            f"({kind}; r_half={h['r_half']:.3f}, n_units={h['n_units']}, n_pairs={h['n_pairs']}) "
+            f"null_p95_rho={null['p95_rho']:.3f}"
+        )
+        if var is not None:
+            line += f" between={var['var_between']:.3g} within={var['var_within']:.3g}"
+        print(line)
+        if "flags" in m_res:
+            n_censored = sum(cf.get(f"{m}_censored", 0) for cf in m_res["flags"].values())
+            if n_censored > 0:
+                print(f"  {m} censored in {n_censored} units")
+
+
 def check_main(argv: list[str] | None = None) -> int:
     """Run the contract validator CLI and print the conformance report.
-
-    This report is what a lab shares; the data stays on their machine.
 
     Args:
         argv: Optional list of CLI argument strings (defaults to ``sys.argv[1:]``).
@@ -120,24 +163,19 @@ def check_main(argv: list[str] | None = None) -> int:
     Returns:
         Process exit code (0 on conformance, 1 on contract violation, 2 on input error).
     """
-    parser = argparse.ArgumentParser(
-        description="Validate units and responses CSV tables against the benchmark data contract."
-    )
+    parser = argparse.ArgumentParser(description="Validate units and responses CSV tables.")
     _add_common_arguments(parser)
-    parser.add_argument(
-        "--extra-forbidden", default="", help="Comma-separated extra forbidden measure names."
-    )
+    parser.add_argument("--extra-forbidden", default="", help="Extra forbidden measure names.")
     args = parser.parse_args(argv)
 
-    measures = [m.strip() for m in args.measures.split(",") if m.strip()]
-    extra_forbidden = [m.strip() for m in args.extra_forbidden.split(",") if m.strip()]
-
     try:
-        units, responses, spikes, inputs_meta = _load_cli_inputs(args)
+        units, responses, spikes, analysis, inputs_meta = _load_cli_inputs(args, require_measures=False)
     except (FileNotFoundError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    measures = [m.strip() for m in (args.measures or "").split(",") if m.strip()]
+    extra_forbidden = [m.strip() for m in args.extra_forbidden.split(",") if m.strip()]
     arguments_meta = {
         "measures": measures,
         "post_stim_window_s": float(args.post_stim_window_s),
@@ -146,19 +184,31 @@ def check_main(argv: list[str] | None = None) -> int:
     }
 
     try:
-        preparation = load_preparation(args.preparation) if args.preparation is not None else None
-        conditions = load_conditions(args.conditions) if args.conditions is not None else None
+        prep = load_preparation(args.preparation) if args.preparation is not None else None
+        conds = load_conditions(args.conditions) if args.conditions is not None else None
+        if analysis is not None:
+            assert spikes is not None
+            trials = spikes_mod.trial_table(responses)
+            val_table = spikes_mod.per_trial_counts_table(units, trials, spikes, analysis)
+            val_measures = ["spike_count"]
+        else:
+            trials, val_table, val_measures = None, responses, measures
+        ef = set(extra_forbidden) if extra_forbidden else None
         result = validate(
             units,
-            responses,
-            measures=measures,
-            post_stim_window_s=args.post_stim_window_s,
-            load_duration_s=args.load_duration_s,
-            extra_forbidden=set(extra_forbidden) if extra_forbidden else None,
-            preparation=preparation,
-            conditions=conditions,
-            spikes=spikes,
+            val_table,
+            val_measures,
+            args.post_stim_window_s,
+            args.load_duration_s,
+            ef,
+            prep,
+            conds,
+            spikes,
         )
+        if analysis is not None and trials is not None:
+            checks_spikes.check_pre_stimulus_window(trials, analysis, args.load_duration_s)
+            result["pre_stim_window_s"] = float(analysis.pre_stim_window_s)
+            result["analysis_fingerprint"] = analysis.fingerprint()
     except ContractViolation as exc:
         if args.as_json:
             _emit_report("violation", inputs_meta, arguments_meta, violation=exc.to_dict())
@@ -171,12 +221,10 @@ def check_main(argv: list[str] | None = None) -> int:
     else:
         from . import __version__
 
-        print(f"{result['conformance']} (SPEC v{result['spec_version']})")
-        print(f"package_version: {__version__}")
+        print(f"{result['conformance']} (SPEC v{result['spec_version']})\npackage_version: {__version__}")
         for key, value in result.items():
-            if key == "conditions":
-                continue
-            print(f"{key}: {value}")
+            if key != "conditions":
+                print(f"{key}: {value}")
         print("conditions:")
         for name, info in result["conditions"].items():
             sf = info["should_failed"] or "none"
@@ -197,24 +245,19 @@ def evaluate_main(argv: list[str] | None = None) -> int:
         Process exit code (0 on success, 1 on contract violation, 2 on input error,
         3 on positive-control failure).
     """
-    parser = argparse.ArgumentParser(
-        description="Compute within-session reliability ceilings on conforming units and responses CSV tables."
-    )
+    parser = argparse.ArgumentParser(description="Compute within-session reliability ceilings.")
     _add_common_arguments(parser)
-    parser.add_argument(
-        "--n-perm", type=int, default=1000, help="Permutations for the label-permutation null."
-    )
+    parser.add_argument("--n-perm", type=int, default=1000, help="Permutations for null.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     args = parser.parse_args(argv)
 
-    measures = [m.strip() for m in args.measures.split(",") if m.strip()]
-
     try:
-        units, responses, spikes, inputs_meta = _load_cli_inputs(args)
+        units, responses, spikes, analysis, inputs_meta = _load_cli_inputs(args, require_measures=True)
     except (FileNotFoundError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    measures = [m.strip() for m in (args.measures or "").split(",") if m.strip()]
     arguments_meta = {
         "measures": measures,
         "post_stim_window_s": float(args.post_stim_window_s),
@@ -224,19 +267,20 @@ def evaluate_main(argv: list[str] | None = None) -> int:
     }
 
     try:
-        preparation = load_preparation(args.preparation) if args.preparation is not None else None
-        conditions = load_conditions(args.conditions) if args.conditions is not None else None
+        prep = load_preparation(args.preparation) if args.preparation is not None else None
+        conds = load_conditions(args.conditions) if args.conditions is not None else None
         result = run(
             units,
             responses,
-            measures=measures,
-            post_stim_window_s=args.post_stim_window_s,
-            load_duration_s=args.load_duration_s,
-            n_perm=args.n_perm,
+            measures,
+            args.post_stim_window_s,
+            args.load_duration_s,
+            args.n_perm,
             seed=args.seed,
-            preparation=preparation,
-            conditions=conditions,
+            preparation=prep,
+            conditions=conds,
             spikes=spikes,
+            analysis=analysis,
         )
     except ContractViolation as exc:
         if args.as_json:
@@ -246,34 +290,11 @@ def evaluate_main(argv: list[str] | None = None) -> int:
         return 1
 
     if result["status"] == "positive_control_failed":
-        if args.as_json:
-            _emit_report(result["status"], inputs_meta, arguments_meta, result=result)
-        else:
-            print("positive_control_failed")
+        _emit_report(result["status"], inputs_meta, arguments_meta, result=result) if args.as_json else print(
+            "positive_control_failed"
+        )
         return 3
-
-    if args.as_json:
-        _emit_report(result["status"], inputs_meta, arguments_meta, result=result)
-    else:
-        print(f"package_version: {result['package_version']} (SPEC v{result['spec_version']})")
-        print("census:")
-        for key, value in result["census"].items():
-            print(f"  {key}: {value}")
-        _print_inclusion_lines(result["inclusion"], result["census"]["evaluated_conditions"])
-        for m, m_res in result["measures"].items():
-            h = m_res["headline"]
-            kind = m_res["headline_kind"]
-            null = m_res["null"]
-            var = h["variance"]
-            ci_str = (
-                f"[{h['rho_ci_low']:.3f}, {h['rho_ci_high']:.3f}]"
-                if h["rho_ci_low"] is not None and h["rho_ci_high"] is not None
-                else "[None, None]"
-            )
-            print(
-                f"{m}: rho={h['rho']:.3f} ci={ci_str} rho_at_20={h['rho_at_20']:.3f} "
-                f"({kind}; r_half={h['r_half']:.3f}, n_units={h['n_units']}, n_pairs={h['n_pairs']}) "
-                f"null_p95_rho={null['p95_rho']:.3f} "
-                f"between={var['var_between']:.3g} within={var['var_within']:.3g}"
-            )
+    _emit_report(
+        result["status"], inputs_meta, arguments_meta, result=result
+    ) if args.as_json else _print_evaluate_human(result)
     return 0

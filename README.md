@@ -52,6 +52,24 @@ rrb-thresholds --fast --out output/thresholds
 
 The first line of output is the conformance level (`conforming` or `fully_conforming`). The example data are synthetic with a true reliability of 0.8; the reported ceiling and its interval should bracket it. Passing `--json` produces a shareable report containing the verdict, counts, and SHA-256 digests of the inputs; no data leaves the machine. You can also run `python -m recovery_reliability_benchmark.contract` as the equivalent without the console script.
 
+### From spikes
+
+When the benchmark computes PSTH recovery measures directly from spike timestamps, pass the three tables (`units.csv`, `trials_responses.csv` carrying the trial columns, and `spikes.csv`) together with `analysis.json`:
+
+```bash
+# contract conformance check on the spikes path (includes min-dataset-7)
+rrb-check examples/units.csv examples/trials_responses.csv \
+--spikes examples/spikes.csv \
+--analysis examples/analysis.json \
+--measures t_return,t_half_peak,peak_rate,spikes_per_trial
+
+# within-session reliability ceiling evaluator from spikes
+rrb-evaluate examples/units.csv examples/trials_responses.csv \
+--spikes examples/spikes.csv \
+--analysis examples/analysis.json \
+--measures t_return,t_half_peak,peak_rate,spikes_per_trial
+```
+
 ## Repository layout
 
 - `src/recovery_reliability_benchmark/contract.py` — Conformance checker for `units.csv`, `responses.csv`, and optional sidecars (`rrb-check`).

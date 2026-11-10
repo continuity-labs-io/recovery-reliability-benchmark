@@ -191,3 +191,126 @@ def test_help_flags() -> None:
         with pytest.raises(SystemExit) as exc_info:
             entry(["--help"])
         assert exc_info.value.code == 0
+
+
+def test_cli_evaluate_spikes_analysis_json(capsys: pytest.CaptureFixture[str]) -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    rc = evaluate_main(
+        [
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "trials_responses.csv"),
+            "--spikes",
+            str(examples_dir / "spikes.csv"),
+            "--analysis",
+            str(examples_dir / "analysis.json"),
+            "--measures",
+            "t_return,t_half_peak,peak_rate,spikes_per_trial",
+            "--n-perm",
+            "50",
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0
+    doc = json.loads(captured.out)
+    assert doc["status"] == "ok"
+    assert doc["result"]["parameters"]["path"] == "spikes"
+    assert "analysis" in doc["inputs"]
+
+    rc_human = evaluate_main(
+        [
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "trials_responses.csv"),
+            "--spikes",
+            str(examples_dir / "spikes.csv"),
+            "--analysis",
+            str(examples_dir / "analysis.json"),
+            "--measures",
+            "t_return,t_half_peak,peak_rate,spikes_per_trial",
+            "--n-perm",
+            "20",
+        ]
+    )
+    captured_human = capsys.readouterr()
+    assert rc_human == 0
+    fp12 = doc["result"]["parameters"]["analysis_fingerprint"][:12]
+    assert f"path: spikes, analysis {fp12}" in captured_human.out
+    assert "units scored 30 of 30" in captured_human.out
+
+
+def test_cli_analysis_requires_spikes_exit_2(capsys: pytest.CaptureFixture[str]) -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    for entry in (evaluate_main, main):
+        rc = entry(
+            [
+                str(examples_dir / "units.csv"),
+                str(examples_dir / "trials_responses.csv"),
+                "--analysis",
+                str(examples_dir / "analysis.json"),
+                "--measures",
+                "t_return",
+            ]
+        )
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "--analysis requires --spikes" in captured.err
+
+
+def test_cli_mismatched_post_stim_window_exit_2(capsys: pytest.CaptureFixture[str]) -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    for entry in (evaluate_main, main):
+        rc = entry(
+            [
+                str(examples_dir / "units.csv"),
+                str(examples_dir / "trials_responses.csv"),
+                "--spikes",
+                str(examples_dir / "spikes.csv"),
+                "--analysis",
+                str(examples_dir / "analysis.json"),
+                "--measures",
+                "t_return",
+                "--post-stim-window-s",
+                "3.5",
+            ]
+        )
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "3.5" in captured.err and "2.0" in captured.err
+
+
+def test_cli_check_analysis_reports_pre_stim_window(capsys: pytest.CaptureFixture[str]) -> None:
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    rc = main(
+        [
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "trials_responses.csv"),
+            "--spikes",
+            str(examples_dir / "spikes.csv"),
+            "--analysis",
+            str(examples_dir / "analysis.json"),
+            "--measures",
+            "t_return,t_half_peak,peak_rate,spikes_per_trial",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "pre_stim_window_s: 1.0" in captured.out
+    assert "analysis_fingerprint:" in captured.out
+
+    rc_json = main(
+        [
+            str(examples_dir / "units.csv"),
+            str(examples_dir / "trials_responses.csv"),
+            "--spikes",
+            str(examples_dir / "spikes.csv"),
+            "--analysis",
+            str(examples_dir / "analysis.json"),
+            "--json",
+        ]
+    )
+    captured_json = capsys.readouterr()
+    assert rc_json == 0
+    doc = json.loads(captured_json.out)
+    assert doc["status"] == "fully_conforming"
+    assert doc["result"]["pre_stim_window_s"] == 1.0
+    assert "analysis_fingerprint" in doc["result"]
