@@ -175,11 +175,17 @@ Arc's Virtual Cell Challenge used a scale-sensitive perturbation discrimination 
 | Variance inflation | None: Pearson r is invariant to scaling and shifting a measure | Scale-invariant score | Not applicable |
 | Unit selection (drop low-variance units, keep heterogeneous ones) | Raises between-unit variance, raises the ceiling | Pre-registered inclusion rule; inclusion counts and declared exclusions in every report; variance components printed next to the ceiling | Implemented (v0.1.0) |
 | Trial exclusion after seeing results | Removes noisy trials, raises the ceiling | No trial exclusion by rule; missing rows make a unit inactive; declared exclusions required; benchmark computes measures from spikes from v0.2.0 | Implemented (counts); tightened in v0.2.0 |
-| Stable-but-meaningless measures (baseline firing rate) | Wins a reliability-only ranking while saying nothing about recovery | Sensitivity axis reported next to reliability, never combined; baseline firing rate as a reference row every submitted measure is compared with | Reference row implemented; sensitivity planned (v0.2.0) |
+| Stable-but-meaningless measures (baseline firing rate) | Wins a reliability-only ranking while saying nothing about recovery | Sensitivity axis reported next to reliability, never combined; baseline firing rate as a reference row every submitted measure is compared with | Implemented (v0.2.0) |
 | Submitter-chosen data or splits | Cherry-picked datasets or favorable halves | Submitted measures are scored on fixed public datasets with splits chosen by the benchmark | Documented (CONTRIBUTING.md); leaderboard planned |
 | Something we have not thought of | Unknown | Adversarial review requested: open an issue titled "gaming:" with the attack and, if possible, a synthetic dataset that demonstrates it | Open |
 
-With two or more conditions, the sensitivity axis is the between-condition effect per unit divided by that unit's split-half noise, summarized as the fraction of units moving more than twice their own noise band and the median standardized effect; with one condition, the same quantity between the post-load window and the pre-load baseline. Reported beside reliability, never merged into one score. Status: planned for v0.2.0 with `measures.py`.
+For a measure and each sorted pair `(first, second)` of evaluated conditions (`sensitivity.py`), over the units whose odd and even halves are non-null in both conditions:
+
+    shift_u = (second_odd + second_even) / 2 - (first_odd + first_even) / 2
+    noise_u = 0.5 * sqrt((first_odd - first_even)**2 + (second_odd - second_even)**2)
+    z_u     = abs(shift_u) / max(noise_u, 1e-12)
+
+Summarized as `median_abs_z = median(z_u)`, `frac_beyond_2 = mean(z_u > 2)`, `median_shift = median(shift_u)` (signed, in the measure's units), and `n_units`. Under the shuffled null, for each unit independently its four half values are dealt at random into the four slots and `median_abs_z` and `frac_beyond_2` are recomputed `n_perm` times, reporting the 95th percentile of each and the fraction of shuffles with `median_abs_z` at or above the observed value (`above_null` is `median_abs_z > null.median_abs_z_p95`): two halves per condition give each unit's noise two degrees of freedom, so about 18% of units pass twice their noise by chance and the chance median is about 0.8. With fewer than two evaluated conditions, sensitivity is `None`; a pre-versus-post contrast is not defined for a recovery time. Reported beside reliability for every measure and the reference row, never merged into one score.
 
 ---
 

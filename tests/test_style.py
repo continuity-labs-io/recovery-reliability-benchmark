@@ -20,6 +20,7 @@ PACKAGE_MODULES = (
     "controls",
     "inputs",
     "run",
+    "sensitivity",
     "cli",
     "text_report",
     "protocol",

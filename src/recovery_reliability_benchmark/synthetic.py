@@ -197,3 +197,44 @@ def make_spike_trains(
         trains.append(np.asarray(spikes, dtype=float))
 
     return trains, onsets
+
+
+def make_two_condition_spike_trains(
+    rate_fns_first: Sequence[Callable[[np.ndarray], np.ndarray]],
+    rate_fns_second: Sequence[Callable[[np.ndarray], np.ndarray]],
+    n_trials: int,
+    params: AnalysisParams,
+    isi_s: float,
+    seed: int,
+) -> tuple[list[np.ndarray], np.ndarray, int]:
+    """Generate consecutive two-condition inhomogeneous Poisson spike trains in one session.
+
+    Calls ``make_spike_trains`` with ``seed`` for the first condition and ``seed + 1``
+    for the second condition, then shifts the second condition's timestamps and onsets by
+    ``onsets_1[-1] + params.load_duration_s + params.post_stim_window_s + 1.0``.
+
+    Args:
+        rate_fns_first: Per-unit rate functions for the first condition.
+        rate_fns_second: Per-unit rate functions for the second condition.
+        n_trials: Number of trials per condition.
+        params: Analysis parameters defining load duration and post-stimulus window.
+        isi_s: Inter-stimulus interval in seconds within each condition.
+        seed: Random seed for the first condition (second condition uses ``seed + 1``).
+
+    Returns:
+        Tuple of ``(trains, onsets_s, n_first)`` where ``trains`` is the list of per-unit
+        concatenated spike-timestamp arrays in seconds, ``onsets_s`` is the concatenated
+        1D onset array in seconds, and ``n_first`` is the number of trials in the first
+        condition.
+
+    Raises:
+        ValueError: If ``rate_fns_first`` and ``rate_fns_second`` differ in length.
+    """
+    if len(rate_fns_first) != len(rate_fns_second):
+        raise ValueError("rate_fns_first and rate_fns_second must have the same length.")
+    trains_1, onsets_1 = make_spike_trains(rate_fns_first, n_trials, params, isi_s, seed)
+    trains_2, onsets_2 = make_spike_trains(rate_fns_second, n_trials, params, isi_s, seed + 1)
+    offset = float(onsets_1[-1]) + params.load_duration_s + params.post_stim_window_s + 1.0
+    trains = [np.concatenate([t1, t2 + offset]) for t1, t2 in zip(trains_1, trains_2, strict=True)]
+    onsets_s = np.concatenate([onsets_1, onsets_2 + offset])
+    return trains, onsets_s, int(len(onsets_1))

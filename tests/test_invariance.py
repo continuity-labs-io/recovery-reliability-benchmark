@@ -135,6 +135,12 @@ def test_invariant_to_unit_relabeling(
     for m in ("tau", "amplitude"):
         res_arb_check["measures"][m].pop("null")
         base_check["measures"][m].pop("null")
+        for pair_sens in res_arb_check["measures"][m]["sensitivity"].values():
+            pair_sens.pop("null")
+            pair_sens.pop("above_null")
+        for pair_sens in base_check["measures"][m]["sensitivity"].values():
+            pair_sens.pop("null")
+            pair_sens.pop("above_null")
     compare_results(res_arb_check, base_check)
 
 
@@ -160,6 +166,10 @@ def test_invariant_to_condition_relabeling(
     for m in ("tau", "amplitude"):
         remapped["measures"][m]["per_condition"] = {
             inv_map[c]: v for c, v in remapped["measures"][m]["per_condition"].items()
+        }
+        remapped["measures"][m]["sensitivity"] = {
+            f"{inv_map[k.split('|')[0]]}|{inv_map[k.split('|')[1]]}": v
+            for k, v in remapped["measures"][m]["sensitivity"].items()
         }
 
     compare_results(remapped, baseline)
@@ -220,6 +230,16 @@ def test_invariant_to_affine_measure_transform(
         assert var_aff["moments_reliability"] == pytest.approx(
             var_base["moments_reliability"], rel=1e-9, abs=1e-9
         )
+
+    for pair in ("A|B", "A|C", "B|C"):
+        s_aff = tau_aff["sensitivity"][pair]
+        s_base = tau_base["sensitivity"][pair]
+        assert s_aff["n_units"] == s_base["n_units"]
+        assert s_aff["median_abs_z"] == pytest.approx(s_base["median_abs_z"], rel=1e-9, abs=1e-9)
+        assert s_aff["frac_beyond_2"] == pytest.approx(s_base["frac_beyond_2"], rel=1e-9, abs=1e-9)
+        assert s_aff["median_shift"] == pytest.approx(s_base["median_shift"] * scale, rel=1e-9, abs=1e-9)
+        assert s_aff["above_null"] == s_base["above_null"]
+        _assert_approx_recursive(s_aff["null"], s_base["null"])
 
 
 def test_invariant_to_trial_index_offset(

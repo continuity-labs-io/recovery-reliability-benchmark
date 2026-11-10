@@ -315,3 +315,32 @@ def test_cli_check_analysis_reports_pre_stim_window(capsys: pytest.CaptureFixtur
     assert doc["status"] == "fully_conforming"
     assert doc["result"]["pre_stim_window_s"] == 1.0
     assert "analysis_fingerprint" in doc["result"]
+
+
+def test_cli_evaluate_two_condition_sensitivity_human(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    units_csv, responses_csv = _write_csvs(
+        tmp_path,
+        n_units=30,
+        n_trials=20,
+        conditions=("control", "slowed"),
+        reliability=0.8,
+        condition_offsets={"slowed": 3.0},
+        seed=0,
+    )
+    rc = evaluate_main(
+        [
+            str(units_csv),
+            str(responses_csv),
+            "--measures",
+            "tau,amplitude",
+            "--post-stim-window-s",
+            "2.0",
+            "--n-perm",
+            "50",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "sensitivity control|slowed:" in captured.out

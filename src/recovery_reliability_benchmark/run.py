@@ -13,6 +13,7 @@ from .contract import SPEC_VERSION
 from .evaluate import headline, reliability_ceiling, variance_components
 from .inputs import EvaluationInputs, from_responses, from_spikes
 from .measures import AnalysisParams
+from .sensitivity import measure_sensitivity
 
 if TYPE_CHECKING:
     from .metadata import Condition, Preparation
@@ -74,12 +75,14 @@ def evaluate_measure(inputs: EvaluationInputs, measure: str, n_perm: int, seed: 
     null = controls.permutation_null(
         headline_frame, measure, headline_center, n_perm=n_perm, rng=np.random.default_rng(seed)
     )
+    sens = measure_sensitivity(m_halves, measure, evaluated_conditions, n_perm=n_perm, seed=seed)
     return {
         "headline": headline_val,
         "headline_kind": headline_kind,
         "per_condition": per_cond,
         "pooled": pooled,
         "null": null,
+        "sensitivity": sens,
         **flags,
     }
 
@@ -171,4 +174,14 @@ def run(
         if ref_m is not None
         else None
     )
+    ref_sens = reference.get("sensitivity") if reference is not None else None
+    for m_entry in measures_out.values():
+        m_sens = m_entry.get("sensitivity")
+        if m_sens is not None:
+            for pair, pair_sens in m_sens.items():
+                m_z = pair_sens["median_abs_z"]
+                ref_z = ref_sens[pair]["median_abs_z"] if ref_sens is not None and pair in ref_sens else None
+                pair_sens["beats_reference"] = (
+                    bool(m_z > ref_z) if m_z is not None and ref_z is not None else None
+                )
     return {"status": "ok", **base, "measures": measures_out, "reference": reference}

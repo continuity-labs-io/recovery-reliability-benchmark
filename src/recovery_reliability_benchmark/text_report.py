@@ -43,6 +43,27 @@ def print_check_human(result: dict[str, Any]) -> None:
     print_inclusion_lines(result["inclusion"], result["evaluated_conditions"])
 
 
+def _print_sensitivity_lines(sensitivity: dict[str, Any] | None) -> None:
+    if not sensitivity:
+        return
+    for pair, s in sensitivity.items():
+        if s["median_abs_z"] is None:
+            print(f"  sensitivity {pair}: n_units={s['n_units']}")
+            continue
+        null = s["null"]
+        s_line = (
+            f"  sensitivity {pair}: median|z|={s['median_abs_z']:.2f} "
+            f"(null p95 {null['median_abs_z_p95']:.2f}) "
+            f"beyond-2={s['frac_beyond_2']:.2f} (null p95 {null['frac_beyond_2_p95']:.2f}) "
+            f"shift={s['median_shift']:+.3g} n_units={s['n_units']}"
+        )
+        if s["above_null"] is False:
+            s_line += " [at chance]"
+        if s.get("beats_reference") is False:
+            s_line += " [does not beat reference]"
+        print(s_line)
+
+
 def print_evaluate_human(result: dict[str, Any]) -> None:
     """Print an evaluation report as human-readable lines.
 
@@ -79,6 +100,7 @@ def print_evaluate_human(result: dict[str, Any]) -> None:
         if var is not None:
             line += f" between={var['var_between']:.3g} within={var['var_within']:.3g}"
         print(line)
+        _print_sensitivity_lines(m_res.get("sensitivity"))
         n_censored = sum(cf.get(f"{m}_censored", 0) for cf in m_res.get("flags", {}).values())
         if n_censored > 0:
             print(f"  {m} censored in {n_censored} units")
@@ -92,3 +114,4 @@ def print_evaluate_human(result: dict[str, Any]) -> None:
             lo, hi = h["rho_ci_low"], h["rho_ci_high"]
             ci_str = f"[{lo:.3f}, {hi:.3f}]" if lo is not None and hi is not None else "[None, None]"
             print(f"reference ({ref_m}): rho={h['rho']:.3f} ci={ci_str} n_units={h['n_units']}")
+            _print_sensitivity_lines(ref.get("sensitivity"))
