@@ -80,6 +80,8 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Sidecar.** A small JSON file beside the tables carrying metadata: `preparation.json` (species, preparation type, age, line or donor, instrument) and `conditions.json` (per condition: protocol, compound, dose, vehicle). Optional at v0.1.x, validated when present. SPEC "Preparation and condition metadata"; `metadata.py`.
 
+**`analysis.json`.** Sidecar JSON file declaring `measures.AnalysisParams` before the run, loaded by `metadata.load_analysis` and written by `metadata.write_analysis`; its SHA-256 fingerprint is printed in the report. SPEC "Preparation and condition metadata".
+
 **Fate table (`fate.csv`).** Optional later observations of the same preparation (date, status, measure, value), so atlas rows can carry outcome labels. Defined, not yet checked. SPEC "Fate".
 
 **Measure.** A scalar computed per unit per trial from the post-stimulus response; a column of `responses.csv`. Examples: time to return to baseline, peak rate, spike count in the window. SPEC §2.
@@ -91,6 +93,12 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 **PSTH-based measure.** A measure defined on the pooled PSTH of many trials rather than one trial at a time, computed by `measures.recovery_measures`: `t_peak` (bin center of the maximum rate), `peak_rate` (that maximum), `t_half_peak` (first bin center after the peak bin with rate at or below `baseline + half_peak_frac * (peak_rate - baseline)`), `t_return` (right edge of the last bin exceeding `return_x_baseline * baseline`), `residual` (mean rate over bins whose center is at least `post_stim_window_s - residual_s`, divided by baseline), and `overshoot`. Unresolved recovery inside the window is censored at `post_stim_window_s` with `t_half_peak_censored` or `t_return_censored` (never `NaN`); if no bin exceeds threshold, `t_return` is `0.0` with `no_response`. When baseline is `0.0`, `t_return`, `residual`, and `overshoot` are `NaN` with `baseline_zero` set while `t_peak`, `peak_rate`, and `t_half_peak` are still computed.
 
 **Overshoot.** Pooled firing-rate deficit below baseline after `t_return`, computed over bins with center `> t_return` as `max(0, (baseline - r_after) / baseline)` where `r_after = sum(rate_i * width_i) / sum(width_i)`; `NaN` with `overshoot_undefined` when `t_return` is censored, no bin follows `t_return`, or baseline is zero. `measures.recovery_measures`.
+
+**Spikes per trial (`spikes_per_trial`).** Mean over trials of the post-stimulus spike count (`len(lat)` per trial from `measures.trial_latencies`, so every spike in `[0, post_stim_window_s)` counts, not only those inside the bin edges). Computed by `measures.unit_measures`; never `NaN` when there is at least one trial.
+
+**Spikes path.** Computing per-half measures directly from `spikes.csv` into the halves DataFrame consumed by `evaluate.reliability_ceiling`: `spikes.trial_table` extracts distinct `(trial_index, stim_time_ns, condition)` rows, `spikes.split_trials` partitions a condition's trials into odd and even halves by the same 1-based rule as `evaluate.split_halves`, `spikes.spike_times_by_unit` maps each unit to sorted spike timestamps in seconds, `spikes.halves_from_spikes` runs `measures.unit_measures` on each half to produce the `(halves, flags)` DataFrames, and `spikes.scored_units` identifies the scored units per condition. `spikes.py`.
+
+**Scored unit.** On the spikes path, a unit is scored in a condition when every requested measure is computed (non-`NaN`) in both halves (`spikes.scored_units`); a silent unit has no baseline and is excluded (`checks_spikes.check_scored_units`). SPEC "Inclusion and exclusion".
 
 **Analysis parameters (`measures.AnalysisParams`).** The frozen dataclass holding the PSTH and recovery-measure parameters (`post_stim_window_s`, `pre_stim_window_s`, `load_duration_s`, `bin_edges_s`, `return_x_baseline`, `half_peak_frac`, `residual_s`) and its SHA-256 JSON `fingerprint()`. `measures.py`.
 
@@ -177,6 +185,8 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 **Conformance check.** Running `rrb-check` on `units.csv` and `responses.csv`. Produces a verdict and counts, or the first violation. Runs locally; nothing leaves the machine.
 
 **Minimum dataset requirements (min-dataset-1 to min-dataset-6).** The six requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6). SPEC §4; `Requirement` enum.
+
+**Pre-stimulus window (`min-dataset-7`).** Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s (`contract.MD7_MUST`), fits before the first onset on the recording clock, and fits between every previous load end and the next onset (`checks_spikes.check_pre_stimulus_window`). SPEC min-dataset-7; `contract.Requirement.MD7`.
 
 **MUST, SHOULD, MAY.** RFC 2119 words. MUST thresholds are admission floors: below them the computation is undefined. SHOULD thresholds are where the estimate becomes precise enough to act on. SPEC header, §4.
 

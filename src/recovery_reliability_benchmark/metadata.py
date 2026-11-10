@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from .contract import ContractViolation, Requirement
+from .measures import AnalysisParams
 from .protocol import Protocol
 
 PreparationType = Literal[
@@ -123,3 +124,38 @@ def load_conditions(path: str | Path) -> dict[str, Condition]:
             Requirement.SCHEMA,
             f"conditions.json: {_first_error(exc)}",
         ) from exc
+
+
+def load_analysis(path: str | Path) -> AnalysisParams:
+    """Load and validate an analysis.json parameters sidecar.
+
+    Args:
+        path: Path to the analysis.json sidecar file.
+
+    Returns:
+        Validated AnalysisParams instance.
+
+    Raises:
+        ContractViolation: With Requirement.SCHEMA if the file is missing, malformed, or invalid.
+    """
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("expected a JSON object.")
+        return AnalysisParams.from_dict(data)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise ContractViolation(
+            Requirement.SCHEMA,
+            f"analysis.json: {exc}",
+        ) from exc
+
+
+def write_analysis(params: AnalysisParams, path: str | Path) -> None:
+    """Write an AnalysisParams instance to an analysis.json file as indented JSON.
+
+    Args:
+        params: AnalysisParams instance to serialize.
+        path: Destination file path.
+    """
+    Path(path).write_text(json.dumps(params.to_dict(), indent=2) + "\n", encoding="utf-8")

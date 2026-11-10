@@ -170,7 +170,7 @@ def test_contract_violation_str_and_dict() -> None:
 
 
 def test_requirement_enum() -> None:
-    assert len(Requirement) == 7
+    assert len(Requirement) == 8
     assert Requirement("min-dataset-3") is Requirement.MD3
     assert Requirement.MD3 == "min-dataset-3"
     for member in Requirement:

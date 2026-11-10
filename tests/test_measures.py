@@ -178,6 +178,7 @@ def test_unit_measures_matches_pieces() -> None:
     expected_values, expected_flags = recovery_measures(rate, edges, base, params)
     expected_values["baseline_hz"] = base
     expected_values["baseline_variance_hz2"] = base_var
+    expected_values["spikes_per_trial"] = float(np.mean([len(lat) for lat in lats]))
 
     actual_values, actual_flags = unit_measures(spikes, onsets, params)
     assert actual_flags == expected_flags

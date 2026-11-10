@@ -272,20 +272,28 @@ def unit_measures(
 ) -> tuple[dict[str, float], dict[str, bool]]:
     """Run the full PSTH measure chain for one unit over one set of trials.
 
+    ``spikes_per_trial`` is the mean over trials of ``len(latencies)`` from
+    ``trial_latencies``, so every spike in ``[0, post_stim_window_s)`` counts, not
+    only those inside the bin edges.
+
     Args:
         spike_times_s: 1D array-like of spike timestamps in seconds for one unit.
         onsets_s: 1D array-like of stimulus onset timestamps in seconds.
         params: Analysis parameters.
 
     Returns:
-        Tuple of ``(values, flags)`` dictionaries for the unit, including ``baseline_hz``
-        and ``baseline_variance_hz2`` in ``values``.
+        Tuple of ``(values, flags)`` dictionaries for the unit, including ``baseline_hz``,
+        ``baseline_variance_hz2``, and ``spikes_per_trial`` in ``values``.
     """
     edges = params.effective_edges()
     pre = pre_counts(spike_times_s, onsets_s, params)
     base = baseline_hz(pre, params)
-    rate = psth_rate(bin_counts(trial_latencies(spike_times_s, onsets_s, params), edges), edges)
+    lats = trial_latencies(spike_times_s, onsets_s, params)
+    rate = psth_rate(bin_counts(lats, edges), edges)
     values, flags = recovery_measures(rate, edges, base, params)
     values["baseline_hz"] = base
     values["baseline_variance_hz2"] = baseline_variance_hz2(pre, params)
+    values["spikes_per_trial"] = (
+        float("nan") if len(lats) == 0 else float(np.mean([len(lat) for lat in lats]))
+    )
     return values, flags

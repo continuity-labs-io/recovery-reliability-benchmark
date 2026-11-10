@@ -27,6 +27,7 @@ MD2_SHOULD = 20
 MD3_MUST = 8
 MD3_SHOULD = 30
 MD6_MUST = 2.0
+MD7_MUST = 1.0
 for _const, _ref in (
     ("MD2_MUST", "SPEC min-dataset-2"),
     ("MD2_SHOULD", "SPEC min-dataset-2"),
@@ -55,6 +56,7 @@ class Requirement(StrEnum):
     MD4 = "min-dataset-4"
     MD5 = "min-dataset-5"
     MD6 = "min-dataset-6"
+    MD7 = "min-dataset-7"
 
     @property
     def description(self) -> str:
@@ -69,6 +71,7 @@ _REQUIREMENT_DESCRIPTIONS: dict[Requirement, str] = {
     Requirement.MD4: "Stimulus timestamps. Onset time of every stimulus on the same clock as the responses, non-null, strictly increasing within a condition, one timestamp and one condition per trial_index across units.",
     Requirement.MD5: "Trial-level resolution. Exactly one row per (unit_id, trial_index); rows are trials, not summary statistics.",
     Requirement.MD6: "Post-stimulus window. At least 2.0 s of recording after each stimulus onset: the declared post_stim_window_s is at least 2.0 s and fits before the next onset (minus load_duration_s).",
+    Requirement.MD7: "Pre-stimulus window. Applies when measures are computed from spikes: the declared pre_stim_window_s is at least 1.0 s, fits before the first onset on the recording clock, and fits between every previous load end and the next onset.",
 }
 
 

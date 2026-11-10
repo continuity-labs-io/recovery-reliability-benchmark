@@ -26,6 +26,8 @@ PACKAGE_MODULES = (
     "thresholds",
     "frozen",
     "measures",
+    "spikes",
+    "checks_spikes",
 )
 
 
@@ -98,7 +100,7 @@ def test_glossary_symbols_resolve() -> None:
     checked = 0
     for raw_token in tokens:
         cleaned = re.sub(r"\(.*\)$", "", raw_token.strip())
-        if cleaned.endswith(".py"):
+        if cleaned.endswith((".py", ".csv", ".json")):
             continue
         if not symbol_re.match(cleaned):
             continue

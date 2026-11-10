@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- spikes.py: per-half measures from spikes in the evaluator's halves format; min-dataset-7 pre-stimulus window requirement; analysis.json loader. Not yet wired into rrb-evaluate.
 - Zenodo DOIs recorded: concept 10.5281/zenodo.24020731, v0.1.0 10.5281/zenodo.24020732.
 - measures.py: PSTH recovery measures from spike times (t_peak, peak_rate, t_half_peak, t_return, residual, overshoot, baseline variance), pure functions; synthetic spike-train generator; not yet wired into rrb-evaluate.
 - measures: bin edges never end in a sliver bin; overshoot is the pooled deficit after return.

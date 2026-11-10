@@ -70,6 +70,7 @@ Every requirement in section 4 follows from this procedure.
 | min-dataset-4 | Stimulus onset timestamps | present, one per trial across units, strictly increasing within a condition | |
 | min-dataset-5 | Rows per unit-trial pair | exactly 1 | |
 | min-dataset-6 | Post-stimulus window per trial | ≥ 2.0 s | |
+| min-dataset-7 | Pre-stimulus window per trial (spikes path) | ≥ 1.0 s | |
 
 **min-dataset-1 — Single session.**
 The dataset MUST contain exactly one session from exactly one preparation, in exactly one recording. Longitudinal data is out of scope for this computation. A second recording identifier is a second acquisition and therefore a second session.
@@ -90,6 +91,9 @@ The dataset MUST provide per-trial data: exactly one row per unit and trial. One
 
 **min-dataset-6 — Post-stimulus window.**
 Each trial MUST carry at least 2.0 seconds of recording after stimulus onset. The submitter declares the analysis window. The declared window MUST be at least 2.0 s, and for every trial except the last it MUST fit before the next stimulus onset. The last trial has no following onset and is not checked. If the stimulus is a conditioning train of nonzero duration, the submitter MAY declare that duration; the window is then required after the train ends, which only tightens the check. This is the requirement that most often fails, because many stimulation protocols use short inter-stimulus intervals. A protocol truncating at 200 ms cannot resolve a seconds-scale return.
+
+**min-dataset-7 — Pre-stimulus window.**
+Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s, fits before the first onset on the recording clock, and fits between every previous load end and the next onset. The baseline is read from the pre-stimulus window, and with the 2 s post-stimulus requirement a 1 s pre-window always fits except before the first trial.
 
 ---
 
@@ -197,6 +201,8 @@ These sidecars are optional in SPEC v1.0 (benchmark v0.1.x) and required from SP
 
 Every condition present in `responses.csv` MUST have an entry in `conditions.json` when the file is provided. The atlas row's protocol fingerprint is computed from `"protocol"`.
 
+`analysis.json` — Analysis parameters: the `AnalysisParams` fields; declared before the run; its fingerprint is printed in the report.
+
 ---
 
 ## Inclusion and exclusion
@@ -207,7 +213,7 @@ Contributors MUST NOT exclude units or trials after seeing results. Any exclusio
 
 Every report prints: units in the tables, units included by rule, units excluded by rule, rows missing from the full grid, and contributor-declared exclusions.
 
-From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration.
+From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path, a unit is scored in a condition when every requested measure is computed in both halves; a silent unit has no baseline and is excluded.
 
 ---
 
