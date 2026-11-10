@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## [0.2.0] - 2026-11-10
+
+- Frozen: SPEC_VERSION 1.0 -> 1.1
+- Frozen: analysis.py (`AnalysisParams.to_dict`, `AnalysisParams.fingerprint`, `AnalysisParams.effective_edges`, `DEFAULT_ANALYSIS_FINGERPRINT_2S`) joined the frozen layer at 0.2.0.
+- Frozen: measures.py (`trial_latencies`, `pre_counts`, `baseline_hz`, `baseline_variance_hz2`, `bin_counts`, `psth_rate`, `recovery_measures`, `unit_measures`) joined the frozen layer at 0.2.0.
+- Frozen: excess.py (`excess_measures`) joined the frozen layer at 0.2.0.
+- Frozen: spikes.py (`trial_table`, `split_trials`, `halves_from_spikes`, `scored_units`, `per_trial_counts_table`) joined the frozen layer at 0.2.0.
+- Frozen: checks_spikes.py (`check_pre_stimulus_window`, `check_scored_units`) joined the frozen layer at 0.2.0.
+- Frozen: sensitivity.py (`_shift_and_z`, `condition_sensitivity`, `measure_sensitivity`, `NOISE_FLOOR`) joined the frozen layer at 0.2.0.
+- Frozen: contract.py (`MD7_MUST`, `SPEC_VERSION`) joined the frozen layer at 0.2.0.
+- Frozen: inputs.py (`SPIKES_REFERENCE_MEASURE`, `SPIKES_INCLUSION_RULE`) joined the frozen layer at 0.2.0.
 - Docs for the spikes path: measures table, what conformance guarantees, split-half on pooled measures.
 - writer.py: reference dataset writer (write_dataset, read_dataset) and scripts/adapter_template.py.
 - rrb-report: evaluate.json, summary.md and a figure from one command; two-condition example.

@@ -1,0 +1,6 @@
+@frozen('METHOD sensitivity')
+def _shift_and_z(slots: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    shift = 0.5 * (slots[..., 2] + slots[..., 3]) - 0.5 * (slots[..., 0] + slots[..., 1])
+    noise = 0.5 * np.sqrt((slots[..., 0] - slots[..., 1]) ** 2 + (slots[..., 2] - slots[..., 3]) ** 2)
+    z = np.abs(shift) / np.maximum(noise, NOISE_FLOOR)
+    return (shift, z)

@@ -8,9 +8,11 @@ import pandas as pd
 
 from . import contract
 from .contract import ContractViolation, Requirement
+from .frozen import frozen
 from .measures import AnalysisParams
 
 
+@frozen("SPEC min-dataset-7")
 def check_pre_stimulus_window(
     trials: pd.DataFrame,
     params: AnalysisParams,
@@ -59,6 +61,7 @@ def check_pre_stimulus_window(
             raise ContractViolation(Requirement.MD7, msg, found=float(available), required=pre_w)
 
 
+@frozen("SPEC min-dataset-3")
 def check_scored_units(
     scored: Mapping[str, Mapping[str, Set[str]]] | Mapping[str, Set[str]],
     measure: str,

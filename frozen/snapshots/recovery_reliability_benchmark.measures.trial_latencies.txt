@@ -1,0 +1,9 @@
+@frozen('SPEC measures computed by the benchmark')
+def trial_latencies(spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams) -> list[np.ndarray]:
+    spikes, win = (np.sort(np.asarray(spike_times_s, dtype=float)), params.post_stim_window_s)
+    out: list[np.ndarray] = []
+    for onset in np.asarray(onsets_s, dtype=float):
+        t0 = float(onset) + params.load_duration_s
+        i0, i1 = np.searchsorted(spikes, [t0, t0 + win], side='left')
+        out.append(spikes[int(i0):int(i1)] - t0)
+    return out

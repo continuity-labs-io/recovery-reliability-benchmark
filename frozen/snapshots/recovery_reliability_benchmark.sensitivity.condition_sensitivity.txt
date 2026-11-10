@@ -1,0 +1,37 @@
+@frozen('METHOD sensitivity')
+def condition_sensitivity(halves: pd.DataFrame, measure: str, first: str, second: str, n_perm: int=DEFAULT_N_PERM, rng: np.random.Generator | None=None) -> dict[str, Any]:
+    if rng is None:
+        rng = np.random.default_rng(0)
+    elif not isinstance(rng, np.random.Generator):
+        raise TypeError(f'rng must be a numpy.random.Generator, got {type(rng).__name__}.')
+    if n_perm < 1:
+        raise ValueError(f'n_perm must be >= 1, got {n_perm}.')
+    col_odd, col_even = (f'{measure}_odd', f'{measure}_even')
+    valid = halves.loc[halves[col_odd].notna() & halves[col_even].notna(), [col_odd, col_even]]
+    unit_level = 'unit_id' if 'unit_id' in valid.index.names else 0
+    cond_level = 'condition' if 'condition' in valid.index.names else 1
+    u_vals = valid.index.get_level_values(unit_level).astype(str)
+    c_vals = valid.index.get_level_values(cond_level).astype(str)
+    mask_first = c_vals == str(first)
+    mask_second = c_vals == str(second)
+    first_df = valid.loc[mask_first].set_axis(u_vals[mask_first], axis=0)
+    second_df = valid.loc[mask_second].set_axis(u_vals[mask_second], axis=0)
+    common_units = sorted(set(first_df.index) & set(second_df.index))
+    n_units = len(common_units)
+    if n_units == 0:
+        return {'n_units': 0, 'median_shift': None, 'median_abs_z': None, 'frac_beyond_2': None, 'null': None, 'above_null': None}
+    f_aligned = first_df.loc[common_units]
+    s_aligned = second_df.loc[common_units]
+    slots = np.column_stack([f_aligned[col_odd].to_numpy(dtype=float), f_aligned[col_even].to_numpy(dtype=float), s_aligned[col_odd].to_numpy(dtype=float), s_aligned[col_even].to_numpy(dtype=float)])
+    shift_u, z_u = _shift_and_z(slots)
+    median_shift = float(np.median(shift_u))
+    median_abs_z = float(np.median(z_u))
+    frac_beyond_2 = float(np.mean(z_u > 2.0))
+    shuffled = rng.permuted(np.broadcast_to(slots, (int(n_perm), n_units, 4)), axis=2)
+    _, perm_z = _shift_and_z(shuffled)
+    perm_median_abs_z = np.median(perm_z, axis=1)
+    perm_frac_beyond_2 = np.mean(perm_z > 2.0, axis=1)
+    median_abs_z_p95 = float(np.percentile(perm_median_abs_z, 95))
+    frac_beyond_2_p95 = float(np.percentile(perm_frac_beyond_2, 95))
+    frac_perm_ge_observed = float(np.mean(perm_median_abs_z >= median_abs_z))
+    return {'n_units': int(n_units), 'median_shift': median_shift, 'median_abs_z': median_abs_z, 'frac_beyond_2': frac_beyond_2, 'null': {'n_perm': int(n_perm), 'median_abs_z_p95': median_abs_z_p95, 'frac_beyond_2_p95': frac_beyond_2_p95, 'frac_perm_ge_observed': frac_perm_ge_observed}, 'above_null': bool(median_abs_z > median_abs_z_p95)}

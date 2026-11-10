@@ -1,0 +1,13 @@
+@frozen('METHOD split-half on pooled measures')
+def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, dict[str, set[str]]]:
+    conditions = [str(c) for c in halves.index.get_level_values('condition').unique()]
+    out: dict[str, dict[str, set[str]]] = {}
+    for m in measures:
+        m_str = str(m)
+        valid = halves[[f'{m_str}_odd', f'{m_str}_even']].notna().all(axis=1)
+        per_cond: dict[str, set[str]] = {c: set() for c in conditions}
+        for (unit_id, cond), is_valid in valid.items():
+            if bool(is_valid):
+                per_cond[str(cond)].add(str(unit_id))
+        out[m_str] = per_cond
+    return out

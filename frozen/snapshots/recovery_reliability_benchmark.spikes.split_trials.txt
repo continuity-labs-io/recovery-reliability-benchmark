@@ -1,0 +1,5 @@
+@frozen('METHOD split-half on pooled measures')
+def split_trials(trials: pd.DataFrame, condition: str) -> tuple[np.ndarray, np.ndarray]:
+    sub = trials.loc[trials['condition'].astype(str) == str(condition), 'trial_index']
+    sorted_idx = np.unique(sub.to_numpy(dtype=int))
+    return (sorted_idx[0::2], sorted_idx[1::2])

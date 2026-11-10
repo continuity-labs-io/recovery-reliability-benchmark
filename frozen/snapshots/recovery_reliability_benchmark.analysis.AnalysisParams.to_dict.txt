@@ -1,0 +1,3 @@
+@frozen('SPEC analysis parameters')
+def to_dict(self) -> dict[str, Any]:
+    return {**asdict(self), 'bin_edges_s': list(self.bin_edges_s)}

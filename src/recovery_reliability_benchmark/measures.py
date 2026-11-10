@@ -14,6 +14,7 @@ import numpy as np
 
 from .analysis import DEFAULT_BIN_EDGES_S, FLAG_KEYS, AnalysisParams
 from .excess import excess_measures
+from .frozen import frozen
 
 __all__ = [
     "DEFAULT_BIN_EDGES_S",
@@ -35,6 +36,7 @@ FloatArray = Sequence[float] | np.ndarray
 IntArray = Sequence[int] | np.ndarray
 
 
+@frozen("SPEC measures computed by the benchmark")
 def trial_latencies(
     spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams
 ) -> list[np.ndarray]:
@@ -57,6 +59,7 @@ def trial_latencies(
     return out
 
 
+@frozen("SPEC measures computed by the benchmark")
 def pre_counts(spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams) -> np.ndarray:
     """Count spikes per trial in ``[onset - pre_stim_window_s, onset)``.
 
@@ -74,6 +77,7 @@ def pre_counts(spike_times_s: FloatArray, onsets_s: FloatArray, params: Analysis
     return np.asarray(i1 - i0, dtype=int)
 
 
+@frozen("SPEC measures computed by the benchmark")
 def baseline_hz(pre_counts: IntArray, params: AnalysisParams) -> float:
     """Compute pooled pre-stimulus baseline firing rate in Hz.
 
@@ -88,6 +92,7 @@ def baseline_hz(pre_counts: IntArray, params: AnalysisParams) -> float:
     return float("nan") if len(arr) == 0 else float(np.sum(arr) / (len(arr) * params.pre_stim_window_s))
 
 
+@frozen("SPEC measures computed by the benchmark")
 def baseline_variance_hz2(pre_counts: IntArray, params: AnalysisParams) -> float:
     """Compute sample variance (``ddof=1``) across trials of pre-stimulus rate in Hz^2.
 
@@ -102,6 +107,7 @@ def baseline_variance_hz2(pre_counts: IntArray, params: AnalysisParams) -> float
     return float("nan") if len(arr) < 2 else float(np.var(arr / params.pre_stim_window_s, ddof=1))
 
 
+@frozen("SPEC measures computed by the benchmark")
 def bin_counts(latencies: Sequence[np.ndarray], edges_s: FloatArray) -> np.ndarray:
     """Histogram per-trial latencies into PSTH bins.
 
@@ -119,6 +125,7 @@ def bin_counts(latencies: Sequence[np.ndarray], edges_s: FloatArray) -> np.ndarr
     return out
 
 
+@frozen("SPEC measures computed by the benchmark")
 def psth_rate(counts: np.ndarray, edges_s: FloatArray) -> np.ndarray:
     """Compute PSTH firing rate in Hz per bin (pooled counts divided by ``n_trials * width``).
 
@@ -133,6 +140,7 @@ def psth_rate(counts: np.ndarray, edges_s: FloatArray) -> np.ndarray:
     return np.asarray(np.mean(np.asarray(counts, dtype=float), axis=0) / widths, dtype=float)
 
 
+@frozen("SPEC measures computed by the benchmark")
 def recovery_measures(
     rate_hz: FloatArray, edges_s: FloatArray, baseline: float, params: AnalysisParams
 ) -> tuple[dict[str, float], dict[str, bool]]:
@@ -204,6 +212,7 @@ def recovery_measures(
     return values, flags
 
 
+@frozen("SPEC measures computed by the benchmark")
 def unit_measures(
     spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams
 ) -> tuple[dict[str, float], dict[str, bool]]:

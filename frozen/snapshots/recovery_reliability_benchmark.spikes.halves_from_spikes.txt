@@ -1,0 +1,53 @@
+@frozen('METHOD split-half on pooled measures')
+def halves_from_spikes(units: pd.DataFrame | Iterable[str], trials: pd.DataFrame, spikes: pd.DataFrame, params: AnalysisParams, measures: Sequence[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    measure_list = list(measures)
+    available = ', '.join(MEASURE_KEYS)
+    for m in measure_list:
+        if m not in MEASURE_KEYS:
+            raise ValueError(f"Unknown measure '{m}'. Available measures: {available}.")
+    clean_trials = trial_table(trials)
+    unit_ids = [str(u) for u in units['unit_id']] if isinstance(units, pd.DataFrame) else [str(u) for u in units]
+    by_unit = spike_times_by_unit(spikes, unit_ids)
+    onset_by_trial = dict(zip(clean_trials['trial_index'].to_numpy(dtype=int), clean_trials['stim_time_ns'].to_numpy(dtype=float) / 1000000000.0, strict=False))
+    conditions = [str(c) for c in clean_trials['condition'].unique()]
+    half_cols = [*(f'{m}_{h}' for m in measure_list for h in ('odd', 'even')), 'n_odd', 'n_even']
+    flag_cols = [f'{flag}_{h}' for flag in FLAG_KEYS for h in ('odd', 'even')]
+    cond_halves: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    for cond in conditions:
+        odd_idx, even_idx = split_trials(clean_trials, cond)
+        if len(odd_idx) > 0 and len(even_idx) > 0:
+            odd_onsets = np.asarray([onset_by_trial[int(t)] for t in odd_idx], dtype=float)
+            even_onsets = np.asarray([onset_by_trial[int(t)] for t in even_idx], dtype=float)
+            cond_halves[cond] = (odd_onsets, even_onsets)
+    pairs = sorted(((u, c) for u in unit_ids for c in cond_halves))
+    if not pairs:
+        empty_idx = pd.MultiIndex.from_arrays([[], []], names=['unit_id', 'condition'])
+        return (pd.DataFrame(columns=half_cols, index=empty_idx), pd.DataFrame(columns=flag_cols, index=empty_idx, dtype=bool))
+    half_rows: list[dict[str, Any]] = []
+    flag_rows: list[dict[str, bool]] = []
+    for u, cond in pairs:
+        odd_onsets, even_onsets = cond_halves[cond]
+        u_spikes = by_unit[u]
+        vals_odd, flags_odd = unit_measures(u_spikes, odd_onsets, params)
+        vals_even, flags_even = unit_measures(u_spikes, even_onsets, params)
+        h_row: dict[str, Any] = {}
+        for m in measure_list:
+            h_row[f'{m}_odd'] = float(vals_odd[m])
+            h_row[f'{m}_even'] = float(vals_even[m])
+        h_row['n_odd'] = int(len(odd_onsets))
+        h_row['n_even'] = int(len(even_onsets))
+        half_rows.append(h_row)
+        f_row: dict[str, bool] = {}
+        for flag in FLAG_KEYS:
+            f_row[f'{flag}_odd'] = bool(flags_odd[flag])
+            f_row[f'{flag}_even'] = bool(flags_even[flag])
+        flag_rows.append(f_row)
+    idx = pd.MultiIndex.from_tuples(pairs, names=['unit_id', 'condition'])
+    halves_df = pd.DataFrame(half_rows, index=idx, columns=half_cols)
+    for m in measure_list:
+        halves_df[f'{m}_odd'] = halves_df[f'{m}_odd'].astype(float)
+        halves_df[f'{m}_even'] = halves_df[f'{m}_even'].astype(float)
+    halves_df['n_odd'] = halves_df['n_odd'].astype(int)
+    halves_df['n_even'] = halves_df['n_even'].astype(int)
+    flags_df = pd.DataFrame(flag_rows, index=idx, columns=flag_cols).astype(bool)
+    return (halves_df, flags_df)

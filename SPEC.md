@@ -2,7 +2,7 @@
 
 ## Dataset Conformance Specification
 
-**Version 1.0**
+**Version 1.1**
 Status: normative
 Reference implementation: `src/recovery_reliability_benchmark/contract.py`, run as `rrb-check`
 
@@ -315,9 +315,11 @@ The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by 
 
 ## 17. Versioning
 
-Requirement IDs are stable across minor versions. Thresholds change only in a major version. The reference implementation reports the version it checked against, so a result citing "conformance to v1.0" means a fixed thing, which is the point of versioning it at all.
+Requirement IDs are stable across minor versions. Thresholds change only in a major version. The reference implementation reports the version it checked against, so a result citing "conformance to v1.1" means a fixed thing, which is the point of versioning it at all.
 
-SPEC versions (`1.0`) and benchmark package versions (`0.1.0`) are distinct; statements that an item is "required from v0.2.0" refer to the benchmark package and will appear as SPEC v1.1.
+SPEC versions (`1.1`) and benchmark package versions (`0.2.0`) are distinct.
+
+**Version 1.1** (additions to 1.0): `min-dataset-7` (1.0 s pre-stimulus window before the first onset and between every previous load end and the next onset) and the spikes path (`--spikes` and `--analysis` with `analysis.json`, benchmark-computed PSTH and bin-free recovery measures plus the `baseline_hz` reference measure, per-measure unit scoring under `SPIKES_INCLUSION_RULE`, and the reference dataset writer `writer.write_dataset`).
 
 ---
 

@@ -12,6 +12,7 @@ from . import checks_spikes
 from . import spikes as spikes_mod
 from .contract import ContractViolation, validate
 from .evaluate import split_halves
+from .frozen import freeze_constant
 from .measures import FLAG_KEYS, AnalysisParams
 
 if TYPE_CHECKING:
@@ -21,6 +22,8 @@ SPIKES_INCLUSION_RULE = (
     "A unit is scored for a measure in a condition when that measure is computed in both halves."
 )
 SPIKES_REFERENCE_MEASURE = "baseline_hz"
+freeze_constant(__name__, "SPIKES_INCLUSION_RULE", "SPEC inclusion and exclusion")
+freeze_constant(__name__, "SPIKES_REFERENCE_MEASURE", "SPEC measures computed by the benchmark")
 
 
 @dataclass(frozen=True)

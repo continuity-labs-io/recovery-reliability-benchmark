@@ -15,7 +15,7 @@ from .frozen import freeze_constant, frozen
 if TYPE_CHECKING:
     from .metadata import Condition, Preparation
 
-SPEC_VERSION = "1.0"
+SPEC_VERSION = "1.1"
 UNITS_REQUIRED = ("unit_id", "recording_id", "session_id", "preparation_id")
 RESPONSES_REQUIRED = ("unit_id", "trial_index", "stim_time_ns", "condition")
 SPIKES_REQUIRED = ("unit_id", "spike_time_ns")
@@ -34,6 +34,8 @@ for _const, _ref in (
     ("MD3_MUST", "SPEC min-dataset-3"),
     ("MD3_SHOULD", "SPEC min-dataset-3"),
     ("MD6_MUST", "SPEC min-dataset-6"),
+    ("MD7_MUST", "SPEC min-dataset-7"),
+    ("SPEC_VERSION", "SPEC version"),
 ):
     freeze_constant(__name__, _const, _ref)
 

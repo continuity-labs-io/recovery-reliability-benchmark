@@ -1,0 +1,4 @@
+@frozen('SPEC measures computed by the benchmark')
+def psth_rate(counts: np.ndarray, edges_s: FloatArray) -> np.ndarray:
+    widths = np.diff(np.asarray(edges_s, dtype=float))
+    return np.asarray(np.mean(np.asarray(counts, dtype=float), axis=0) / widths, dtype=float)

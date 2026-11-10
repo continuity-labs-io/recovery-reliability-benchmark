@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 
+from .frozen import freeze_constant, frozen
+
 DEFAULT_BIN_EDGES_S: tuple[float, ...] = tuple(float(x) for x in np.round(np.geomspace(0.003, 10.0, 41), 6))
 FLAG_KEYS: tuple[str, ...] = (
     "t_half_peak_censored",
@@ -63,6 +65,7 @@ class AnalysisParams:
         if self.min_excess_z <= 0.0:
             raise ValueError(f"min_excess_z must be > 0, got {self.min_excess_z}.")
 
+    @frozen("SPEC analysis parameters")
     def to_dict(self) -> dict[str, Any]:
         """Serialize parameters to a JSON-compatible dictionary."""
         return {**asdict(self), "bin_edges_s": list(self.bin_edges_s)}
@@ -75,10 +78,12 @@ class AnalysisParams:
             kw["bin_edges_s"] = tuple(float(e) for e in kw["bin_edges_s"])
         return cls(**kw)
 
+    @frozen("SPEC analysis parameters")
     def fingerprint(self) -> str:
         """Return the SHA-256 hex digest of ``json.dumps(to_dict(), sort_keys=True)``."""
         return hashlib.sha256(json.dumps(self.to_dict(), sort_keys=True).encode("utf-8")).hexdigest()
 
+    @frozen("SPEC analysis parameters")
     def effective_edges(self) -> np.ndarray:
         """Return stored edges below ``post_stim_window_s`` followed by the window end.
 
@@ -92,3 +97,7 @@ class AnalysisParams:
         if len(inside) >= 2 and (win - inside[-1]) < 0.5 * (inside[-1] - inside[-2]):
             inside.pop()
         return np.asarray([*inside, win], dtype=float)
+
+
+DEFAULT_ANALYSIS_FINGERPRINT_2S = AnalysisParams(post_stim_window_s=2.0).fingerprint()
+freeze_constant(__name__, "DEFAULT_ANALYSIS_FINGERPRINT_2S", "SPEC analysis parameters")

@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .frozen import frozen
 from .measures import FLAG_KEYS, AnalysisParams, trial_latencies, unit_measures
 
 MEASURE_KEYS: tuple[str, ...] = (
@@ -25,6 +26,7 @@ MEASURE_KEYS: tuple[str, ...] = (
 )
 
 
+@frozen("METHOD split-half on pooled measures")
 def trial_table(responses: pd.DataFrame) -> pd.DataFrame:
     """Extract distinct ``(trial_index, stim_time_ns, condition)`` rows sorted by ``trial_index``.
 
@@ -47,6 +49,7 @@ def trial_table(responses: pd.DataFrame) -> pd.DataFrame:
     return dedup.sort_values("trial_index", kind="mergesort").reset_index(drop=True)
 
 
+@frozen("METHOD split-half on pooled measures")
 def split_trials(trials: pd.DataFrame, condition: str) -> tuple[np.ndarray, np.ndarray]:
     """Partition a condition's ``trial_index`` values into odd and even halves.
 
@@ -97,6 +100,7 @@ def spike_times_by_unit(
     return out
 
 
+@frozen("METHOD split-half on pooled measures")
 def halves_from_spikes(
     units: pd.DataFrame | Iterable[str],
     trials: pd.DataFrame,
@@ -194,6 +198,7 @@ def halves_from_spikes(
     return halves_df, flags_df
 
 
+@frozen("METHOD split-half on pooled measures")
 def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, dict[str, set[str]]]:
     """Return per-measure, per-condition sets of units with non-NaN values in both halves.
 
@@ -222,6 +227,7 @@ def scored_units(halves: pd.DataFrame, measures: Sequence[str]) -> dict[str, dic
     return out
 
 
+@frozen("METHOD split-half on pooled measures")
 def per_trial_counts_table(
     units: pd.DataFrame | Iterable[str],
     trials: pd.DataFrame,

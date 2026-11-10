@@ -1,0 +1,19 @@
+@frozen('METHOD split-half on pooled measures')
+def per_trial_counts_table(units: pd.DataFrame | Iterable[str], trials: pd.DataFrame, spikes: pd.DataFrame, params: AnalysisParams) -> pd.DataFrame:
+    clean_trials = trial_table(trials)
+    unit_ids = [str(u) for u in units['unit_id']] if isinstance(units, pd.DataFrame) else [str(u) for u in units]
+    by_unit = spike_times_by_unit(spikes, unit_ids)
+    onsets_s = clean_trials['stim_time_ns'].to_numpy(dtype=float) / 1000000000.0
+    trial_indices = clean_trials['trial_index'].to_numpy(dtype=int)
+    stim_times_ns = clean_trials['stim_time_ns'].to_numpy(dtype=int)
+    conditions = clean_trials['condition'].astype(str).to_numpy()
+    rows: list[dict[str, Any]] = []
+    for uid in unit_ids:
+        lats = trial_latencies(by_unit[uid], onsets_s, params)
+        for ti, stim_ns, cond, lat in zip(trial_indices, stim_times_ns, conditions, lats, strict=False):
+            rows.append({'unit_id': uid, 'trial_index': int(ti), 'stim_time_ns': int(stim_ns), 'condition': str(cond), 'spike_count': int(len(lat))})
+    cols = ['unit_id', 'trial_index', 'stim_time_ns', 'condition', 'spike_count']
+    df = pd.DataFrame(rows, columns=cols)
+    if not df.empty:
+        df['spike_count'] = df['spike_count'].astype(int)
+    return df

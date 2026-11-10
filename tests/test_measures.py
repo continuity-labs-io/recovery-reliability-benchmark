@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pytest
 
+from recovery_reliability_benchmark.analysis import DEFAULT_ANALYSIS_FINGERPRINT_2S
 from recovery_reliability_benchmark.excess import excess_measures
 from recovery_reliability_benchmark.measures import (
     AnalysisParams,
@@ -47,7 +48,7 @@ def test_effective_edges_no_sliver() -> None:
 def test_params_roundtrip_and_fingerprint() -> None:
     params = AnalysisParams(post_stim_window_s=2.0)
     assert AnalysisParams.from_dict(params.to_dict()) == params
-    assert params.fingerprint() == PINNED_DEFAULT_FINGERPRINT_2S
+    assert params.fingerprint() == PINNED_DEFAULT_FINGERPRINT_2S == DEFAULT_ANALYSIS_FINGERPRINT_2S
 
 
 def test_params_validation() -> None:

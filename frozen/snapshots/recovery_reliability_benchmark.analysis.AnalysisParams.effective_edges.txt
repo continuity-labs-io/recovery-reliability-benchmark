@@ -1,0 +1,7 @@
+@frozen('SPEC analysis parameters')
+def effective_edges(self) -> np.ndarray:
+    win = float(self.post_stim_window_s)
+    inside = [e for e in self.bin_edges_s if e < win]
+    if len(inside) >= 2 and win - inside[-1] < 0.5 * (inside[-1] - inside[-2]):
+        inside.pop()
+    return np.asarray([*inside, win], dtype=float)

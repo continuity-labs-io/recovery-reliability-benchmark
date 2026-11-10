@@ -1,0 +1,9 @@
+@frozen('METHOD split-half on pooled measures')
+def trial_table(responses: pd.DataFrame) -> pd.DataFrame:
+    cols = ['trial_index', 'stim_time_ns', 'condition']
+    dedup = responses[cols].drop_duplicates()
+    dup_mask = dedup['trial_index'].duplicated(keep=False)
+    if dup_mask.any():
+        bad_trial = dedup.loc[dup_mask, 'trial_index'].iloc[0]
+        raise ValueError(f'trial_index {bad_trial} has inconsistent stim_time_ns or condition across rows.')
+    return dedup.sort_values('trial_index', kind='mergesort').reset_index(drop=True)

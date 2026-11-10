@@ -1,0 +1,24 @@
+@frozen('SPEC measures computed by the benchmark')
+def excess_measures(latencies: Sequence[np.ndarray], baseline: float, params: AnalysisParams) -> tuple[dict[str, float], dict[str, bool]]:
+    n = len(latencies)
+    nan = float('nan')
+    if n == 0:
+        return ({'t_half_excess': nan, 'excess_per_trial': nan}, {'no_excess': True})
+    pooled = np.sort(np.concatenate([np.asarray(lat, dtype=float) for lat in latencies])) if any((len(lat) > 0 for lat in latencies)) else np.empty(0, dtype=float)
+    n_spikes = len(pooled)
+    win = float(params.post_stim_window_s)
+    base = float(baseline)
+    excess_total = float(n_spikes - base * n * win)
+    excess_per_trial = float(excess_total / n)
+    if math.isnan(base) or excess_total <= params.min_excess_z * math.sqrt(max(n_spikes, 1)):
+        t_half_excess = nan
+        no_excess = True
+    else:
+        k = np.arange(1, n_spikes + 1, dtype=float)
+        cum_k = k - base * n * pooled
+        first_idx = int(np.flatnonzero(cum_k >= 0.5 * excess_total)[0])
+        t_half_excess = float(pooled[first_idx])
+        no_excess = False
+    values = {'t_half_excess': t_half_excess, 'excess_per_trial': excess_per_trial}
+    flags = {'no_excess': no_excess}
+    return (values, flags)

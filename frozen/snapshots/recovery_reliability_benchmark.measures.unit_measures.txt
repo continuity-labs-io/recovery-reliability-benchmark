@@ -1,0 +1,15 @@
+@frozen('SPEC measures computed by the benchmark')
+def unit_measures(spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams) -> tuple[dict[str, float], dict[str, bool]]:
+    edges = params.effective_edges()
+    pre = pre_counts(spike_times_s, onsets_s, params)
+    base = baseline_hz(pre, params)
+    lats = trial_latencies(spike_times_s, onsets_s, params)
+    rate = psth_rate(bin_counts(lats, edges), edges)
+    values, flags = recovery_measures(rate, edges, base, params)
+    ex_values, ex_flags = excess_measures(lats, base, params)
+    values.update(ex_values)
+    flags.update(ex_flags)
+    values['baseline_hz'] = base
+    values['baseline_variance_hz2'] = baseline_variance_hz2(pre, params)
+    values['spikes_per_trial'] = float('nan') if len(lats) == 0 else float(np.mean([len(lat) for lat in lats]))
+    return (values, flags)

@@ -1,0 +1,10 @@
+@frozen('METHOD sensitivity')
+def measure_sensitivity(halves: pd.DataFrame, measure: str, evaluated_conditions: Sequence[str], n_perm: int=DEFAULT_N_PERM, seed: int=42) -> dict[str, dict[str, Any]] | None:
+    conds = sorted({str(c) for c in evaluated_conditions})
+    if len(conds) < 2:
+        return None
+    out: dict[str, dict[str, Any]] = {}
+    for idx, first in enumerate(conds):
+        for second in conds[idx + 1:]:
+            out[f'{first}|{second}'] = condition_sensitivity(halves, measure, first, second, n_perm=n_perm, rng=np.random.default_rng(seed))
+    return out

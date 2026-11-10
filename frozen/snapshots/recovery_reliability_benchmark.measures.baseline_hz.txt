@@ -1,0 +1,4 @@
+@frozen('SPEC measures computed by the benchmark')
+def baseline_hz(pre_counts: IntArray, params: AnalysisParams) -> float:
+    arr = np.asarray(pre_counts, dtype=float)
+    return float('nan') if len(arr) == 0 else float(np.sum(arr) / (len(arr) * params.pre_stim_window_s))

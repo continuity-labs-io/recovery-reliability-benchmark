@@ -101,7 +101,6 @@ def test_update_version_only_refresh(tmp_path: Path) -> None:
     spec.loader.exec_module(freeze)
 
     shutil.copytree(ROOT / "frozen", tmp_path / "frozen")
-    shutil.copy2(ROOT / "CHANGELOG.md", tmp_path / "CHANGELOG.md")
     tmp_manifest = tmp_path / "frozen" / "manifest.json"
 
     old_data = json.loads(tmp_manifest.read_text(encoding="utf-8"))
@@ -109,6 +108,10 @@ def test_update_version_only_refresh(tmp_path: Path) -> None:
     tmp_manifest.write_text(json.dumps(old_data, indent=2) + "\n", encoding="utf-8")
 
     manifest, sources = freeze._compute_state()
+    (tmp_path / "CHANGELOG.md").write_text(
+        f"# Changelog\n\n## [{manifest['version']}]\n\n- Docs update.\n",
+        encoding="utf-8",
+    )
     assert freeze.update_frozen(manifest, sources, manifest_path=tmp_manifest, root=tmp_path) == 0
     assert json.loads(tmp_manifest.read_text(encoding="utf-8"))["version"] == manifest["version"]
 

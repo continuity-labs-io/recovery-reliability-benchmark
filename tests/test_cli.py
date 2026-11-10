@@ -32,7 +32,7 @@ def test_cli_conforming_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
     )
     captured = capsys.readouterr()
     assert rc == 0
-    assert captured.out.splitlines()[0] == "conforming (SPEC v1.0)"
+    assert captured.out.splitlines()[0] == "conforming (SPEC v1.1)"
 
 
 def test_cli_fully_conforming(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -42,7 +42,7 @@ def test_cli_fully_conforming(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     )
     captured = capsys.readouterr()
     assert rc == 0
-    assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.0)"
+    assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.1)"
 
 
 def test_cli_violation_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -119,7 +119,7 @@ def test_cli_json_pass(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     assert rc == 0
     doc = json.loads(captured.out)
     assert doc["status"] == "fully_conforming"
-    assert doc["spec_version"] == "1.0"
+    assert doc["spec_version"] == "1.1"
     assert doc["result"]["n_units"] == 30
     assert doc["inputs"]["units"]["sha256"] == hashlib.sha256(units_csv.read_bytes()).hexdigest()
     assert doc["arguments"]["measures"] == ["tau", "amplitude"]
@@ -161,7 +161,7 @@ def test_examples_are_fully_conforming(capsys: pytest.CaptureFixture[str]) -> No
     )
     captured = capsys.readouterr()
     assert rc == 0
-    assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.0)"
+    assert captured.out.splitlines()[0] == "fully_conforming (SPEC v1.1)"
 
 
 def test_module_invocation() -> None:
@@ -183,7 +183,7 @@ def test_module_invocation() -> None:
         check=False,
     )
     assert proc.returncode == 0
-    assert proc.stdout.splitlines()[0] == "fully_conforming (SPEC v1.0)"
+    assert proc.stdout.splitlines()[0] == "fully_conforming (SPEC v1.1)"
 
 
 def test_help_flags() -> None:

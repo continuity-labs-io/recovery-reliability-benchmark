@@ -9,10 +9,13 @@ import numpy as np
 import pandas as pd
 
 from .controls import DEFAULT_N_PERM
+from .frozen import freeze_constant, frozen
 
 NOISE_FLOOR = 1e-12
+freeze_constant(__name__, "NOISE_FLOOR", "METHOD sensitivity")
 
 
+@frozen("METHOD sensitivity")
 def _shift_and_z(slots: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Compute signed condition shifts and standardized |z| from (..., 4) half-value arrays."""
     shift = 0.5 * (slots[..., 2] + slots[..., 3]) - 0.5 * (slots[..., 0] + slots[..., 1])
@@ -26,6 +29,7 @@ def _shift_and_z(slots: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 # chance median |z| is about 0.8. Dealing each unit's four half values independently
 # at random into (first_odd, first_even, second_odd, second_even) destroys condition
 # assignment while keeping every unit's own level and spread intact.
+@frozen("METHOD sensitivity")
 def condition_sensitivity(
     halves: pd.DataFrame,
     measure: str,
@@ -132,6 +136,7 @@ def condition_sensitivity(
     }
 
 
+@frozen("METHOD sensitivity")
 def measure_sensitivity(
     halves: pd.DataFrame,
     measure: str,

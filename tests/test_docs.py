@@ -153,7 +153,7 @@ def test_citation_cff() -> None:
     try:
         import yaml  # type: ignore[import-not-found]
     except ImportError:
-        assert "version: 0.1.0" in cff_text
+        assert f"version: {pyproject_version}" in cff_text
         cff_version = next(
             line.split(":", 1)[1].strip().strip('"').strip("'")
             for line in cff_text.splitlines()

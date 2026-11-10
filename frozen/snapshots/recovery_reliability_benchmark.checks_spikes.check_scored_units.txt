@@ -1,0 +1,17 @@
+@frozen('SPEC min-dataset-3')
+def check_scored_units(scored: Mapping[str, Mapping[str, Set[str]]] | Mapping[str, Set[str]], measure: str, condition: str) -> None:
+    first_val = next(iter(scored.values()), None)
+    if isinstance(first_val, Mapping):
+        nested: Mapping[str, Mapping[str, Set[str]]] = scored
+        if measure not in nested and condition in nested:
+            measure, condition = (condition, measure)
+        cond_map: Mapping[str, Set[str]] = nested.get(measure, {})
+    else:
+        flat: Mapping[str, Set[str]] = scored
+        if condition not in flat and measure in flat:
+            measure, condition = (condition, measure)
+        cond_map = flat
+    n_scored = len(cond_map.get(condition, set()))
+    if n_scored < contract.MD3_MUST:
+        msg = f"{n_scored} units with {measure} computed in both halves for condition '{condition}', requires {contract.MD3_MUST}."
+        raise ContractViolation(Requirement.MD3, msg, found=n_scored, required=contract.MD3_MUST)

@@ -1,0 +1,32 @@
+@frozen('SPEC measures computed by the benchmark')
+def recovery_measures(rate_hz: FloatArray, edges_s: FloatArray, baseline: float, params: AnalysisParams) -> tuple[dict[str, float], dict[str, bool]]:
+    rate, edges = (np.asarray(rate_hz, dtype=float), np.asarray(edges_s, dtype=float))
+    centers, right_edges, win = (0.5 * (edges[:-1] + edges[1:]), edges[1:], float(params.post_stim_window_s))
+    peak_idx = int(np.argmax(rate))
+    t_peak, peak_rate, base = (float(centers[peak_idx]), float(rate[peak_idx]), float(baseline))
+    after_peak = np.flatnonzero(rate[peak_idx + 1:] <= base + params.half_peak_frac * (peak_rate - base))
+    t_half_peak_censored = len(after_peak) == 0
+    t_half_peak = win if t_half_peak_censored else float(centers[peak_idx + 1 + int(after_peak[0])])
+    nan = float('nan')
+    if base == 0.0:
+        t_return, residual, overshoot = (nan, nan, nan)
+        t_return_censored, no_response, overshoot_undefined, baseline_zero = (False, False, True, True)
+    else:
+        baseline_zero = False
+        exceed = np.flatnonzero(rate > params.return_x_baseline * base)
+        no_response = len(exceed) == 0
+        t_return_censored = not no_response and int(exceed[-1]) == len(rate) - 1
+        t_return = 0.0 if no_response else win if t_return_censored else float(right_edges[int(exceed[-1])])
+        res_mask = centers >= win - params.residual_s
+        residual = float(np.mean(rate[res_mask]) / base) if np.any(res_mask) else nan
+        after_mask = centers > t_return
+        overshoot_undefined = t_return_censored or not bool(np.any(after_mask))
+        if overshoot_undefined:
+            overshoot = nan
+        else:
+            widths = np.diff(edges)[after_mask]
+            r_after = float(np.sum(rate[after_mask] * widths) / np.sum(widths))
+            overshoot = float(max(0.0, (base - r_after) / base))
+    values = {'t_peak': t_peak, 'peak_rate': peak_rate, 't_half_peak': t_half_peak, 't_return': t_return, 'residual': residual, 'overshoot': overshoot}
+    flags = {'t_half_peak_censored': t_half_peak_censored, 't_return_censored': t_return_censored, 'no_response': no_response, 'overshoot_undefined': overshoot_undefined, 'baseline_zero': baseline_zero}
+    return (values, flags)

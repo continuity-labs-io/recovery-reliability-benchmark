@@ -8,8 +8,10 @@ from collections.abc import Sequence
 import numpy as np
 
 from .analysis import AnalysisParams
+from .frozen import frozen
 
 
+@frozen("SPEC measures computed by the benchmark")
 def excess_measures(
     latencies: Sequence[np.ndarray],
     baseline: float,
