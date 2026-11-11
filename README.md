@@ -25,10 +25,10 @@ rrb-report examples/two_conditions/units.csv examples/two_conditions/trials_resp
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | t_half_excess | 0.975 | [0.946, 0.988] | 0.371 | 29 | 3.27 | 1.09 | — |
 | excess_per_trial | 0.987 | [0.972, 0.994] | 0.363 | 30 | 3.88 | 1.10 | — |
-| t_return | 0.731 | [0.428, 0.874] | 0.357 | 30 | 1.00 | 1.07 | at chance; censored: control 8, slowed 11 |
-| baseline_hz (reference) | 0.989 | [0.977, 0.995] | 0.350 | 30 | 0.59 | 1.13 | at chance |
+| t_return | 0.731 | [0.428, 0.874] | 0.357 | 30 | 1.00 | 1.07 | sensitivity at chance; censored: control 8, slowed 11 |
+| baseline_hz (reference) | 0.989 | [0.977, 0.995] | 0.350 | 30 | 0.59 | 1.13 | sensitivity at chance |
 
-The `Reliability` column is the within-session split-half ceiling across units: how reproducibly the measure orders units from one half of the session's trials to the other, alongside its 95% interval and shuffled-unit null. The `Sensitivity, median z` column is how many multiples of its own split-half noise the typical unit shifts between `control` and `slowed`, alongside a shuffled-condition null. The reference row is baseline firing rate (`baseline_hz`), the most repeatable number in the report, and it does not move when recovery slows.
+The `Reliability` column is the within-session split-half ceiling across units: how reproducibly the measure orders units from one half of the session's trials to the other, alongside its 95% interval and shuffled-unit null (shown as `undefined` with interval `n/a` when every scored unit has the same value). The `Sensitivity, median z` column is how many multiples of its own split-half noise the typical unit shifts between `control` and `slowed`, alongside a shuffled-condition null. The `Notes` column names the axis (`no variation across units`, `reliability at chance`, `sensitivity at chance`, `does not beat reference`) alongside any censoring counts. The reference row is baseline firing rate (`baseline_hz`), the most repeatable number in the report, and it does not move when recovery slows.
 
 ## Run it on your recordings
 

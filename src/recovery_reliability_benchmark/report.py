@@ -155,7 +155,10 @@ def write_report(
     if not has_mpl:
         figure_note: str | None = "Figure skipped: matplotlib not installed"
     elif halves_path.is_file():
+        n_measures = len(result["parameters"]["measures"])
         figure_note = "![Split-half scatter](halves.png)"
+        if n_measures > 4:
+            figure_note += f"\n\nFigure shows the first 4 of {n_measures} measures."
     else:
         figure_note = None
 

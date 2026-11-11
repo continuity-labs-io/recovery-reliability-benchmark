@@ -254,7 +254,7 @@ def test_run_reports_sensitivity() -> None:
         n_perm=200,
         seed=0,
     )
-    assert res_both["measures"]["baseline_hz"]["sensitivity"]["control|slowed"]["beats_reference"] is False
+    assert res_both["measures"]["baseline_hz"]["sensitivity"]["control|slowed"]["beats_reference"] is None
 
     import io
     from contextlib import redirect_stdout
@@ -264,5 +264,5 @@ def test_run_reports_sensitivity() -> None:
         print_evaluate_human(res_both)
     human_text = buf.getvalue()
     assert "  sensitivity control|slowed: median|z|=3.27" in human_text
-    assert "[at chance] [does not beat reference]" in human_text
-    assert human_text.strip().splitlines()[-1].endswith("[at chance]")
+    assert "[does not beat reference]" not in human_text
+    assert human_text.strip().splitlines()[-1].endswith("[sensitivity at chance]")

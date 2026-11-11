@@ -8,6 +8,7 @@ from typing import Any
 
 from . import contract
 from .contract import ContractViolation, Requirement
+from .report_notes import EMPTY_NOTES, NOTES_SEPARATOR, row_notes
 
 DEFAULT_TITLE = "Recovery Reliability Benchmark Report"
 
@@ -46,69 +47,49 @@ def _conformance_line(result: dict[str, Any]) -> str:
 def _positive_control_line(pc: dict[str, Any]) -> str:
     verdict = "passed" if pc["passed"] else "failed"
     return (
-        f"Positive control: {verdict} (injected {pc['injected']:.2f}, recovered {pc['recovered']:.3f}, "
+        f"Positive control (split-half estimator on a synthetic table): {verdict} "
+        f"(injected {pc['injected']:.2f}, recovered {pc['recovered']:.3f}, "
         f"tolerance ±{pc['tolerance']:.2f}, {pc['n_units']} units × {pc['n_trials']} trials)."
     )
-
-
-def _censoring_note(raw_measure: str, m_entry: dict[str, Any]) -> str | None:
-    flag_key = f"{raw_measure}_censored"
-    flags = m_entry.get("flags") or {}
-    items = [(c, int(cf.get(flag_key, 0))) for c, cf in flags.items() if int(cf.get(flag_key, 0)) > 0]
-    if not items:
-        return None
-    if len(flags) == 1:
-        return f"censored: {items[0][1]} units"
-    return "censored: " + ", ".join(f"{c} {cnt}" for c, cnt in items)
 
 
 def _measure_table_rows(
     label: str, raw_measure: str, m_entry: dict[str, Any], n_conditions: int
 ) -> list[str]:
-    cens_note = _censoring_note(raw_measure, m_entry)
     if m_entry.get("status") == "not_scored":
         n_min = min(int(v["n_units_scored"]) for v in m_entry["per_condition"].values())
         sens_cell = "n/a (one condition)" if n_conditions < 2 else "—"
-        notes = [f"not scored ({n_min} units)", *([cens_note] if cens_note else [])]
-        return [f"| {label} | — | — | — | {n_min} | {sens_cell} | {sens_cell} | {'; '.join(notes)} |"]
+        notes = row_notes(m_entry, None, is_first_row=True, measure=raw_measure)
+        return [
+            f"| {label} | — | — | — | {n_min} | {sens_cell} | {sens_cell} | {NOTES_SEPARATOR.join(notes)} |"
+        ]
 
     h, null = m_entry["headline"], m_entry["null"]
-    rho_cell, units_cell = f"{h['rho']:.3f}", str(h["n_units"])
+    r_undef = bool(h.get("r_undefined"))
+    rho_cell = "undefined" if r_undef else f"{h['rho']:.3f}"
+    units_cell = str(h["n_units"])
     lo, hi, p95 = h["rho_ci_low"], h["rho_ci_high"], null["p95_rho"]
-    ci_cell = f"[{lo:.3f}, {hi:.3f}]" if lo is not None and hi is not None else "n/a"
+    ci_cell = f"[{lo:.3f}, {hi:.3f}]" if (not r_undef and lo is not None and hi is not None) else "n/a"
     null_cell = f"{p95:.3f}" if p95 is not None and not math.isnan(p95) else "n/a"
 
     sens = m_entry.get("sensitivity")
-    if sens is None:
-        notes = []
-        if p95 is not None and not math.isnan(p95) and h["rho"] <= p95:
-            notes.append("at chance")
-        if cens_note:
-            notes.append(cens_note)
-        notes_str = "; ".join(notes) if notes else "—"
-        return [
-            f"| {label} | {rho_cell} | {ci_cell} | {null_cell} | {units_cell} | "
-            f"n/a (one condition) | n/a (one condition) | {notes_str} |"
-        ]
-
+    pair_items: list[tuple[str | None, dict[str, Any] | None]] = (
+        [(None, None)] if not sens else list(sens.items())
+    )
+    multi_pair = len(pair_items) > 1
     rows: list[str] = []
-    multi_pair = len(sens) > 1
-    for idx, (pair, pair_sens) in enumerate(sens.items()):
-        z_val, s_null = pair_sens["median_abs_z"], pair_sens["null"]
-        if z_val is None or s_null is None:
-            z_cell, z_null_cell = (f"{pair}: n/a" if multi_pair else "n/a"), "n/a"
+    for idx, (pair, pair_sens) in enumerate(pair_items):
+        if pair_sens is None:
+            z_cell = z_null_cell = "n/a (one condition)"
         else:
-            z_cell = f"{pair}: {z_val:.2f}" if multi_pair else f"{z_val:.2f}"
-            z_null_cell = f"{s_null['median_abs_z_p95']:.2f}"
-
-        pair_notes: list[str] = []
-        if pair_sens.get("above_null") is False:
-            pair_notes.append("at chance")
-        if pair_sens.get("beats_reference") is False:
-            pair_notes.append("does not beat reference")
-        if idx == 0 and cens_note:
-            pair_notes.append(cens_note)
-        notes_str = "; ".join(pair_notes) if pair_notes else "—"
+            z_val, s_null = pair_sens["median_abs_z"], pair_sens["null"]
+            if z_val is None or s_null is None:
+                z_cell, z_null_cell = (f"{pair}: n/a" if multi_pair else "n/a"), "n/a"
+            else:
+                z_cell = f"{pair}: {z_val:.2f}" if multi_pair else f"{z_val:.2f}"
+                z_null_cell = f"{s_null['median_abs_z_p95']:.2f}"
+        notes = row_notes(m_entry, pair, is_first_row=(idx == 0), measure=raw_measure)
+        notes_str = NOTES_SEPARATOR.join(notes) if notes else EMPTY_NOTES
         rows.append(
             f"| {label} | {rho_cell} | {ci_cell} | {null_cell} | {units_cell} | "
             f"{z_cell} | {z_null_cell} | {notes_str} |"
@@ -125,11 +106,14 @@ def _how_to_read_lines(result: dict[str, Any], requested_measures: list[str]) ->
             paragraphs.append(f"{m}: not scored ({n_min} units).")
             continue
         h, null = m_entry["headline"], m_entry["null"]
-        lo, hi, p95 = h["rho_ci_low"], h["rho_ci_high"], null["p95_rho"]
-        lo_s = f"{lo:.3f}" if lo is not None else "n/a"
-        hi_s = f"{hi:.3f}" if hi is not None else "n/a"
-        p95_s = f"{p95:.3f}" if p95 is not None and not math.isnan(p95) else "n/a"
-        parts = [f"{m}: reliability {h['rho']:.3f} (interval {lo_s} to {hi_s}; shuffled null {p95_s})."]
+        if h.get("r_undefined"):
+            parts = [f"{m}: reliability is undefined because every scored unit has the same value."]
+        else:
+            lo, hi, p95 = h["rho_ci_low"], h["rho_ci_high"], null["p95_rho"]
+            lo_s = f"{lo:.3f}" if lo is not None else "n/a"
+            hi_s = f"{hi:.3f}" if hi is not None else "n/a"
+            p95_s = f"{p95:.3f}" if p95 is not None and not math.isnan(p95) else "n/a"
+            parts = [f"{m}: reliability {h['rho']:.3f} (interval {lo_s} to {hi_s}; shuffled null {p95_s})."]
         for pair, pair_sens in (m_entry.get("sensitivity") or {}).items():
             first, second = pair.split("|", 1)
             z_val, s_null = pair_sens["median_abs_z"], pair_sens["null"]
@@ -146,7 +130,9 @@ def _how_to_read_lines(result: dict[str, Any], requested_measures: list[str]) ->
         if ref.get("status") == "not_scored":
             ref_rho, ref_z = "not scored", "n/a"
         else:
-            ref_rho, ref_sens = f"{ref['headline']['rho']:.3f}", ref.get("sensitivity")
+            ref_h = ref["headline"]
+            ref_rho = "undefined" if ref_h.get("r_undefined") else f"{ref_h['rho']:.3f}"
+            ref_sens = ref.get("sensitivity")
             if ref_sens is None:
                 ref_z = "n/a (one condition)"
             elif len(ref_sens) == 1:

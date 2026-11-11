@@ -184,15 +184,20 @@ def run_with_inputs(
         else None
     )
     ref_sens = reference.get("sensitivity") if reference is not None else None
-    for m_entry in measures_out.values():
+    for m_name, m_entry in measures_out.items():
         m_sens = m_entry.get("sensitivity")
         if m_sens is not None:
             for pair, pair_sens in m_sens.items():
-                m_z = pair_sens["median_abs_z"]
-                ref_z = ref_sens[pair]["median_abs_z"] if ref_sens is not None and pair in ref_sens else None
-                pair_sens["beats_reference"] = (
-                    bool(m_z > ref_z) if m_z is not None and ref_z is not None else None
-                )
+                if ref_m is not None and m_name == ref_m:
+                    pair_sens["beats_reference"] = None
+                else:
+                    m_z = pair_sens["median_abs_z"]
+                    ref_z = (
+                        ref_sens[pair]["median_abs_z"] if ref_sens is not None and pair in ref_sens else None
+                    )
+                    pair_sens["beats_reference"] = (
+                        bool(m_z > ref_z) if m_z is not None and ref_z is not None else None
+                    )
     return {"status": "ok", **base, "measures": measures_out, "reference": reference}, inputs
 
 
