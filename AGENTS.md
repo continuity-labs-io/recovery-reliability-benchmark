@@ -23,3 +23,11 @@ Read `frozen/README.md` before modifying any code.
 ## Verification
 
 Always run `ruff check .`, `ruff format --check .`, and `pytest` and confirm the entire test suite passes before reporting done.
+
+## Releasing
+
+1. Pre-tag readiness: ensure `pyproject.toml`, `CITATION.cff`, and `frozen/manifest.json` match the target version (`python -m recovery_reliability_benchmark.frozen_manifest --update` with `Frozen:` bullets in `CHANGELOG.md` when advancing from a tagged version), keep top-level `doi:` in `CITATION.cff` pinned to the Concept DOI (`10.5281/zenodo.24020731`), set the release date in `CHANGELOG.md` and `CITATION.cff`, and pass local verification.
+2. CI gate: push `main` and wait for both the `test` matrix and `frozen-core` GitHub Actions workflows to pass on the exact commit SHA to be tagged.
+3. Tag: create and push an annotated tag (`git tag -a vX.Y.Z -F <notes>` and `git push origin vX.Y.Z`). Do not manually pre-reserve a draft DOI on Zenodo while the GitHub webhook is active.
+4. GitHub Release & Zenodo ID check: publish the GitHub Release from tag `vX.Y.Z` to trigger Zenodo archiving. Note on Zenodo IDs: Zenodo only minted an `N - 1` Concept DOI (`24020731`) alongside the Version DOI (`24020732`) on the initial `v0.1.0` release; every subsequent release mints only one new Version DOI under the existing `10.5281/zenodo.24020731` Concept DOI (verify in the Zenodo sidebar that `24020731` remains the "Cite all versions" DOI—never assume `new_id - 1` belongs to this repository).
+5. Post-tag DOI commit: on `main` under `## Unreleased`, append the newly minted Version DOI to `identifiers:` in `CITATION.cff`, update `README.md` (`## Citing`) and `tests/test_docs.py::test_zenodo_doi_recorded`, and run full verification.

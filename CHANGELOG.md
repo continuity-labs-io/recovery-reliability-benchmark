@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Zenodo v0.2.0 DOI recorded (10.5281/zenodo.24143857); release checklist added to AGENTS.md.
+
 ## [0.2.0] - 2026-11-11
 
 Scope of this release: the spikes path. From spike times and stimulus times the benchmark computes the recovery measures itself with frozen definitions, reports reliability and sensitivity beside a baseline firing rate reference row, and writes a report folder from one command. Validated on simulated spike trains with known answers; no real stimulation recording has been scored yet. Pilot reproduction, announced for 0.2.0 in the 0.1.0 notes, is not part of this release.
