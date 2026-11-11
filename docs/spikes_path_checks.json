@@ -2,8 +2,8 @@
   "strong_20": {
     "t_half_excess": {
       "split_half_corrected": 0.968,
-      "test_retest": 0.965,
-      "units_scored": 29.3
+      "test_retest": 0.966,
+      "units_scored": 28.1
     },
     "excess_per_trial": {
       "split_half_corrected": 0.984,
@@ -25,7 +25,7 @@
     "t_half_excess": {
       "split_half_corrected": 0.985,
       "test_retest": 0.985,
-      "units_scored": 29.8
+      "units_scored": 29.5
     },
     "excess_per_trial": {
       "split_half_corrected": 0.992,
@@ -45,9 +45,9 @@
   },
   "weak_20": {
     "t_half_excess": {
-      "split_half_corrected": 0.678,
-      "test_retest": 0.728,
-      "units_scored": 20.9
+      "split_half_corrected": 0.696,
+      "test_retest": 0.788,
+      "units_scored": 16.1
     },
     "excess_per_trial": {
       "split_half_corrected": 0.888,
@@ -67,9 +67,9 @@
   },
   "weak_40": {
     "t_half_excess": {
-      "split_half_corrected": 0.811,
-      "test_retest": 0.863,
-      "units_scored": 24.5
+      "split_half_corrected": 0.878,
+      "test_retest": 0.88,
+      "units_scored": 20.1
     },
     "excess_per_trial": {
       "split_half_corrected": 0.929,
@@ -89,9 +89,9 @@
   },
   "sparse_20": {
     "t_half_excess": {
-      "split_half_corrected": 0.734,
-      "test_retest": 0.737,
-      "units_scored": 19.8
+      "split_half_corrected": 0.807,
+      "test_retest": 0.824,
+      "units_scored": 16.3
     },
     "excess_per_trial": {
       "split_half_corrected": 0.964,
@@ -111,9 +111,9 @@
   },
   "sparse_40": {
     "t_half_excess": {
-      "split_half_corrected": 0.811,
-      "test_retest": 0.793,
-      "units_scored": 22.8
+      "split_half_corrected": 0.859,
+      "test_retest": 0.854,
+      "units_scored": 19.4
     },
     "excess_per_trial": {
       "split_half_corrected": 0.982,

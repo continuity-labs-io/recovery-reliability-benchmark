@@ -14,28 +14,38 @@ from .frozen import frozen
 @frozen("SPEC measures computed by the benchmark")
 def excess_measures(
     latencies: Sequence[np.ndarray],
-    baseline: float,
+    pre_counts: Sequence[int] | np.ndarray,
     params: AnalysisParams,
 ) -> tuple[dict[str, float], dict[str, bool]]:
     """Compute bin-free excess-spike recovery measures from per-trial latency arrays.
 
     For an exponential recovery with time constant ``tau`` and a window much longer than
-    ``tau``, ``t_half_excess`` estimates ``tau * ln 2``.
+    ``tau``, ``t_half_excess`` estimates ``tau * ln 2``. The response gate works on one
+    number per trial, ``d_i = post_i - (post_stim_window_s / pre_stim_window_s) * pre_i``:
+    ``t_half_excess`` is computed only when ``sum(d) > min_excess_z * sqrt(n) * sd(d)``
+    (``sd`` with ``ddof=1``), so a unit that fires in bursts or drifts between trials
+    is held to its own trial-to-trial spread.
 
     Args:
         latencies: Sequence of per-trial 1D latency arrays in ``[0, post_stim_window_s)``
             from ``trial_latencies`` for one unit and one set of trials.
-        baseline: Pooled pre-stimulus baseline firing rate in Hz.
-        params: Analysis parameters defining ``post_stim_window_s`` and ``min_excess_z``.
+        pre_counts: Per-trial pre-stimulus spike counts from ``pre_counts`` for the same trials.
+        params: Analysis parameters defining the two windows and ``min_excess_z``.
 
     Returns:
         Tuple of ``(values, flags)`` dictionaries with ``t_half_excess`` and
         ``excess_per_trial`` in ``values`` and ``no_excess`` in ``flags``.
+
+    Raises:
+        ValueError: If ``pre_counts`` and ``latencies`` differ in length.
     """
     n = len(latencies)
     nan = float("nan")
     if n == 0:
         return {"t_half_excess": nan, "excess_per_trial": nan}, {"no_excess": True}
+    pre = np.asarray(pre_counts, dtype=float)
+    if len(pre) != n:
+        raise ValueError(f"pre_counts has {len(pre)} trials, latencies has {n}.")
 
     pooled = (
         np.sort(np.concatenate([np.asarray(lat, dtype=float) for lat in latencies]))
@@ -44,26 +54,33 @@ def excess_measures(
     )
     n_spikes = len(pooled)
     win = float(params.post_stim_window_s)
-    base = float(baseline)
-
+    base = float(np.sum(pre) / (n * params.pre_stim_window_s))
     excess_total = float(n_spikes - base * n * win)
     excess_per_trial = float(excess_total / n)
 
-    if math.isnan(base) or excess_total <= params.min_excess_z * math.sqrt(max(n_spikes, 1)):
-        t_half_excess = nan
-        no_excess = True
+    post = np.asarray([len(lat) for lat in latencies], dtype=float)
+    per_trial = post - (win / params.pre_stim_window_s) * pre
+    spread = float(np.std(per_trial, ddof=1)) if n >= 2 else 0.0
+    if n < 2:
+        responds = False
+    elif spread > 0.0:
+        responds = excess_total > params.min_excess_z * math.sqrt(n) * spread
     else:
+        responds = excess_total > 0.0
+
+    if responds:
         k = np.arange(1, n_spikes + 1, dtype=float)
         cum_k = k - base * n * pooled
         first_idx = int(np.flatnonzero(cum_k >= 0.5 * excess_total)[0])
         t_half_excess = float(pooled[first_idx])
-        no_excess = False
+    else:
+        t_half_excess = nan
 
     values = {
         "t_half_excess": t_half_excess,
         "excess_per_trial": excess_per_trial,
     }
     flags = {
-        "no_excess": no_excess,
+        "no_excess": not responds,
     }
     return values, flags

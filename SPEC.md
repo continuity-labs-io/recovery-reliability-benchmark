@@ -195,7 +195,7 @@ The secondary PSTH measures read single histogram bins (or trailing bin subsets)
     E(t) = N(t) - b * n * t
     t_half_excess = smallest t with E(t) >= E(W) / 2
 
-When `E(W) <= min_excess_z * sqrt(max(N(W), 1))` (or `b` is `NaN`), `t_half_excess` is `NaN` with flag `no_excess`.
+The response gate uses one number per trial, `d_i = post_i - (W / pre_stim_window_s) * pre_i`: the spikes of trial `i` in `[0, W)` minus its pre-stimulus count scaled to the same duration, so `sum(d) = E(W)`. When `E(W) <= min_excess_z * sqrt(n) * sd(d)` (sample standard deviation over the `n` trials; when `sd(d)` is zero, `E(W) <= 0`), `t_half_excess` is `NaN` with flag `no_excess`. A unit is held to its own trial-to-trial spread, so bursting or drift between trials does not pass as a response.
 
 ---
 
@@ -309,7 +309,7 @@ Conformance is necessary, not sufficient. A conforming dataset supports the comp
 
 ## What conformance guarantees on the spikes path
 
-The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by simulation for per-trial scalar measures (`docs/thresholds.md`); on the spikes path, reliability also depends on how many spikes each unit contributes to each half. From `docs/spikes_path_checks.json` (`t_half_excess`) at 20 trials: strong responses reach 0.97 with 29 of 30 units scored; weak responses reach 0.68 with 21 of 30; sparse firing reaches 0.73 with 20 of 30; at 40 trials the last two reach 0.81. The confidence interval, the shuffled null, and the units-scored counts in the report are the guide; conformance does not promise a narrow interval.
+The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by simulation for per-trial scalar measures (`docs/thresholds.md`); on the spikes path, reliability also depends on how many spikes each unit contributes to each half. From `docs/spikes_path_checks.json` (`t_half_excess`) at 20 trials: strong responses reach 0.97 with 28 of 30 units scored; weak responses reach 0.70 with 16 of 30; sparse firing reaches 0.81 with 16 of 30; at 40 trials the last two reach 0.88 and 0.86. The confidence interval, the shuffled null, and the units-scored counts in the report are the guide; conformance does not promise a narrow interval.
 
 ---
 

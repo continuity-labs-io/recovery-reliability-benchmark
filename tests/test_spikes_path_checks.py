@@ -28,12 +28,12 @@ FOUR_MEASURES = (
 TOLERANCE = 0.005
 
 EXPECTED_T_HALF_EXCESS: dict[str, tuple[float, float, float]] = {
-    "strong_20": (0.968, 0.965, 29.3),
-    "strong_40": (0.985, 0.985, 29.8),
-    "weak_20": (0.678, 0.728, 20.9),
-    "weak_40": (0.811, 0.863, 24.5),
-    "sparse_20": (0.734, 0.737, 19.8),
-    "sparse_40": (0.811, 0.793, 22.8),
+    "strong_20": (0.968, 0.966, 28.1),
+    "strong_40": (0.985, 0.985, 29.5),
+    "weak_20": (0.696, 0.788, 16.1),
+    "weak_40": (0.878, 0.880, 20.1),
+    "sparse_20": (0.807, 0.824, 16.3),
+    "sparse_40": (0.859, 0.854, 19.4),
 }
 
 EXPECTED_OTHER_MEASURES: dict[str, dict[str, tuple[float, float]]] = {

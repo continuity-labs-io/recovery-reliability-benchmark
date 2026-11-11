@@ -100,7 +100,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Excess spikes.** Post-load spikes above the count expected from the pre-stimulus baseline firing rate over the window: `excess_total = N - baseline * n * post_stim_window_s`, where `N` is the pooled post-load spike count across `n` trials in `[0, post_stim_window_s)`. `excess.excess_measures`.
 
-**`t_half_excess`.** Latency of the first pooled post-load spike `k` (`k = 1..N`, sorted across `n` trials) whose running excess count `k - baseline * n * pooled[k - 1]` reaches `0.5 * excess_total`. For an exponential recovery with time constant `tau` and a window much longer than `tau`, `t_half_excess` estimates `tau * ln 2`. `NaN` with flag `no_excess` when `baseline` is `NaN` or `excess_total <= min_excess_z * sqrt(max(N, 1))`. SPEC "Measures computed by the benchmark"; `excess.excess_measures`.
+**`t_half_excess`.** Latency of the first pooled post-load spike `k` (`k = 1..N`, sorted across `n` trials) whose running excess count `k - baseline * n * pooled[k - 1]` reaches `0.5 * excess_total`. For an exponential recovery with time constant `tau` and a window much longer than `tau`, `t_half_excess` estimates `tau * ln 2`. `NaN` with flag `no_excess` when `excess_total <= min_excess_z * sqrt(n) * sd(d)`, where `d_i = post_i - (post_stim_window_s / pre_stim_window_s) * pre_i` is one number per trial (response gate). SPEC "Measures computed by the benchmark"; `excess.excess_measures`.
 
 **`excess_per_trial`.** Mean excess post-load spikes per trial over `[0, post_stim_window_s)`, `excess_total / n`. Never `NaN` for `n >= 1` with finite `baseline`; may be negative. SPEC "Measures computed by the benchmark"; `excess.excess_measures`.
 

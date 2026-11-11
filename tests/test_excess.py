@@ -11,6 +11,7 @@ import pytest
 
 from recovery_reliability_benchmark.analysis import AnalysisParams
 from recovery_reliability_benchmark.evaluate import reliability_ceiling
+from recovery_reliability_benchmark.excess import excess_measures
 from recovery_reliability_benchmark.measures import unit_measures
 from recovery_reliability_benchmark.spikes import halves_from_spikes
 from recovery_reliability_benchmark.synthetic import (
@@ -125,3 +126,45 @@ def test_bin_edges_do_not_matter() -> None:
     vals_linear, _ = unit_measures(trains[0], onsets, params_linear)
     assert vals_default["t_half_excess"] == vals_linear["t_half_excess"]
     assert vals_default["excess_per_trial"] == vals_linear["excess_per_trial"]
+
+
+def _latencies_with_counts(counts: Sequence[int]) -> list[np.ndarray]:
+    return [np.linspace(0.1, 0.5, int(c)) for c in counts]
+
+
+def test_gate_uses_trial_to_trial_spread() -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+
+    _values, flags = excess_measures(_latencies_with_counts([3, 3, 3, 3]), [0, 0, 0, 0], params)
+    assert flags["no_excess"] is False
+
+    values, flags = excess_measures(_latencies_with_counts([4, 0, 4, 0]), [0, 0, 0, 0], params)
+    assert flags["no_excess"] is True
+    assert math.isnan(values["t_half_excess"])
+    assert values["excess_per_trial"] == 2.0
+
+    values, flags = excess_measures(_latencies_with_counts([5, 4, 5, 4]), [1, 1, 1, 1], params)
+    assert flags["no_excess"] is False
+    assert values["excess_per_trial"] == 2.5
+
+    _values, flags = excess_measures(_latencies_with_counts([0, 0, 0, 0]), [0, 0, 0, 0], params)
+    assert flags["no_excess"] is True
+
+    with pytest.raises(ValueError, match="pre_counts has 3 trials, latencies has 4"):
+        excess_measures(_latencies_with_counts([1, 1, 1, 1]), [0, 0, 0], params)
+
+
+@pytest.mark.parametrize("burst_max", [1, 5])
+def test_gate_pass_rate_without_response(burst_max: int) -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+    onsets = 5.0 * (np.arange(10) + 1)
+    rng = np.random.default_rng(7)
+    n_units, n_pass = 1000, 0
+    for _ in range(n_units):
+        n_events = int(rng.poisson(5.0 * 56.0 * 2.0 / (1 + burst_max)))
+        events = rng.uniform(0.0, 56.0, n_events)
+        sizes = rng.integers(1, burst_max + 1, n_events)
+        spikes = np.sort(np.repeat(events, sizes) + rng.uniform(0.0, 0.02, int(sizes.sum())))
+        _values, flags = unit_measures(spikes, onsets, params)
+        n_pass += not flags["no_excess"]
+    assert n_pass / n_units < 0.08

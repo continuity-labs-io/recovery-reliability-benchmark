@@ -279,14 +279,17 @@ def test_spikes_path_checks_numbers_match_docs() -> None:
     assert (
         f"sparse firing reaches {sp20['split_half_corrected']:.2f} with {round(sp20['units_scored'])} of 30"
     ) in spec_section
-    assert f"{w40['split_half_corrected']:.2f}" == f"{sp40['split_half_corrected']:.2f}"
-    assert f"at 40 trials the last two reach {w40['split_half_corrected']:.2f}" in spec_section
+    assert (
+        f"at 40 trials the last two reach {w40['split_half_corrected']:.2f} "
+        f"and {sp40['split_half_corrected']:.2f}"
+    ) in spec_section
 
     expected_spec_decimals = {
         f"{s20['split_half_corrected']:.2f}",
         f"{w20['split_half_corrected']:.2f}",
         f"{sp20['split_half_corrected']:.2f}",
         f"{w40['split_half_corrected']:.2f}",
+        f"{sp40['split_half_corrected']:.2f}",
     }
     assert set(re.findall(r"\b\d+\.\d+\b", spec_section)) == expected_spec_decimals
 

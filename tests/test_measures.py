@@ -180,7 +180,7 @@ def test_unit_measures_matches_pieces() -> None:
     counts = bin_counts(lats, edges)
     rate = psth_rate(counts, edges)
     expected_values, expected_flags = recovery_measures(rate, edges, base, params)
-    ex_values, ex_flags = excess_measures(lats, base, params)
+    ex_values, ex_flags = excess_measures(lats, pre, params)
     expected_values.update(ex_values)
     expected_flags.update(ex_flags)
     expected_values["baseline_hz"] = base

@@ -325,7 +325,7 @@ def test_reference_row_on_example() -> None:
     assert ref["headline"]["n_units"] == 30
     the = res["measures"]["t_half_excess"]["headline"]
     assert the["rho"] > 0.9
-    assert the["n_units"] == 29
+    assert the["n_units"] == 28
 
 
 def test_reference_same_when_requested() -> None:
