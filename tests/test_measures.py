@@ -203,3 +203,28 @@ def test_unit_measures_matches_pieces() -> None:
     actual_values, actual_flags = unit_measures(spikes, onsets, params)
     assert actual_flags == expected_flags
     assert actual_values == expected_values
+
+
+def test_empty_histogram_has_no_peak_time() -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+    onsets = 5.0 * (np.arange(10) + 1)
+
+    values, flags = unit_measures(np.empty(0, dtype=float), onsets, params)
+    assert values["peak_rate"] == 0.0
+    assert math.isnan(values["t_peak"])
+    assert math.isnan(values["t_half_peak"])
+    assert flags["t_half_peak_censored"] is False
+
+    only_before_onsets = onsets - 0.5
+    values, flags = unit_measures(only_before_onsets, onsets, params)
+    assert values["baseline_hz"] == 1.0
+    assert values["peak_rate"] == 0.0
+    assert math.isnan(values["t_peak"])
+    assert math.isnan(values["t_half_peak"])
+    assert values["t_return"] == 0.0
+
+    one_spike = np.asarray([onsets[3] + 0.2])
+    values, _flags = unit_measures(one_spike, onsets, params)
+    assert values["peak_rate"] > 0.0
+    assert not math.isnan(values["t_peak"])
+    assert not math.isnan(values["t_half_peak"])

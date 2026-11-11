@@ -277,6 +277,23 @@ def test_md7_spacing_from_run(isi_s: float, accepted: bool) -> None:
     assert exc_info.value.required == 1.0
 
 
+def test_silent_units_do_not_change_peak_time_reliability() -> None:
+    taus = np.geomspace(0.05, 0.5, 20)
+    results = {}
+    for silent_units in (0, 10):
+        units, trials, spikes, params = _build_spike_dataset(
+            taus, n_trials=20, isi_s=5.0, seed=0, silent_units=silent_units
+        )
+        results[silent_units] = run(
+            units, trials, measures=["t_peak", "t_half_peak"], spikes=spikes, analysis=params, n_perm=20
+        )
+    for measure in ("t_peak", "t_half_peak"):
+        alone = results[0]["measures"][measure]["headline"]
+        with_silent = results[10]["measures"][measure]["headline"]
+        assert alone["n_units"] == with_silent["n_units"] == 20
+        assert alone["rho"] == with_silent["rho"]
+
+
 def test_md3_scored_from_run() -> None:
     taus = np.geomspace(0.05, 0.5, 6)
     units, trials, spikes, params = _build_spike_dataset(taus, n_trials=10, isi_s=5.0, seed=0, silent_units=4)

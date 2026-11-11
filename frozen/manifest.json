@@ -128,7 +128,7 @@
     },
     "recovery_reliability_benchmark.measures.recovery_measures": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.measures.recovery_measures.txt",
-      "sha256": "19996856cd71ae533dc8de8dab71d55add296a2f090bd425d640a8cd96de63af"
+      "sha256": "1544dbfa8edf36faa3960776277947af6fc101562ce544d72ffff6c90cd26268"
     },
     "recovery_reliability_benchmark.measures.trial_latencies": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.measures.trial_latencies.txt",

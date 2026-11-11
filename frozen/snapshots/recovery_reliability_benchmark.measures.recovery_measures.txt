@@ -8,6 +8,8 @@ def recovery_measures(rate_hz: FloatArray, edges_s: FloatArray, baseline: float,
     t_half_peak_censored = len(after_peak) == 0
     t_half_peak = win if t_half_peak_censored else float(centers[peak_idx + 1 + int(after_peak[0])])
     nan = float('nan')
+    if peak_rate == 0.0:
+        t_peak, t_half_peak, t_half_peak_censored = (nan, nan, False)
     if base == 0.0:
         t_return, residual, overshoot = (nan, nan, nan)
         t_return_censored, no_response, overshoot_undefined, baseline_zero = (False, False, True, True)

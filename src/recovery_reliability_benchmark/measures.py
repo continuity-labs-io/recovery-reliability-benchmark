@@ -153,7 +153,8 @@ def recovery_measures(
     the pooled rate ``sum(rate_i * width_i) / sum(width_i)`` over bins with
     ``center > t_return``: the minimum over bins is biased upward by whichever bin has the
     fewest spikes, so it grows with bin count and noise even when no dip exists; the pooled
-    rate does not.
+    rate does not. When no spike falls in any bin, ``peak_rate`` is ``0.0`` and ``t_peak`` and
+    ``t_half_peak`` are ``NaN``.
 
     Args:
         rate_hz: 1D array of PSTH firing rates in Hz per bin.
@@ -174,6 +175,8 @@ def recovery_measures(
     t_half_peak = win if t_half_peak_censored else float(centers[peak_idx + 1 + int(after_peak[0])])
 
     nan = float("nan")
+    if peak_rate == 0.0:
+        t_peak, t_half_peak, t_half_peak_censored = nan, nan, False
     if base == 0.0:
         t_return, residual, overshoot = nan, nan, nan
         t_return_censored, no_response, overshoot_undefined, baseline_zero = False, False, True, True

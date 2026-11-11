@@ -183,14 +183,19 @@ def test_scored_units_excludes_silent_unit() -> None:
         }
     )
     units_with_silent = pd.concat([units, silent_row], ignore_index=True)
-    halves, _flags = halves_from_spikes(units_with_silent, trials, spikes, params, ["t_return", "peak_rate"])
+    measures = ["t_return", "peak_rate", "t_peak", "t_half_peak"]
+    halves, _flags = halves_from_spikes(units_with_silent, trials, spikes, params, measures)
 
-    scored = scored_units(halves, ["t_return", "peak_rate"])
+    scored = scored_units(halves, measures)
     assert "u_silent" not in scored["t_return"]["baseline"]
     assert len(scored["t_return"]["baseline"]) == 5
 
     assert "u_silent" in scored["peak_rate"]["baseline"]
     assert len(scored["peak_rate"]["baseline"]) == 6
+
+    for measure in ("t_peak", "t_half_peak"):
+        assert "u_silent" not in scored[measure]["baseline"]
+        assert len(scored[measure]["baseline"]) == 5
 
 
 def test_pre_window_violations() -> None:

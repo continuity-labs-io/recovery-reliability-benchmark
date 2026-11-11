@@ -181,9 +181,9 @@ On the spikes path (`measures.py`, `excess.py`), the benchmark computes the foll
 | `excess_per_trial` | Mean post-load spikes per trial above pre-stimulus baseline expectation over `[B, W)` | Lead |
 | `baseline_hz` | Pooled pre-stimulus firing rate over `[onset - pre_stim_window_s, onset)`, always reported as a comparison row | Reference |
 | `t_return` | Right edge of the last PSTH bin exceeding `return_x_baseline * b` (censored at `W`; `0.0` if none exceed; `NaN` if `b == 0`) | Secondary (histogram bin; needs many spikes per bin) |
-| `t_half_peak` | Center of the first PSTH bin after the peak at or below `b + half_peak_frac * (peak_rate - b)` (censored at `W`) | Secondary (histogram bin; needs many spikes per bin) |
+| `t_half_peak` | Center of the first PSTH bin after the peak at or below `b + half_peak_frac * (peak_rate - b)` (censored at `W`; `NaN` when no spike falls in any bin) | Secondary (histogram bin; needs many spikes per bin) |
 | `peak_rate` | Maximum PSTH bin firing rate in `[B, W)` | Secondary (histogram bin; needs many spikes per bin) |
-| `t_peak` | Center of the PSTH bin attaining `peak_rate` | Secondary (histogram bin; needs many spikes per bin) |
+| `t_peak` | Center of the PSTH bin attaining `peak_rate` (`NaN` when no spike falls in any bin) | Secondary (histogram bin; needs many spikes per bin) |
 | `residual` | Mean PSTH rate over bins with center `>= W - residual_s`, divided by `b` (`NaN` if `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
 | `overshoot` | Pooled relative firing-rate deficit below `b` over bins with center `> t_return` (`NaN` when `t_return` is censored, no bin follows, or `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
 | `spikes_per_trial` | Mean post-load spike count per trial in `[B, W)` | Auxiliary (bin-free) |
@@ -247,7 +247,7 @@ Contributors MUST NOT exclude units or trials after seeing results. Any exclusio
 
 Every report prints: units in the tables, units included by rule, units excluded by rule, rows missing from the full grid, and contributor-declared exclusions.
 
-From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." A silent unit has no baseline and is excluded.
+From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." A silent unit is not scored for a measure that needs a baseline, a response or a peak (`t_return`, `residual`, `overshoot`, `t_half_excess`, `t_peak`, `t_half_peak`).
 
 ---
 
