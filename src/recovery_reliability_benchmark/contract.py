@@ -44,7 +44,7 @@ FULLY_CONFORMING = "fully_conforming"
 
 INCLUSION_RULE = (
     "A unit is included in a condition if and only if it has a row for every trial of that condition "
-    "with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x."
+    "with every measure non-null. All present trials are used; no trial is excluded by rule."
 )
 
 

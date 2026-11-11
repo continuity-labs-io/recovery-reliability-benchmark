@@ -6,8 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-## [0.2.0] - 2026-11-10
+## [0.2.0] - 2026-11-11
 
+Scope of this release: the spikes path. From spike times and stimulus times the benchmark computes the recovery measures itself with frozen definitions, reports reliability and sensitivity beside a baseline firing rate reference row, and writes a report folder from one command. Validated on simulated spike trains with known answers; no real stimulation recording has been scored yet. Pilot reproduction, announced for 0.2.0 in the 0.1.0 notes, is not part of this release.
+
+- Release metadata and wording: CITATION.cff cites the concept DOI, the README citation names the current version, and the inclusion rule text, the fate.csv sentence and two glossary entries no longer name v0.1.
 - Repository layout and CLI surface: remove `scripts/`, move format-conversion adapters to `adapters/` (`adapters/adapter_template.py`, `adapters/sharf2022.py`), extract dataset-agnostic fixed-duration epoch and transform construction into `epochs.py`, move frozen manifest governance and spikes-path calibration into `frozen_manifest.py` (`python -m recovery_reliability_benchmark.frozen_manifest`) and `spikes_path_checks.py` (`python -m recovery_reliability_benchmark.spikes_path_checks`), and keep `[project.scripts]` strictly for user dataset workflows (`rrb-check`, `rrb-evaluate`, `rrb-report`).
 - Specification and contribution wording (`SPEC.md`, `GLOSSARY.md`, `METHOD.md`, `CONTRIBUTING.md`): the sidecars (`preparation.json`, `conditions.json`) and `spikes.csv` are optional for conformance and required for an atlas contribution (with `spikes.csv` required on the spikes path and for spike-recording modalities); the 0.1.0 text said they would be required from 0.2.0, which the checker did not enforce.
 - Axis-specific report wording (`report_notes.py`, `summary.py`, `text_report.py`, `report.py`, `run.py`): diagnostic notes come from `report_notes.row_notes` (`no variation across units`, `reliability at chance`, `sensitivity at chance`, `does not beat reference`), undefined reliability renders as `undefined` (`n/a` interval) in `summary.md`, `beats_reference` is `null` when `baseline_hz` is requested as a measure, the positive-control line states `(split-half estimator on a synthetic table)`, and `summary.md` notes when `halves.png` shows the first 4 of more than 4 measures.
@@ -29,16 +32,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Frozen: contract.py (`MD7_MUST`, `SPEC_VERSION`) joined the frozen layer at 0.2.0.
 - Frozen: inputs.py (`SPIKES_REFERENCE_MEASURE`, `SPIKES_INCLUSION_RULE`) joined the frozen layer at 0.2.0.
 - Docs for the spikes path: measures table, what conformance guarantees, split-half on pooled measures.
-- writer.py: reference dataset writer (write_dataset, read_dataset) and scripts/adapter_template.py.
+- writer.py: reference dataset writer (write_dataset, read_dataset) and adapters/adapter_template.py.
 - rrb-report: evaluate.json, summary.md and a figure from one command; two-condition example.
 - Sensitivity axis between condition pairs, with a shuffled null; reported for every measure and the reference row.
 - spikes path: baseline firing rate reported as a reference row.
 - excess.py: bin-free recovery measures t_half_excess and excess_per_trial.
 - spikes path: inclusion is per measure; a measure with too few scored units is reported as not scored.
 - rrb-evaluate --spikes --analysis: measures computed per half from spike times; spikes-path inclusion reported.
-- spikes.py: per-half measures from spikes in the evaluator's halves format; min-dataset-7 pre-stimulus window requirement; analysis.json loader. Not yet wired into rrb-evaluate.
+- spikes.py: per-half measures from spikes in the evaluator's halves format; min-dataset-7 pre-stimulus window requirement; analysis.json loader.
 - Zenodo DOIs recorded: concept 10.5281/zenodo.24020731, v0.1.0 10.5281/zenodo.24020732.
-- measures.py: PSTH recovery measures from spike times (t_peak, peak_rate, t_half_peak, t_return, residual, overshoot, baseline variance), pure functions; synthetic spike-train generator; not yet wired into rrb-evaluate.
+- measures.py: PSTH recovery measures from spike times (t_peak, peak_rate, t_half_peak, t_return, residual, overshoot, baseline variance), pure functions; synthetic spike-train generator.
 - measures: bin edges never end in a sliver bin; overshoot is the pooled deficit after return.
 - freeze --update: the Frozen: line is required only when a frozen item changed.
 

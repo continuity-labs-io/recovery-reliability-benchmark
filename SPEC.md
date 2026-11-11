@@ -241,7 +241,7 @@ Every condition present in `responses.csv` MUST have an entry in `conditions.jso
 
 ## Inclusion and exclusion
 
-A unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x.
+A unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule.
 
 Contributors MUST NOT exclude units or trials after seeing results. Any exclusion made before submission (dead electrodes, stimulation-artifact saturation, a dropped trial) MUST be declared in `preparation.json` under `exclusions`, one entry per unit or trial with a reason; the report prints the counts. An exclusion that names a unit or trial still present in the tables is a SCHEMA violation.
 
@@ -271,7 +271,7 @@ Raw traces SHOULD be shared by persistent link (Zenodo or DANDI DOI) when availa
 | `measure` | string | yes |
 | `value` | number | yes |
 
-`fate.csv` is defined here and is not checked by the validator in benchmark v0.1.x.
+`fate.csv` is defined here and is not checked by the validator.
 
 ---
 

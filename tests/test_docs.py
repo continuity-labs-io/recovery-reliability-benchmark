@@ -208,11 +208,21 @@ def test_inclusion_gaming_and_submission_docs() -> None:
 
 def test_zenodo_doi_recorded() -> None:
     cff_text = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
-    assert "doi: 10.5281/zenodo.24020732" in cff_text
+    doi_lines = [line for line in cff_text.splitlines() if line.startswith("doi:")]
+    assert doi_lines == ["doi: 10.5281/zenodo.24020731"]
+    assert "value: 10.5281/zenodo.24020732" in cff_text
+    assert "Version DOI for v0.1.0" in cff_text
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "zenodo.org/badge/1444426702.svg" in readme_text
     assert "10.5281/zenodo.24020731" in readme_text
+
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    cite_lines = [line for line in readme_text.splitlines() if line.startswith("> McCall")]
+    assert len(cite_lines) == 1
+    assert f"(v{version})" in cite_lines[0]
+    assert "https://doi.org/10.5281/zenodo.24020731" in cite_lines[0]
+    assert "10.5281/zenodo.24020732" not in cite_lines[0]
 
 
 def test_v020_spikes_docs_sections() -> None:

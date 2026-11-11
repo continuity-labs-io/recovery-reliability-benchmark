@@ -124,7 +124,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Active (unit).** A unit is active in a condition when it has a row for every trial of that condition with every measure non-null. min-dataset-3 counts active units. SPEC min-dataset-3.
 
-**Inclusion rule (`INCLUSION_RULE`).** The pre-registered rule applied identically by `validate()` and `evaluate()`: a unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule in v0.1.x. SPEC "Inclusion and exclusion"; `contract.py`; `evaluate.split_halves`.
+**Inclusion rule (`INCLUSION_RULE`).** The pre-registered rule applied identically by `validate()` and `evaluate()`: a unit is included in a condition if and only if it has a row for every trial of that condition with every measure non-null. All present trials are used; no trial is excluded by rule. SPEC "Inclusion and exclusion"; `contract.py`; `evaluate.split_halves`.
 
 **Declared exclusion (`exclusions`).** A unit or trial removed by the contributor before submission (for example a dead electrode, stimulation-artifact saturation, or a dropped trial), recorded in `preparation.json` under `exclusions` with `kind` (`"unit"` or `"trial"`), `id`, and a non-empty `reason`. Declaring a unit or trial ID that is still present in `units.csv` or `responses.csv` is a `SCHEMA` contradiction. SPEC "Inclusion and exclusion"; `metadata.Exclusion`; `contract.validate`.
 
@@ -148,7 +148,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Split-half.** Dividing one session's trials into two halves, computing the measure on each, and correlating the two results across units. Two measurements of the same vector from one recording. METHOD §3; `evaluate.split_halves`.
 
-**Odd/even split (`odd_even`).** Within each (unit, condition) group, trials are sorted by `trial_index` and assigned 1-based positions 1, 2, 3, ...; odd positions (1, 3, 5, ...) go to the odd half and even positions (2, 4, 6, ...) go to the even half. Balanced against drift. The only split mode in v0.1.0; `random` is planned.
+**Odd/even split (`odd_even`).** Within each (unit, condition) group, trials are sorted by `trial_index` and assigned 1-based positions 1, 2, 3, ...; odd positions (1, 3, 5, ...) go to the odd half and even positions (2, 4, 6, ...) go to the even half. Balanced against drift. The only split mode implemented; `random` is planned.
 
 **Half means (odd, even).** For each (unit, condition) group, the mean of the measure over the odd-half trials (`{measure}_odd`, count `n_odd`) and over the even-half trials (`{measure}_even`, count `n_even`); the two vectors that get correlated.
 

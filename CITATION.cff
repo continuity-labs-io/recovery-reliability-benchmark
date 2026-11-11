@@ -6,7 +6,7 @@ authors:
     given-names: Ryan J.
     affiliation: Continuity Labs
 version: 0.2.0
-doi: 10.5281/zenodo.24020732
+doi: 10.5281/zenodo.24020731
 identifiers:
   - type: doi
     value: 10.5281/zenodo.24020731
@@ -14,7 +14,7 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.24020732
     description: Version DOI for v0.1.0.
-date-released: 2026-11-10
+date-released: 2026-11-11
 repository-code: https://github.com/continuity-labs-io/recovery-reliability-benchmark
 license: Apache-2.0
 abstract: >-
