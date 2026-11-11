@@ -35,6 +35,7 @@ PACKAGE_MODULES = (
     "checks_spikes",
     "summary",
     "report",
+    "strict_json",
     "writer",
 )
 

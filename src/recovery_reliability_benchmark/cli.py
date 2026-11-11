@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -17,6 +16,7 @@ from .measures import AnalysisParams
 from .metadata import load_analysis, load_conditions, load_preparation
 from .run import run
 from .spikes import MEASURE_KEYS, halves_from_spikes
+from .strict_json import dumps_strict
 from .text_report import print_check_human, print_evaluate_human
 
 
@@ -131,7 +131,7 @@ def _emit_report(
         **({"violation": violation} if violation is not None else {}),
         **({"result": result} if result is not None else {}),
     }
-    print(json.dumps(doc, indent=2, sort_keys=True))
+    print(dumps_strict(doc, indent=2, sort_keys=True))
 
 
 def check_main(argv: list[str] | None = None) -> int:

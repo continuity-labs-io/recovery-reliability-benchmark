@@ -19,7 +19,7 @@ rrb-report examples/two_conditions/units.csv examples/two_conditions/trials_resp
   --out report/two_conditions
 ```
 
-`rrb-report` writes `evaluate.json`, `summary.md`, and `halves.png` into `report/two_conditions/`. Two-axis table from `summary.md`:
+`rrb-report` clears any previous `evaluate.json`, `summary.md`, and `halves.png` in `report/two_conditions/` at the start of each run before writing the current run's files (in `evaluate.json` and `--json` output, undefined numbers are written as `null`, with `r_undefined` marking an undefined correlation). Two-axis table from `summary.md`:
 
 | Measure | Reliability | 95% interval | Shuffled null p95 | Units | Sensitivity, median z | Sensitivity null p95 | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |

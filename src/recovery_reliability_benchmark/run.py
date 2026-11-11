@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -72,9 +73,15 @@ def evaluate_measure(inputs: EvaluationInputs, measure: str, n_perm: int, seed: 
     headline_val, headline_kind = headline(evaluated_conditions, inputs.best_condition, per_cond, pooled)
     headline_center = headline_kind == "pooled_centered"
     headline_frame = m_halves if headline_center else m_halves[cond_level == inputs.best_condition]
-    null = controls.permutation_null(
-        headline_frame, measure, headline_center, n_perm=n_perm, rng=np.random.default_rng(seed)
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"^All-NaN slice encountered$",
+            category=RuntimeWarning,
+        )
+        null = controls.permutation_null(
+            headline_frame, measure, headline_center, n_perm=n_perm, rng=np.random.default_rng(seed)
+        )
     sens = measure_sensitivity(m_halves, measure, evaluated_conditions, n_perm=n_perm, seed=seed)
     return {
         "headline": headline_val,

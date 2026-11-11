@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import shlex
 import sys
 from pathlib import Path
@@ -17,7 +16,34 @@ from .contract import ContractViolation
 from .inputs import EvaluationInputs
 from .metadata import load_conditions, load_preparation
 from .run import run_with_inputs
+from .strict_json import dumps_strict
 from .summary import DEFAULT_TITLE, build_summary, build_violation_summary
+
+REPORT_FILE_NAMES = ("evaluate.json", "summary.md", "halves.png")
+
+
+def clear_report_files(out_dir: str | Path) -> None:
+    """Validate ``out_dir`` and remove any previous report files before a run.
+
+    When ``out_dir`` already exists as a directory, removes ``evaluate.json``,
+    ``summary.md``, and ``halves.png`` if present while leaving all other files
+    and the directory itself untouched. Does not create ``out_dir`` when absent.
+
+    Args:
+        out_dir: Target report directory path.
+
+    Raises:
+        ValueError: If ``out_dir`` exists and is not a directory.
+    """
+    out_path = Path(out_dir)
+    if out_path.exists() or out_path.is_symlink():
+        if not out_path.is_dir():
+            raise ValueError(f"--out {out_dir} is not a directory.")
+        for name in REPORT_FILE_NAMES:
+            target = out_path / name
+            if target.is_dir() and not target.is_symlink():
+                continue
+            target.unlink(missing_ok=True)
 
 
 def _write_halves_figure(
@@ -112,12 +138,17 @@ def write_report(
     Returns:
         Dictionary mapping ``"evaluate"``, ``"summary"``, and (when ``matplotlib`` is
         installed and ``result["status"] == "ok"``) ``"halves"`` to written ``Path`` objects.
+
+    Raises:
+        ValueError: If ``out_dir`` exists and is not a directory, or if a non-finite
+            value escapes strict JSON conversion.
     """
+    clear_report_files(out_dir)
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
     eval_path = out_path / "evaluate.json"
-    eval_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    eval_path.write_text(dumps_strict(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     halves_path = out_path / "halves.png"
     has_mpl = _write_halves_figure(result, inputs, halves_path)
@@ -167,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
     inputs_meta: dict[str, Any] = {}
     arguments_meta: dict[str, Any] = {}
     try:
+        clear_report_files(args.out)
         units, responses, spikes, analysis, inputs_meta = _load_cli_inputs(args, require_measures=True)
         measures = [m.strip() for m in (args.measures or "").split(",") if m.strip()]
         w, d = float(args.post_stim_window_s), float(args.load_duration_s)

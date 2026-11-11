@@ -201,3 +201,102 @@ def test_run_with_inputs_matches_run() -> None:
     assert res_pair == res_only
     assert inputs.path == "responses"
     assert len(inputs.halves) == 30
+
+
+def _run_quick_spikes_report(
+    out_dir: Path, *, spikes_path: Path | None = None, trials_path: Path | None = None
+) -> int:
+    return report_main(
+        [
+            str(EXAMPLES_DIR / "units.csv"),
+            str(trials_path or (EXAMPLES_DIR / "trials_responses.csv")),
+            "--spikes",
+            str(spikes_path or (EXAMPLES_DIR / "spikes.csv")),
+            "--analysis",
+            str(EXAMPLES_DIR / "analysis.json"),
+            "--measures",
+            "t_return",
+            "--n-perm",
+            "20",
+            "--out",
+            str(out_dir),
+        ]
+    )
+
+
+def test_violation_clears_previous_report_files(tmp_path: Path) -> None:
+    out_dir = tmp_path / "shared_out"
+    assert _run_quick_spikes_report(out_dir) == 0
+    assert (out_dir / "evaluate.json").is_file()
+    assert (out_dir / "summary.md").is_file()
+
+    trials = pd.read_csv(EXAMPLES_DIR / "trials_responses.csv")
+    trials.loc[0, "stim_time_ns"] = int(0.5 * 1e9)
+    bad_trials_csv = tmp_path / "bad_trials.csv"
+    trials.to_csv(bad_trials_csv, index=False)
+
+    assert _run_quick_spikes_report(out_dir, trials_path=bad_trials_csv) == 1
+    assert (out_dir / "summary.md").is_file()
+    assert "min-dataset-7" in (out_dir / "summary.md").read_text(encoding="utf-8")
+    assert not (out_dir / "evaluate.json").exists()
+    assert not (out_dir / "halves.png").exists()
+
+
+def test_input_error_clears_report_files_and_keeps_unrelated_file(tmp_path: Path) -> None:
+    out_dir = tmp_path / "shared_out"
+    out_dir.mkdir()
+    keep_file = out_dir / "notes.txt"
+    keep_file.write_text("unrelated file\n", encoding="utf-8")
+
+    assert _run_quick_spikes_report(out_dir) == 0
+    assert (out_dir / "evaluate.json").is_file()
+    assert (out_dir / "summary.md").is_file()
+
+    missing_spikes = tmp_path / "missing_spikes.csv"
+    assert _run_quick_spikes_report(out_dir, spikes_path=missing_spikes) == 2
+    assert not (out_dir / "evaluate.json").exists()
+    assert not (out_dir / "summary.md").exists()
+    assert not (out_dir / "halves.png").exists()
+    assert out_dir.is_dir()
+    assert keep_file.read_text(encoding="utf-8") == "unrelated file\n"
+
+
+def test_input_error_does_not_create_missing_out_dir(tmp_path: Path) -> None:
+    out_dir = tmp_path / "absent_report_dir"
+    missing_spikes = tmp_path / "missing_spikes.csv"
+    assert _run_quick_spikes_report(out_dir, spikes_path=missing_spikes) == 2
+    assert not out_dir.exists()
+
+
+def test_out_pointing_at_regular_file_exits_2(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    regular_file = tmp_path / "existing_file.txt"
+    regular_file.write_text("do not touch\n", encoding="utf-8")
+    capsys.readouterr()
+
+    rc = _run_quick_spikes_report(regular_file)
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert captured.out == ""
+    assert captured.err == f"error: --out {regular_file} is not a directory.\n"
+    assert regular_file.is_file()
+    assert regular_file.read_text(encoding="utf-8") == "do not touch\n"
+
+
+def test_run_without_matplotlib_clears_previous_halves_figure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("matplotlib")
+    out_dir = tmp_path / "mpl_toggle"
+    assert _run_quick_spikes_report(out_dir) == 0
+    assert (out_dir / "halves.png").is_file()
+
+    monkeypatch.setitem(sys.modules, "matplotlib", None)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", None)
+
+    assert _run_quick_spikes_report(out_dir) == 0
+    assert not (out_dir / "halves.png").exists()
+    assert "Figure skipped" in (out_dir / "summary.md").read_text(encoding="utf-8")

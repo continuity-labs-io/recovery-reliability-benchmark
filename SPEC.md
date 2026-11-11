@@ -293,7 +293,7 @@ It checks SCHEMA, then min-dataset-1 through min-dataset-6 in order, raises on t
 
     min-dataset-6 failed. Post-stimulus window 0.4 s, requires 2.0 s.
 
-Exit status is 0 when the dataset conforms, 1 on a violation, and 2 when the input could not be read. With `--json` it prints a report containing the verdict, the counts behind it, the specification version, and the SHA-256 of both input files. The report is what a lab shares. No data leaves your machine to check conformance.
+Exit status is 0 when the dataset conforms, 1 on a violation, and 2 when the input could not be read. With `--json` it prints a strict JSON report containing the verdict, the counts behind it, the specification version, and the SHA-256 of both input files (across `--json` and `evaluate.json`, undefined numbers are written as `null`, with `r_undefined` marking an undefined correlation; `rrb-report` clears `evaluate.json`, `summary.md`, and `halves.png` from its output folder at the start of each run). The report is what a lab shares. No data leaves your machine to check conformance.
 
 ---
 

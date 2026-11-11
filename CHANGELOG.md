@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-11-10
 
+- Strict JSON output and report-folder cleanup: `--json` and `evaluate.json` write non-finite floats as `null` (`allow_nan=False`, with `r_undefined` marking undefined correlations), the all-`NaN` slice warning in the undefined-correlation permutation null is silenced at the call site, and `rrb-report` clears previous `evaluate.json`, `summary.md`, and `halves.png` files at the start of each run.
 - CLI and API input validation: undecodable integer columns in responses or spikes CSVs, a non-positive `--n-perm`, and an unknown spikes-path measure exit 2 with a one-line error on stderr (`ValueError` in the Python API).
 - Frozen: check_identifiers rejects a null condition under SCHEMA (it crashed before).
 - Frozen: new checks_spikes.check_spikes_path_tables and checks_spikes.check_spikes_in_windows run before spikes are counted, so a missing column, a null, an inconsistent trial or a clock mismatch gives a contract violation instead of a traceback; check_scored_units takes one argument order.
