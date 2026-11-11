@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-11-10
 
+- CLI and API input validation: undecodable integer columns in responses or spikes CSVs, a non-positive `--n-perm`, and an unknown spikes-path measure exit 2 with a one-line error on stderr (`ValueError` in the Python API).
 - Frozen: check_identifiers rejects a null condition under SCHEMA (it crashed before).
 - Frozen: new checks_spikes.check_spikes_path_tables and checks_spikes.check_spikes_in_windows run before spikes are counted, so a missing column, a null, an inconsistent trial or a clock mismatch gives a contract violation instead of a traceback; check_scored_units takes one argument order.
 - Frozen: recovery_measures returns NaN for t_peak and t_half_peak when no spike falls in any bin (peak_rate stays 0.0), so a silent unit is not scored for a peak time.

@@ -173,8 +173,8 @@ def from_spikes(
         Populated ``EvaluationInputs`` for the ``"spikes"`` path.
 
     Raises:
-        ValueError: If ``spikes`` is ``None`` or if ``post_stim_window_s`` / ``load_duration_s``
-            disagrees with ``analysis``.
+        ValueError: If ``spikes`` is ``None``, if ``post_stim_window_s`` / ``load_duration_s``
+            disagrees with ``analysis``, or if any requested measure is unknown.
         ContractViolation: If ``min-dataset-7`` fails or if no requested measure meets ``min-dataset-3``.
     """
     if spikes is None:
@@ -190,6 +190,9 @@ def from_spikes(
             f"analysis.load_duration_s ({analysis.load_duration_s})."
         )
     measure_list = list(measures)
+    unknown_measures = [m for m in measure_list if m not in spikes_mod.MEASURE_KEYS]
+    if unknown_measures:
+        spikes_mod.halves_from_spikes((), pd.DataFrame(), pd.DataFrame(), analysis, unknown_measures)
     requested_set = set(measure_list)
     all_measures = list(dict.fromkeys([*measure_list, SPIKES_REFERENCE_MEASURE]))
     post_w = float(analysis.post_stim_window_s)

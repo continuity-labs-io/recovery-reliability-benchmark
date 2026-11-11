@@ -16,6 +16,7 @@ from .inputs import validate_spikes_path
 from .measures import AnalysisParams
 from .metadata import load_analysis, load_conditions, load_preparation
 from .run import run
+from .spikes import MEASURE_KEYS, halves_from_spikes
 from .text_report import print_check_human, print_evaluate_human
 
 
@@ -47,10 +48,19 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
 def _load_cli_inputs(
     args: argparse.Namespace, *, require_measures: bool = True
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, AnalysisParams | None, dict[str, Any]]:
+    if getattr(args, "n_perm", 1) < 1:
+        raise ValueError(f"n_perm must be >= 1, got {args.n_perm}.")
     if args.analysis is not None and args.spikes is None:
         raise ValueError("--analysis requires --spikes")
-    if (require_measures or args.analysis is None) and not args.measures:
+    measures = [m.strip() for m in (args.measures or "").split(",") if m.strip()]
+    if (require_measures or args.analysis is None) and not measures:
         raise ValueError("--measures is required")
+    if require_measures and args.analysis is not None:
+        unknown_measures = [m for m in measures if m not in MEASURE_KEYS]
+        if unknown_measures:
+            halves_from_spikes(
+                (), pd.DataFrame(), pd.DataFrame(), AnalysisParams(post_stim_window_s=2.0), unknown_measures
+            )
     for opt_path in (args.preparation, args.conditions, args.analysis):
         if opt_path is not None and not Path(opt_path).is_file():
             raise FileNotFoundError(opt_path)
@@ -70,8 +80,26 @@ def _load_cli_inputs(
         args.load_duration_s = 0.0 if args.load_duration_s is None else float(args.load_duration_s)
         _validate_durations(args.post_stim_window_s, args.load_duration_s)
 
-    units, responses = read_tables(args.units_csv, args.responses_csv)
-    spikes = read_spikes(args.spikes) if args.spikes is not None else None
+    responses_path = args.responses_csv
+    try:
+        units, responses = read_tables(args.units_csv, responses_path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeError):
+        raise
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"{responses_path}: trial_index and stim_time_ns must be whole numbers "
+            "(stim_time_ns in nanoseconds)."
+        ) from exc
+
+    spikes: pd.DataFrame | None = None
+    if args.spikes is not None:
+        spikes_path = args.spikes
+        try:
+            spikes = read_spikes(spikes_path)
+        except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeError):
+            raise
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{spikes_path}: spike_time_ns must be whole numbers in nanoseconds.") from exc
     inputs_meta: dict[str, Any] = {
         "units": {"path": args.units_csv, "sha256": file_sha256(args.units_csv)},
         "responses": {"path": args.responses_csv, "sha256": file_sha256(args.responses_csv)},
@@ -200,6 +228,9 @@ def evaluate_main(argv: list[str] | None = None) -> int:
             "violation", inputs_meta, arguments_meta, violation=exc.to_dict()
         ) if args.as_json else print(str(exc))
         return 1
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     if result["status"] == "positive_control_failed":
         _emit_report(result["status"], inputs_meta, arguments_meta, result=result) if args.as_json else print(

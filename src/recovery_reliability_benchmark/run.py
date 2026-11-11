@@ -124,10 +124,13 @@ def run_with_inputs(
         ``EvaluationInputs`` carrying the split-half DataFrame and inclusion sets.
 
     Raises:
-        ValueError: If ``analysis`` is provided without ``spikes``, if ``post_stim_window_s`` or
-            ``load_duration_s`` disagrees with ``analysis``, or if ``post_stim_window_s`` is
-            omitted on the tables path.
+        ValueError: If ``n_perm < 1``, if ``analysis`` is provided without ``spikes``, if
+            ``post_stim_window_s`` or ``load_duration_s`` disagrees with ``analysis``, if
+            any spikes-path measure is unknown, or if ``post_stim_window_s`` is omitted on
+            the tables path.
     """
+    if n_perm < 1:
+        raise ValueError(f"n_perm must be >= 1, got {n_perm}.")
     measure_list = list(measures)
     w, d = post_stim_window_s, load_duration_s
     if analysis is not None:
@@ -224,9 +227,10 @@ def run(
         reliability ceilings and null distributions.
 
     Raises:
-        ValueError: If ``analysis`` is provided without ``spikes``, if ``post_stim_window_s`` or
-            ``load_duration_s`` disagrees with ``analysis``, or if ``post_stim_window_s`` is
-            omitted on the tables path.
+        ValueError: If ``n_perm < 1``, if ``analysis`` is provided without ``spikes``, if
+            ``post_stim_window_s`` or ``load_duration_s`` disagrees with ``analysis``, if
+            any spikes-path measure is unknown, or if ``post_stim_window_s`` is omitted on
+            the tables path.
     """
     return run_with_inputs(
         units=units,
