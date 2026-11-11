@@ -104,7 +104,7 @@
     },
     "recovery_reliability_benchmark.excess.excess_measures": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.excess.excess_measures.txt",
-      "sha256": "c3f1542bce8d27f180703aa4de2e568ea48cab4f5ef1072a52ed43ee928a139f"
+      "sha256": "0717c83dc182be8105c82fb76b6c150e302abc8eacd92968bca8018195255e8e"
     },
     "recovery_reliability_benchmark.measures.baseline_hz": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.measures.baseline_hz.txt",
@@ -132,7 +132,7 @@
     },
     "recovery_reliability_benchmark.measures.trial_latencies": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.measures.trial_latencies.txt",
-      "sha256": "93b579dfaac4acf6ef44ed2229667e453f9aa95535a59de6bd1727979345d226"
+      "sha256": "ef0db06f75d11f2d5ae15cdcdabd7c61492d60a48b1aafa29cde4f4027753db4"
     },
     "recovery_reliability_benchmark.measures.unit_measures": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.measures.unit_measures.txt",
@@ -180,7 +180,7 @@
     }
   },
   "constants": {
-    "recovery_reliability_benchmark.analysis.DEFAULT_ANALYSIS_FINGERPRINT_2S": "2fe0111e220a4963da320333b9d23b2addb5a716d070c8b6395066e0f5b1c02a",
+    "recovery_reliability_benchmark.analysis.DEFAULT_ANALYSIS_FINGERPRINT_2S": "95ba4e054c0ab9813b16f2629a9e6d679afe71691aea711b0f635ccd8106e9f0",
     "recovery_reliability_benchmark.contract.MD2_MUST": 10,
     "recovery_reliability_benchmark.contract.MD2_SHOULD": 20,
     "recovery_reliability_benchmark.contract.MD3_MUST": 8,

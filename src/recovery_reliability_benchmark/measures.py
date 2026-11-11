@@ -40,21 +40,21 @@ IntArray = Sequence[int] | np.ndarray
 def trial_latencies(
     spike_times_s: FloatArray, onsets_s: FloatArray, params: AnalysisParams
 ) -> list[np.ndarray]:
-    """Extract post-load spike latencies per trial in ``[0, post_stim_window_s)`` (t0 = onset + load_duration_s).
+    """Extract post-load spike latencies per trial in ``[artifact_blank_s, post_stim_window_s)`` (t0 = onset + load_duration_s).
 
     Args:
         spike_times_s: 1D array-like of spike timestamps in seconds.
         onsets_s: 1D array-like of stimulus onset timestamps in seconds.
-        params: Analysis parameters defining load duration and post-stimulus window.
+        params: Analysis parameters defining load duration, artifact blank, and post-stimulus window.
 
     Returns:
-        List of 1D float64 arrays of latencies in ``[0, post_stim_window_s)``, one per onset.
+        List of 1D float64 arrays of latencies in ``[artifact_blank_s, post_stim_window_s)``, one per onset.
     """
     spikes, win = np.sort(np.asarray(spike_times_s, dtype=float)), params.post_stim_window_s
     out: list[np.ndarray] = []
     for onset in np.asarray(onsets_s, dtype=float):
         t0 = float(onset) + params.load_duration_s
-        i0, i1 = np.searchsorted(spikes, [t0, t0 + win], side="left")
+        i0, i1 = np.searchsorted(spikes, [t0 + params.artifact_blank_s, t0 + win], side="left")
         out.append(spikes[int(i0) : int(i1)] - t0)
     return out
 
@@ -219,7 +219,7 @@ def unit_measures(
     """Run the full PSTH and bin-free measure chain for one unit over one set of trials.
 
     ``spikes_per_trial`` is the mean over trials of ``len(latencies)`` from
-    ``trial_latencies``, so every spike in ``[0, post_stim_window_s)`` counts, not
+    ``trial_latencies``, so every spike in ``[artifact_blank_s, post_stim_window_s)`` counts, not
     only those inside the bin edges.
 
     Args:

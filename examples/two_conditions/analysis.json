@@ -48,5 +48,6 @@
   "return_x_baseline": 1.5,
   "half_peak_frac": 0.5,
   "residual_s": 1.0,
-  "min_excess_z": 2.0
+  "min_excess_z": 2.0,
+  "artifact_blank_s": 0.003
 }

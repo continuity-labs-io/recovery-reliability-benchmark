@@ -298,7 +298,7 @@ def test_spikes_path_checks_numbers_match_docs() -> None:
         for case_key in ("strong_20", "strong_40")
         for entry in doc[case_key].values()
     )
-    weak_gap = w20["test_retest"] - w20["split_half_corrected"]
+    weak_gap = round(w20["test_retest"], 2) - round(w20["split_half_corrected"], 2)
     max_other_diff = max(
         abs(doc[case_key][m]["split_half_corrected"] - doc[case_key][m]["test_retest"])
         for case_key in doc

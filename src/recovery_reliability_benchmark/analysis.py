@@ -27,7 +27,8 @@ FLAG_KEYS: tuple[str, ...] = (
 class AnalysisParams:
     """Parameters governing PSTH construction and recovery-kinetics measures.
 
-    Time zero for every latency is ``onset + load_duration_s``; spikes during the load are not latencies.
+    Time zero for every latency is ``onset + load_duration_s``; spikes during the load are not latencies,
+    and spikes in the first ``artifact_blank_s`` seconds after the load end are not counted.
     """
 
     post_stim_window_s: float
@@ -38,6 +39,7 @@ class AnalysisParams:
     half_peak_frac: float = 0.5
     residual_s: float = 1.0
     min_excess_z: float = 2.0
+    artifact_blank_s: float = 0.003
 
     def __post_init__(self) -> None:
         """Validate parameter ranges and coerce bin_edges_s to a tuple of floats."""
@@ -64,6 +66,14 @@ class AnalysisParams:
             raise ValueError(f"residual_s must be in (0, post_stim_window_s], got {self.residual_s}.")
         if self.min_excess_z <= 0.0:
             raise ValueError(f"min_excess_z must be > 0, got {self.min_excess_z}.")
+        if not (0.0 <= self.artifact_blank_s < self.post_stim_window_s):
+            raise ValueError(
+                f"artifact_blank_s must be in [0, post_stim_window_s), got {self.artifact_blank_s}."
+            )
+        if edges[0] < self.artifact_blank_s:
+            raise ValueError(
+                f"bin_edges_s must start at or after artifact_blank_s ({self.artifact_blank_s}), got {edges[0]}."
+            )
 
     @frozen("SPEC analysis parameters")
     def to_dict(self) -> dict[str, Any]:

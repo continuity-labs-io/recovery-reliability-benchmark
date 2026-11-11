@@ -4,6 +4,6 @@ def trial_latencies(spike_times_s: FloatArray, onsets_s: FloatArray, params: Ana
     out: list[np.ndarray] = []
     for onset in np.asarray(onsets_s, dtype=float):
         t0 = float(onset) + params.load_duration_s
-        i0, i1 = np.searchsorted(spikes, [t0, t0 + win], side='left')
+        i0, i1 = np.searchsorted(spikes, [t0 + params.artifact_blank_s, t0 + win], side='left')
         out.append(spikes[int(i0):int(i1)] - t0)
     return out

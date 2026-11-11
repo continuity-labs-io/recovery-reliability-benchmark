@@ -28,19 +28,19 @@ FOUR_MEASURES = (
 TOLERANCE = 0.005
 
 EXPECTED_T_HALF_EXCESS: dict[str, tuple[float, float, float]] = {
-    "strong_20": (0.968, 0.966, 28.1),
-    "strong_40": (0.985, 0.985, 29.5),
-    "weak_20": (0.696, 0.788, 16.1),
-    "weak_40": (0.878, 0.880, 20.1),
-    "sparse_20": (0.807, 0.824, 16.3),
-    "sparse_40": (0.859, 0.854, 19.4),
+    "strong_20": (0.967, 0.965, 27.8),
+    "strong_40": (0.984, 0.984, 29.4),
+    "weak_20": (0.685, 0.782, 15.9),
+    "weak_40": (0.871, 0.875, 19.9),
+    "sparse_20": (0.807, 0.822, 16.1),
+    "sparse_40": (0.848, 0.838, 19.2),
 }
 
 EXPECTED_OTHER_MEASURES: dict[str, dict[str, tuple[float, float]]] = {
     "excess_per_trial": {
         "strong_20": (0.984, 0.984),
         "weak_20": (0.888, 0.867),
-        "sparse_20": (0.964, 0.968),
+        "sparse_20": (0.965, 0.968),
     },
     "baseline_hz": {
         "strong_20": (0.990, 0.990),

@@ -263,6 +263,6 @@ def test_run_reports_sensitivity() -> None:
     with redirect_stdout(buf):
         print_evaluate_human(res_both)
     human_text = buf.getvalue()
-    assert "  sensitivity control|slowed: median|z|=3.08" in human_text
+    assert "  sensitivity control|slowed: median|z|=3.27" in human_text
     assert "[at chance] [does not beat reference]" in human_text
     assert human_text.strip().splitlines()[-1].endswith("[at chance]")

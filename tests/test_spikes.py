@@ -119,7 +119,7 @@ def test_spikes_per_trial_matches_tables_path(seed: int | None) -> None:
     if seed is None:
         spikes = pd.DataFrame(
             [
-                {"unit_id": uid, "spike_time_ns": int(onset_ns) + 1_000_000 * (idx + 1)}
+                {"unit_id": uid, "spike_time_ns": int(onset_ns) + 500_000 * (2 * idx + 1)}
                 for idx, uid in enumerate(units["unit_id"])
                 for onset_ns in trials["stim_time_ns"]
             ]
@@ -153,8 +153,10 @@ def test_spikes_per_trial_matches_tables_path(seed: int | None) -> None:
     halves_spikes, _flags = halves_from_spikes(units, trials, spikes, params, ["spikes_per_trial"])
 
     if seed is None:
-        assert float(halves_spikes.loc[("u00", "baseline"), "spikes_per_trial_odd"]) == 1.0
-        assert float(halves_spikes.loc[("u00", "baseline"), "spikes_per_trial_even"]) == 1.0
+        assert params.artifact_blank_s == 0.003
+        for unit_id, expected in (("u00", 0.0), ("u02", 0.0), ("u03", 1.0), ("u04", 1.0)):
+            assert float(halves_spikes.loc[(unit_id, "baseline"), "spikes_per_trial_odd"]) == expected
+            assert float(halves_spikes.loc[(unit_id, "baseline"), "spikes_per_trial_even"]) == expected
 
     np.testing.assert_allclose(
         halves_spikes["spikes_per_trial_odd"].to_numpy(),

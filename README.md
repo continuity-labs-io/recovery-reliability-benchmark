@@ -23,8 +23,8 @@ rrb-report examples/two_conditions/units.csv examples/two_conditions/trials_resp
 
 | Measure | Reliability | 95% interval | Shuffled null p95 | Units | Sensitivity, median z | Sensitivity null p95 | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| t_half_excess | 0.976 | [0.948, 0.989] | 0.364 | 29 | 3.08 | 1.05 | — |
-| excess_per_trial | 0.987 | [0.972, 0.994] | 0.362 | 30 | 3.61 | 1.10 | — |
+| t_half_excess | 0.975 | [0.946, 0.988] | 0.371 | 29 | 3.27 | 1.09 | — |
+| excess_per_trial | 0.987 | [0.972, 0.994] | 0.363 | 30 | 3.88 | 1.10 | — |
 | t_return | 0.731 | [0.428, 0.874] | 0.357 | 30 | 1.00 | 1.07 | at chance; censored: control 8, slowed 11 |
 | baseline_hz (reference) | 0.989 | [0.977, 0.995] | 0.350 | 30 | 0.59 | 1.13 | at chance |
 

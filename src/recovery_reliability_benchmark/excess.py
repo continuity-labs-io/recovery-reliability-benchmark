@@ -19,15 +19,17 @@ def excess_measures(
 ) -> tuple[dict[str, float], dict[str, bool]]:
     """Compute bin-free excess-spike recovery measures from per-trial latency arrays.
 
-    For an exponential recovery with time constant ``tau`` and a window much longer than
-    ``tau``, ``t_half_excess`` estimates ``tau * ln 2``. The response gate works on one
-    number per trial, ``d_i = post_i - (post_stim_window_s / pre_stim_window_s) * pre_i``:
+    Spikes are counted over ``[artifact_blank_s, post_stim_window_s)``, a duration of
+    ``counted_s = post_stim_window_s - artifact_blank_s``. For an exponential recovery with
+    time constant ``tau`` and a window much longer than ``tau``, ``t_half_excess`` estimates
+    ``artifact_blank_s + tau * ln 2``. The response gate works on one number per trial,
+    ``d_i = post_i - (counted_s / pre_stim_window_s) * pre_i``:
     ``t_half_excess`` is computed only when ``sum(d) > min_excess_z * sqrt(n) * sd(d)``
     (``sd`` with ``ddof=1``), so a unit that fires in bursts or drifts between trials
     is held to its own trial-to-trial spread.
 
     Args:
-        latencies: Sequence of per-trial 1D latency arrays in ``[0, post_stim_window_s)``
+        latencies: Sequence of per-trial 1D latency arrays in ``[artifact_blank_s, post_stim_window_s)``
             from ``trial_latencies`` for one unit and one set of trials.
         pre_counts: Per-trial pre-stimulus spike counts from ``pre_counts`` for the same trials.
         params: Analysis parameters defining the two windows and ``min_excess_z``.
@@ -53,13 +55,14 @@ def excess_measures(
         else np.empty(0, dtype=float)
     )
     n_spikes = len(pooled)
-    win = float(params.post_stim_window_s)
+    blank = float(params.artifact_blank_s)
+    counted_s = float(params.post_stim_window_s) - blank
     base = float(np.sum(pre) / (n * params.pre_stim_window_s))
-    excess_total = float(n_spikes - base * n * win)
+    excess_total = float(n_spikes - base * n * counted_s)
     excess_per_trial = float(excess_total / n)
 
     post = np.asarray([len(lat) for lat in latencies], dtype=float)
-    per_trial = post - (win / params.pre_stim_window_s) * pre
+    per_trial = post - (counted_s / params.pre_stim_window_s) * pre
     spread = float(np.std(per_trial, ddof=1)) if n >= 2 else 0.0
     if n < 2:
         responds = False
@@ -70,7 +73,7 @@ def excess_measures(
 
     if responds:
         k = np.arange(1, n_spikes + 1, dtype=float)
-        cum_k = k - base * n * pooled
+        cum_k = k - base * n * (pooled - blank)
         first_idx = int(np.flatnonzero(cum_k >= 0.5 * excess_total)[0])
         t_half_excess = float(pooled[first_idx])
     else:

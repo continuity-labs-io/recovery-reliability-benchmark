@@ -12,12 +12,12 @@ For each population, trial count `n_trials` in `(20, 40)`, and `seed` in `0..39`
 
 | case | split_half_corrected | test_retest | units_scored |
 |---|---:|---:|---:|
-| strong_20 | 0.968 | 0.966 | 28.1 |
-| strong_40 | 0.985 | 0.985 | 29.5 |
-| weak_20 | 0.696 | 0.788 | 16.1 |
-| weak_40 | 0.878 | 0.880 | 20.1 |
-| sparse_20 | 0.807 | 0.824 | 16.3 |
-| sparse_40 | 0.859 | 0.854 | 19.4 |
+| strong_20 | 0.967 | 0.965 | 27.8 |
+| strong_40 | 0.984 | 0.984 | 29.4 |
+| weak_20 | 0.685 | 0.782 | 15.9 |
+| weak_40 | 0.871 | 0.875 | 19.9 |
+| sparse_20 | 0.807 | 0.822 | 16.1 |
+| sparse_40 | 0.848 | 0.838 | 19.2 |
 
 ## `excess_per_trial`
 
@@ -26,8 +26,8 @@ For each population, trial count `n_trials` in `(20, 40)`, and `seed` in `0..39`
 | strong_20 | 0.984 | 0.984 | 30.0 |
 | strong_40 | 0.992 | 0.992 | 30.0 |
 | weak_20 | 0.888 | 0.867 | 30.0 |
-| weak_40 | 0.929 | 0.932 | 30.0 |
-| sparse_20 | 0.964 | 0.968 | 30.0 |
+| weak_40 | 0.930 | 0.932 | 30.0 |
+| sparse_20 | 0.965 | 0.968 | 30.0 |
 | sparse_40 | 0.982 | 0.983 | 30.0 |
 
 ## `baseline_hz`

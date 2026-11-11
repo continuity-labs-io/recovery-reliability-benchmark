@@ -9,12 +9,13 @@ def excess_measures(latencies: Sequence[np.ndarray], pre_counts: Sequence[int] |
         raise ValueError(f'pre_counts has {len(pre)} trials, latencies has {n}.')
     pooled = np.sort(np.concatenate([np.asarray(lat, dtype=float) for lat in latencies])) if any((len(lat) > 0 for lat in latencies)) else np.empty(0, dtype=float)
     n_spikes = len(pooled)
-    win = float(params.post_stim_window_s)
+    blank = float(params.artifact_blank_s)
+    counted_s = float(params.post_stim_window_s) - blank
     base = float(np.sum(pre) / (n * params.pre_stim_window_s))
-    excess_total = float(n_spikes - base * n * win)
+    excess_total = float(n_spikes - base * n * counted_s)
     excess_per_trial = float(excess_total / n)
     post = np.asarray([len(lat) for lat in latencies], dtype=float)
-    per_trial = post - win / params.pre_stim_window_s * pre
+    per_trial = post - counted_s / params.pre_stim_window_s * pre
     spread = float(np.std(per_trial, ddof=1)) if n >= 2 else 0.0
     if n < 2:
         responds = False
@@ -24,7 +25,7 @@ def excess_measures(latencies: Sequence[np.ndarray], pre_counts: Sequence[int] |
         responds = excess_total > 0.0
     if responds:
         k = np.arange(1, n_spikes + 1, dtype=float)
-        cum_k = k - base * n * pooled
+        cum_k = k - base * n * (pooled - blank)
         first_idx = int(np.flatnonzero(cum_k >= 0.5 * excess_total)[0])
         t_half_excess = float(pooled[first_idx])
     else:

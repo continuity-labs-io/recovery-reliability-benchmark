@@ -1,9 +1,9 @@
 {
   "strong_20": {
     "t_half_excess": {
-      "split_half_corrected": 0.968,
-      "test_retest": 0.966,
-      "units_scored": 28.1
+      "split_half_corrected": 0.967,
+      "test_retest": 0.965,
+      "units_scored": 27.8
     },
     "excess_per_trial": {
       "split_half_corrected": 0.984,
@@ -23,9 +23,9 @@
   },
   "strong_40": {
     "t_half_excess": {
-      "split_half_corrected": 0.985,
-      "test_retest": 0.985,
-      "units_scored": 29.5
+      "split_half_corrected": 0.984,
+      "test_retest": 0.984,
+      "units_scored": 29.4
     },
     "excess_per_trial": {
       "split_half_corrected": 0.992,
@@ -45,9 +45,9 @@
   },
   "weak_20": {
     "t_half_excess": {
-      "split_half_corrected": 0.696,
-      "test_retest": 0.788,
-      "units_scored": 16.1
+      "split_half_corrected": 0.685,
+      "test_retest": 0.782,
+      "units_scored": 15.9
     },
     "excess_per_trial": {
       "split_half_corrected": 0.888,
@@ -67,12 +67,12 @@
   },
   "weak_40": {
     "t_half_excess": {
-      "split_half_corrected": 0.878,
-      "test_retest": 0.88,
-      "units_scored": 20.1
+      "split_half_corrected": 0.871,
+      "test_retest": 0.875,
+      "units_scored": 19.9
     },
     "excess_per_trial": {
-      "split_half_corrected": 0.929,
+      "split_half_corrected": 0.93,
       "test_retest": 0.932,
       "units_scored": 30.0
     },
@@ -90,11 +90,11 @@
   "sparse_20": {
     "t_half_excess": {
       "split_half_corrected": 0.807,
-      "test_retest": 0.824,
-      "units_scored": 16.3
+      "test_retest": 0.822,
+      "units_scored": 16.1
     },
     "excess_per_trial": {
-      "split_half_corrected": 0.964,
+      "split_half_corrected": 0.965,
       "test_retest": 0.968,
       "units_scored": 30.0
     },
@@ -111,9 +111,9 @@
   },
   "sparse_40": {
     "t_half_excess": {
-      "split_half_corrected": 0.859,
-      "test_retest": 0.854,
-      "units_scored": 19.4
+      "split_half_corrected": 0.848,
+      "test_retest": 0.838,
+      "units_scored": 19.2
     },
     "excess_per_trial": {
       "split_half_corrected": 0.982,

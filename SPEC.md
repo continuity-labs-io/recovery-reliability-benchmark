@@ -173,29 +173,31 @@ These rules are checks on the container, reported under the name SCHEMA. They ar
 
 ## Measures computed by the benchmark
 
-On the spikes path (`measures.py`, `excess.py`), the benchmark computes the following measures per unit on each half's pooled trials (with window `W = post_stim_window_s` measured from load end `onset + load_duration_s` and baseline rate `b = baseline_hz` measured over `[onset - pre_stim_window_s, onset)`):
+On the spikes path (`measures.py`, `excess.py`), the benchmark computes the following measures per unit on each half's pooled trials (with window `W = post_stim_window_s` and artifact blank `B = artifact_blank_s` measured from load end `onset + load_duration_s`, and baseline rate `b = baseline_hz` measured over `[onset - pre_stim_window_s, onset)`):
 
 | name | one-line definition | status |
 |---|---|---|
 | `t_half_excess` | Smallest post-load time `t` at which cumulative excess spikes reach half of total window excess (`NaN` when excess fails `min_excess_z`) | Lead |
-| `excess_per_trial` | Mean post-load spikes per trial above pre-stimulus baseline expectation over `[0, W)` | Lead |
+| `excess_per_trial` | Mean post-load spikes per trial above pre-stimulus baseline expectation over `[B, W)` | Lead |
 | `baseline_hz` | Pooled pre-stimulus firing rate over `[onset - pre_stim_window_s, onset)`, always reported as a comparison row | Reference |
 | `t_return` | Right edge of the last PSTH bin exceeding `return_x_baseline * b` (censored at `W`; `0.0` if none exceed; `NaN` if `b == 0`) | Secondary (histogram bin; needs many spikes per bin) |
 | `t_half_peak` | Center of the first PSTH bin after the peak at or below `b + half_peak_frac * (peak_rate - b)` (censored at `W`) | Secondary (histogram bin; needs many spikes per bin) |
-| `peak_rate` | Maximum PSTH bin firing rate in `[0, W)` | Secondary (histogram bin; needs many spikes per bin) |
+| `peak_rate` | Maximum PSTH bin firing rate in `[B, W)` | Secondary (histogram bin; needs many spikes per bin) |
 | `t_peak` | Center of the PSTH bin attaining `peak_rate` | Secondary (histogram bin; needs many spikes per bin) |
 | `residual` | Mean PSTH rate over bins with center `>= W - residual_s`, divided by `b` (`NaN` if `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
 | `overshoot` | Pooled relative firing-rate deficit below `b` over bins with center `> t_return` (`NaN` when `t_return` is censored, no bin follows, or `b == 0`) | Secondary (histogram bins; needs many spikes per bin) |
-| `spikes_per_trial` | Mean post-load spike count per trial in `[0, W)` | Auxiliary (bin-free) |
+| `spikes_per_trial` | Mean post-load spike count per trial in `[B, W)` | Auxiliary (bin-free) |
 | `baseline_variance_hz2` | Sample variance (`ddof=1`, in Hz²) across trials of per-trial pre-stimulus firing rate | Auxiliary (pre-stimulus) |
 
 The secondary PSTH measures read single histogram bins (or trailing bin subsets) and need many spikes per bin before discretization noise subsides. The lead measure `t_half_excess` acts directly on the sorted post-load spike times across the `n` trials in the half:
 
-    N(t) = spikes over all n trials within t seconds of the load
-    E(t) = N(t) - b * n * t
+    N(t) = spikes over all n trials with latency in [B, t]
+    E(t) = N(t) - b * n * (t - B)
     t_half_excess = smallest t with E(t) >= E(W) / 2
 
-The response gate uses one number per trial, `d_i = post_i - (W / pre_stim_window_s) * pre_i`: the spikes of trial `i` in `[0, W)` minus its pre-stimulus count scaled to the same duration, so `sum(d) = E(W)`. When `E(W) <= min_excess_z * sqrt(n) * sd(d)` (sample standard deviation over the `n` trials; when `sd(d)` is zero, `E(W) <= 0`), `t_half_excess` is `NaN` with flag `no_excess`. A unit is held to its own trial-to-trial spread, so bursting or drift between trials does not pass as a response.
+Spikes in the first `B` seconds after the load (default 0.003 s) are not counted by any measure: stimulation artifact lands there. `bin_edges_s` must start at or after `B`. For an exponential recovery with time constant `tau`, `t_half_excess` estimates `B + tau * ln 2`.
+
+The response gate uses one number per trial, `d_i = post_i - ((W - B) / pre_stim_window_s) * pre_i`: the spikes of trial `i` in `[B, W)` minus its pre-stimulus count scaled to the same duration, so `sum(d) = E(W)`. When `E(W) <= min_excess_z * sqrt(n) * sd(d)` (sample standard deviation over the `n` trials; when `sd(d)` is zero, `E(W) <= 0`), `t_half_excess` is `NaN` with flag `no_excess`. A unit is held to its own trial-to-trial spread, so bursting or drift between trials does not pass as a response.
 
 ---
 
@@ -309,7 +311,7 @@ Conformance is necessary, not sufficient. A conforming dataset supports the comp
 
 ## What conformance guarantees on the spikes path
 
-The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by simulation for per-trial scalar measures (`docs/thresholds.md`); on the spikes path, reliability also depends on how many spikes each unit contributes to each half. From `docs/spikes_path_checks.json` (`t_half_excess`) at 20 trials: strong responses reach 0.97 with 28 of 30 units scored; weak responses reach 0.70 with 16 of 30; sparse firing reaches 0.81 with 16 of 30; at 40 trials the last two reach 0.88 and 0.86. The confidence interval, the shuffled null, and the units-scored counts in the report are the guide; conformance does not promise a narrow interval.
+The trial and unit thresholds (`min-dataset-2` and `min-dataset-3`) were set by simulation for per-trial scalar measures (`docs/thresholds.md`); on the spikes path, reliability also depends on how many spikes each unit contributes to each half. From `docs/spikes_path_checks.json` (`t_half_excess`) at 20 trials: strong responses reach 0.97 with 28 of 30 units scored; weak responses reach 0.69 with 16 of 30; sparse firing reaches 0.81 with 16 of 30; at 40 trials the last two reach 0.87 and 0.85. The confidence interval, the shuffled null, and the units-scored counts in the report are the guide; conformance does not promise a narrow interval.
 
 ---
 

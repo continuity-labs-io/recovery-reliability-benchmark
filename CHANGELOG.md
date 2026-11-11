@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-11-10
 
+- Frozen: AnalysisParams gains artifact_blank_s (default 0.003 s); trial_latencies keeps latencies in [artifact_blank_s, post_stim_window_s); excess_measures counts over post_stim_window_s - artifact_blank_s; DEFAULT_ANALYSIS_FINGERPRINT_2S changes with the new field.
 - Frozen: excess_measures takes per-trial pre-stimulus counts and gates t_half_excess on the trial-to-trial spread of per-trial excess (sum(d) > min_excess_z * sqrt(n) * sd(d)) instead of sqrt(N); unit_measures passes the counts.
 - Frozen: check_pre_stimulus_window requires the pre-stimulus window to start after the previous trial's post-stimulus window (onsets at least load + post + pre apart).
 - Frozen: SPEC_VERSION 1.0 -> 1.1

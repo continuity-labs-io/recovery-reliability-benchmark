@@ -56,7 +56,7 @@ Every function and constant below is registered in `recovery_reliability_benchma
 | `recovery_reliability_benchmark.spikes.split_trials` | function | METHOD split-half on pooled measures |
 | `recovery_reliability_benchmark.spikes.trial_table` | function | METHOD split-half on pooled measures |
 | `recovery_reliability_benchmark.synthetic.make_tables` | function | METHOD positive control generator |
-| `recovery_reliability_benchmark.analysis.DEFAULT_ANALYSIS_FINGERPRINT_2S` | constant (`"2fe0111e220a4963da320333b9d23b2addb5a716d070c8b6395066e0f5b1c02a"`) | SPEC analysis parameters |
+| `recovery_reliability_benchmark.analysis.DEFAULT_ANALYSIS_FINGERPRINT_2S` | constant (`"95ba4e054c0ab9813b16f2629a9e6d679afe71691aea711b0f635ccd8106e9f0"`) | SPEC analysis parameters |
 | `recovery_reliability_benchmark.contract.MD2_MUST` | constant (`10`) | SPEC min-dataset-2 |
 | `recovery_reliability_benchmark.contract.MD2_SHOULD` | constant (`20`) | SPEC min-dataset-2 |
 | `recovery_reliability_benchmark.contract.MD3_MUST` | constant (`8`) | SPEC min-dataset-3 |

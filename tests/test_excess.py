@@ -67,7 +67,9 @@ def test_half_excess_matches_theory() -> None:
     for tau, train in zip(taus, trains, strict=True):
         values, flags = unit_measures(train, onsets, params)
         assert flags["no_excess"] is False
-        assert values["t_half_excess"] == pytest.approx(tau * math.log(2.0), rel=0.20)
+        assert values["t_half_excess"] == pytest.approx(
+            params.artifact_blank_s + tau * math.log(2.0), rel=0.20
+        )
 
 
 @pytest.mark.parametrize("seed", [0, 1, 2])
@@ -118,7 +120,7 @@ def test_zero_baseline_ok() -> None:
 
 def test_bin_edges_do_not_matter() -> None:
     params_default = AnalysisParams(post_stim_window_s=2.0)
-    linear_edges = tuple(float(x) for x in np.round(np.arange(0.0, 2.01, 0.1), 6))
+    linear_edges = tuple(float(x) for x in np.round(np.arange(0.1, 2.01, 0.1), 6))
     params_linear = AnalysisParams(post_stim_window_s=2.0, bin_edges_s=linear_edges)
     rate_fn = exponential_recovery(baseline_hz=5.0, peak_hz=100.0, tau_s=0.15)
     trains, onsets = make_spike_trains([rate_fn], n_trials=20, params=params_default, isi_s=5.0, seed=0)
@@ -145,7 +147,7 @@ def test_gate_uses_trial_to_trial_spread() -> None:
 
     values, flags = excess_measures(_latencies_with_counts([5, 4, 5, 4]), [1, 1, 1, 1], params)
     assert flags["no_excess"] is False
-    assert values["excess_per_trial"] == 2.5
+    assert values["excess_per_trial"] == pytest.approx(4.5 - 1.997)
 
     _values, flags = excess_measures(_latencies_with_counts([0, 0, 0, 0]), [0, 0, 0, 0], params)
     assert flags["no_excess"] is True
@@ -168,3 +170,22 @@ def test_gate_pass_rate_without_response(burst_max: int) -> None:
         _values, flags = unit_measures(spikes, onsets, params)
         n_pass += not flags["no_excess"]
     assert n_pass / n_units < 0.08
+
+
+def test_artifact_blank_drops_early_spikes() -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+    rate_fn = exponential_recovery(baseline_hz=5.0, peak_hz=100.0, tau_s=0.15)
+    trains, onsets = make_spike_trains([rate_fn], n_trials=20, params=params, isi_s=5.0, seed=0)
+    with_artifact = np.sort(np.concatenate([trains[0], onsets + 0.001]))
+
+    clean, _ = unit_measures(trains[0], onsets, params)
+    dirty, _ = unit_measures(with_artifact, onsets, params)
+    for key in ("t_half_excess", "excess_per_trial", "spikes_per_trial", "peak_rate", "t_return"):
+        assert dirty[key] == clean[key]
+
+    no_blank = AnalysisParams(post_stim_window_s=2.0, artifact_blank_s=0.0)
+    clean_no_blank, _ = unit_measures(trains[0], onsets, no_blank)
+    dirty_no_blank, _ = unit_measures(with_artifact, onsets, no_blank)
+    assert dirty_no_blank["spikes_per_trial"] == clean_no_blank["spikes_per_trial"] + 1.0
+    assert dirty_no_blank["excess_per_trial"] == pytest.approx(clean_no_blank["excess_per_trial"] + 1.0)
+    assert dirty_no_blank["t_half_excess"] < clean_no_blank["t_half_excess"]
