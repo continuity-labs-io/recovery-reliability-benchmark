@@ -12,9 +12,11 @@ This is a statement of how the benchmark operates, not a legal agreement. If you
 
 ## 1. What to send
 
-**One conforming dataset.** On the spikes path, the dataset directory written by `writer.write_dataset` (via an adapter built from `scripts/adapter_template.py`): `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json`, checked locally with `rrb-check` and previewed with `rrb-report` before anything is shared (`min-dataset-1` through `min-dataset-7`; see [SPEC.md](SPEC.md)). Pre-computed per-trial measure tables (`units.csv` and `responses.csv`, `min-dataset-1` through `min-dataset-6`) remain accepted for modalities without event timestamps.
+A contribution is a conforming dataset submitted for an atlas row. Conformance is checked locally by `rrb-check` without requiring metadata sidecars or (on the tables path) `spikes.csv`; a contribution must include `preparation.json` and `conditions.json`, and must include `spikes.csv` when the recording modality produces spikes. These contribution requirements are checked when the dataset is submitted, and `rrb-check` validates `preparation.json`, `conditions.json`, and `spikes.csv` under `SCHEMA` whenever they are provided.
 
-**Metadata sidecars (`preparation.json` and `conditions.json`).** Species, preparation type, age or days in vitro, anonymized line or donor identifier, instrument, any pre-submission unit or trial exclusions, and the stimulus protocol as actually run (not as planned) with any compound, dose, and vehicle.
+**One conforming dataset.** When the recording modality produces spikes, send the spikes-path dataset directory written by `writer.write_dataset` (via an adapter built from `scripts/adapter_template.py`): `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json`, checked locally with `rrb-check` and previewed with `rrb-report` before anything is shared (`min-dataset-1` through `min-dataset-7`; see [SPEC.md](SPEC.md)). A modality without spikes (for example calcium imaging) contributes on the tables path with pre-computed per-trial measure tables (`units.csv` and `responses.csv`, `min-dataset-1` through `min-dataset-6`).
+
+**Metadata sidecars (`preparation.json` and `conditions.json`).** Required for every contribution because an atlas row is keyed by protocol fingerprint, condition, and preparation: species, preparation type, age or days in vitro, anonymized line or donor identifier, instrument, any pre-submission unit or trial exclusions, and the stimulus protocol as actually run (not as planned) with any compound, dose, and vehicle.
 
 **One contact** who can answer questions about how the recording was made.
 
@@ -105,7 +107,7 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 
 ## Writing an adapter
 
-Before writing an adapter for a laboratory's recording format, check three things in the format description: at least 2.0 s of recording after each stimulus (`min-dataset-6`), at least 8 units (`min-dataset-3`), and at least 3.0 s between stimulus onsets, plus the load duration (`min-dataset-7`). Copy `scripts/adapter_template.py` and implement `load_recording(path)` returning `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock. An adapter contains no analysis: it extracts identifiers, spike timestamps, stimulus onsets, and condition labels and hands them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`, then prints the `rrb-check` and `rrb-report` commands to run locally.
+Before writing an adapter for a laboratory's recording format, check three things in the format description: at least 2.0 s of recording after each stimulus (`min-dataset-6`), at least 8 units (`min-dataset-3`), and at least 3.0 s between stimulus onsets, plus the load duration (`min-dataset-7`). Copy `scripts/adapter_template.py` and implement `load_recording(path)` returning `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock. An adapter contains no analysis: it extracts identifiers, spike timestamps, stimulus onsets, and condition labels and hands them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json` (plus `preparation.json` and `conditions.json` when passed), then prints the `rrb-check` and `rrb-report` commands to run locally.
 
 ---
 

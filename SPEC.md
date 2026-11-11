@@ -203,7 +203,7 @@ The response gate uses one number per trial, `d_i = post_i - ((W - B) / pre_stim
 
 ## 10. Preparation and condition metadata
 
-These sidecars are optional in SPEC v1.0 (benchmark v0.1.x) and required from SPEC v1.1 (benchmark v0.2.0). When provided, they are validated under SCHEMA.
+These sidecars are optional for conformance: `rrb-check` reports a conformance level without them at SPEC v1.0 and v1.1. They are required for a contribution to the atlas (CONTRIBUTING.md, "What to send"), because an atlas row is keyed by protocol fingerprint, condition and preparation. When provided, they are validated under SCHEMA.
 
 `preparation.json`, describing the physical specimen and acquisition setup:
 
@@ -247,13 +247,13 @@ Contributors MUST NOT exclude units or trials after seeing results. Any exclusio
 
 Every report prints: units in the tables, units included by rule, units excluded by rule, rows missing from the full grid, and contributor-declared exclusions.
 
-From v0.2.0, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever; unit-level selection remains covered by declaration. On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." A silent unit is not scored for a measure that needs a baseline, a response or a peak (`t_return`, `residual`, `overshoot`, `t_half_excess`, `t_peak`, `t_half_peak`).
+On the spikes path, measures are computed by the benchmark from `spikes.csv` for every unit in `units.csv`, which removes per-trial row selection as a lever while unit-level selection remains covered by declaration; on the tables path, per-trial numbers are computed by the contributor and row selection stays covered by declared exclusions. On the spikes path: "A unit is scored for a measure in a condition when that measure is computed in both halves." A silent unit is not scored for a measure that needs a baseline, a response or a peak (`t_return`, `residual`, `overshoot`, `t_half_excess`, `t_peak`, `t_half_peak`).
 
 ---
 
 ## 11. Raw data
 
-`spikes.csv` (`unit_id`, `spike_time_ns`; one row per spike; on the same clock as `stim_time_ns`) is requested for every contribution at benchmark v0.1.x and required from v0.2.0. When provided, `spikes.csv` is validated under SCHEMA (`unit_id` and `spike_time_ns` present, `spike_time_ns` non-null, and every `unit_id` present in `units.csv`).
+`spikes.csv` (`unit_id`, `spike_time_ns`; one row per spike; on the same clock as `stim_time_ns`) is required on the spikes path, where the benchmark computes the measures, and is not needed for conformance on the tables path. A contribution from a spike-recording modality must include it; a modality without spikes contributes on the tables path. When provided, `spikes.csv` is validated under SCHEMA (`unit_id` and `spike_time_ns` present, `spike_time_ns` non-null, and every `unit_id` present in `units.csv`).
 
 Raw traces SHOULD be shared by persistent link (Zenodo or DANDI DOI) when available, recorded as `raw_data_url` in `preparation.json`.
 

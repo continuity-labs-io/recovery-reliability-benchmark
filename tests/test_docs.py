@@ -346,3 +346,51 @@ def test_readme_example_table_matches_two_conditions() -> None:
     assert f"at least {MD6_MUST + MD7_MUST:.1f} s apart" in recordings_section
     assert f"{MD2_SHOULD} trials per condition recommended ({MD2_MUST} minimum" in recordings_section
     assert f"{MD3_SHOULD} units recommended ({MD3_MUST} minimum" in recordings_section
+
+
+def test_spec_separates_conformance_from_contribution() -> None:
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    spec_normalized = " ".join(spec_text.split())
+
+    expected_section_10 = " ".join(
+        (
+            "These sidecars are optional for conformance: `rrb-check` reports a conformance level "
+            "without them at SPEC v1.0 and v1.1. They are required for a contribution to the atlas "
+            '(CONTRIBUTING.md, "What to send"), because an atlas row is keyed by protocol '
+            "fingerprint, condition and preparation. When provided, they are validated under SCHEMA."
+        ).split()
+    )
+    expected_section_11 = " ".join(
+        (
+            "`spikes.csv` (`unit_id`, `spike_time_ns`; one row per spike; on the same clock as "
+            "`stim_time_ns`) is required on the spikes path, where the benchmark computes the "
+            "measures, and is not needed for conformance on the tables path. A contribution from a "
+            "spike-recording modality must include it; a modality without spikes contributes on the "
+            "tables path."
+        ).split()
+    )
+
+    sec_10_normalized = " ".join(
+        _section_text(spec_text, "## 10. Preparation and condition metadata").split()
+    )
+    sec_11_normalized = " ".join(_section_text(spec_text, "## 11. Raw data").split())
+    assert expected_section_10 in spec_normalized
+    assert expected_section_11 in spec_normalized
+    assert sec_10_normalized.startswith(expected_section_10)
+    assert sec_11_normalized.startswith(expected_section_11)
+
+    for doc_name in ("SPEC.md", "GLOSSARY.md", "METHOD.md", "CONTRIBUTING.md"):
+        doc_text = (ROOT / doc_name).read_text(encoding="utf-8")
+        assert "required from" not in doc_text.lower(), f"{doc_name} still contains 'required from'"
+
+    units, responses = make_tables(n_units=30, n_trials=20)
+    report = validate(
+        units,
+        responses,
+        ["tau", "amplitude"],
+        post_stim_window_s=2.0,
+        preparation=None,
+        conditions=None,
+        spikes=None,
+    )
+    assert report["conformance"] == "fully_conforming"

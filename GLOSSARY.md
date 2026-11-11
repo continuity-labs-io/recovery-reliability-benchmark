@@ -78,9 +78,9 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **`responses.csv`.** One row per unit and trial: `unit_id`, `trial_index`, `stim_time_ns`, `condition`, and one column per measure. The table the contract and the ceiling run on. SPEC §9.
 
-**`spikes.csv`.** One row per spike: `unit_id`, `spike_time_ns`, on the same clock as `stim_time_ns`. Requested now, required from v0.2.0, when the benchmark computes measures from spikes itself. SPEC "Raw data".
+**`spikes.csv`.** One row per spike: `unit_id`, `spike_time_ns`, on the same clock as `stim_time_ns`. Required on the spikes path, where the benchmark computes the measures, and not needed for conformance on the tables path. A contribution from a spike-recording modality must include `spikes.csv`; a modality without spikes (for example calcium imaging) contributes on the tables path. Validated under `SCHEMA` whenever it is provided. SPEC "Raw data".
 
-**Sidecar.** A small JSON file beside the tables carrying metadata: `preparation.json` (species, preparation type, age, line or donor, instrument) and `conditions.json` (per condition: protocol, compound, dose, vehicle). Optional at v0.1.x, validated when present. SPEC "Preparation and condition metadata"; `metadata.py`.
+**Sidecar.** A small JSON file beside the tables carrying metadata: `preparation.json` (species, preparation type, age, line or donor, instrument) and `conditions.json` (per condition: protocol, compound, dose, vehicle). Optional for conformance at SPEC v1.0 and v1.1; required for a contribution (CONTRIBUTING "What to send"), because an atlas row is keyed by protocol fingerprint, condition and preparation; validated under `SCHEMA` whenever they are provided. SPEC "Preparation and condition metadata"; `metadata.py`.
 
 **`analysis.json`.** Sidecar JSON file declaring `measures.AnalysisParams` before the run, loaded by `metadata.load_analysis` and written by `metadata.write_analysis`; its SHA-256 fingerprint is printed in the report. SPEC "Preparation and condition metadata".
 
@@ -92,7 +92,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Measure.** A scalar computed per unit per trial from the post-stimulus response; a column of `responses.csv`. Examples: time to return to baseline, peak rate, spike count in the window. SPEC §2.
 
-**Per-trial measure.** A measure that exists for a single trial on its own, so that a unit's value over several trials is the mean of per-trial values. Spike count in the window and first-spike latency are per-trial measures. v0.1.0 handles only these.
+**Per-trial measure.** A measure that exists for a single trial on its own, so that a unit's value over several trials is the mean of per-trial values. Spike count in the window and first-spike latency are per-trial measures. The tables path evaluates per-trial measures (the only path in v0.1.0); the spikes path computes pooled measures from `spikes.csv`.
 
 **PSTH (peri-stimulus time histogram).** Spike counts in time bins after load end (`onset + load_duration_s`), pooled over a set of trials and divided by trial count and bin width to give a rate (`measures.bin_counts`, `measures.psth_rate`). The pilot's recovery measures are read off a PSTH, not off single trials.
 
@@ -198,9 +198,9 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 ## 4. Conformance
 
-**Conformance.** Whether a dataset supports the computation. Necessary, not sufficient: a conforming dataset can still yield a ceiling of zero. SPEC §11, §13.
+**Conformance.** What `rrb-check` reports: whether a dataset satisfies `SCHEMA` and `min-dataset-1` through `min-dataset-6`, plus `min-dataset-7` on the spikes path, and therefore supports the computation. Necessary, not sufficient: a conforming dataset can still yield a ceiling of zero. SPEC §5, §16.
 
-**Conformance check.** Running `rrb-check` on `units.csv` and `responses.csv`. Produces a verdict and counts, or the first violation. Runs locally; nothing leaves the machine.
+**Conformance check.** Running `rrb-check` on `units.csv` and `responses.csv` (and `--spikes` and `--analysis` on the spikes path). Produces a verdict and counts, or the first violation. Runs locally; nothing leaves the machine. SPEC §14.
 
 **Minimum dataset requirements (min-dataset-1 to min-dataset-6).** The six requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6). SPEC §4; `Requirement` enum.
 
@@ -266,7 +266,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Atlas, atlas row.** The accumulating public collection of scored datasets. A row is keyed by (protocol fingerprint, condition, preparation): the commanded load, the condition label with its pharmacology, and the specimen. SPEC §1.
 
-**Contributor, contribution.** A laboratory that supplies a conforming dataset; the dataset once deposited. Contributions are accepted only under CC0. CONTRIBUTING §5.
+**Contributor, contribution.** A laboratory that supplies a conforming dataset; a dataset submitted for an atlas row (and deposited once confirmed). Its requirements (`preparation.json`, `conditions.json`, and `spikes.csv` when the recording modality produces spikes) are listed in CONTRIBUTING "What to send" and are checked when the dataset is submitted, not by `rrb-check`. Contributions are accepted only under CC0. CONTRIBUTING §1, §5.
 
 **Report-then-deposit.** The contribution sequence: data sent for analysis, written reliability report within two weeks, deposit in the public archive only when the lab confirms after reading it. Withdrawal is unconditional before deposit. CONTRIBUTING §6, §8.
 
