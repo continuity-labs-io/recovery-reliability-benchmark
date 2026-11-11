@@ -53,5 +53,5 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e .
-      - run: python scripts/freeze.py --check
+      - run: python -m recovery_reliability_benchmark.frozen_manifest --check
 

@@ -8,10 +8,11 @@ Read `frozen/README.md` before modifying any code.
 
 - Never edit frozen functions, frozen constants, `frozen/snapshots/`, or `frozen/manifest.json` to make a test pass.
 - Never tune thresholds, split rules, inclusion rules, or measure definitions in response to a dataset's result.
-- If a task requires changing a frozen function or constant, stop and report to the user unless the prompt explicitly instructs either a pre-tag amend (keep the version, add a `Frozen:` line under that version in `CHANGELOG.md`, and run `python scripts/freeze.py --amend`, which refuses once `v<version>` is tagged) or a version bump with a `CHANGELOG.md` `Frozen:` entry and `python scripts/freeze.py --update`.
+- If a task requires changing a frozen function or constant, stop and report to the user unless the prompt explicitly instructs either a pre-tag amend (keep the version, add a `Frozen:` line under that version in `CHANGELOG.md`, and run `python -m recovery_reliability_benchmark.frozen_manifest --amend`, which refuses once `v<version>` is tagged) or a version bump with a `CHANGELOG.md` `Frozen:` entry and `python -m recovery_reliability_benchmark.frozen_manifest --update`.
 
 ## Code standards
 
+- Top-level `scripts/` and `demos/` directories are banned (`tests/test_style.py`); format-conversion adapters live in `adapters/`.
 - Every source file in `src/recovery_reliability_benchmark/` must stay at or under 300 lines; split by responsibility, not by arbitrary line count.
 - Public functions and classes must have Google-style docstrings with `Args:`, `Returns:`, and `Raises:` sections where applicable.
 - Names must state what the number is (`reliability_ceiling`, not `ceiling`; `odd`/`even` halves, never `A`/`B`).

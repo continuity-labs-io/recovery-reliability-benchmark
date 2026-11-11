@@ -5,10 +5,10 @@ from __future__ import annotations
 import difflib
 import hashlib
 import importlib
-import importlib.util
 import json
 import pkgutil
 import shutil
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -17,6 +17,7 @@ from typing import Any
 import pytest
 
 import recovery_reliability_benchmark
+from recovery_reliability_benchmark import frozen_manifest as freeze
 from recovery_reliability_benchmark.frozen import (
     FROZEN_CONSTANTS,
     FROZEN_FUNCTIONS,
@@ -68,9 +69,11 @@ def test_snapshots_match() -> None:
             )
             pytest.fail(
                 f"Frozen function {name} changed. If this is intended: add a 'Frozen:' line under "
-                "the version in CHANGELOG.md and run python scripts/freeze.py --amend while the "
-                "version is not tagged, or bump the version in pyproject.toml and run "
-                f"python scripts/freeze.py --update once it is. See frozen/README.md.\n{diff}",
+                "the version in CHANGELOG.md and run "
+                "python -m recovery_reliability_benchmark.frozen_manifest --amend "
+                "while the version is not tagged, or bump the version in pyproject.toml and run "
+                "python -m recovery_reliability_benchmark.frozen_manifest --update once it is. "
+                f"See frozen/README.md.\n{diff}",
                 pytrace=False,
             )
 
@@ -96,11 +99,6 @@ def test_frozen_md_lists_every_name() -> None:
 
 
 def test_update_version_only_refresh(tmp_path: Path) -> None:
-    spec = importlib.util.spec_from_file_location("freeze_script", ROOT / "scripts" / "freeze.py")
-    assert spec is not None and spec.loader is not None
-    freeze = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(freeze)
-
     shutil.copytree(ROOT / "frozen", tmp_path / "frozen")
     tmp_manifest = tmp_path / "frozen" / "manifest.json"
 
@@ -123,12 +121,19 @@ def test_update_version_only_refresh(tmp_path: Path) -> None:
     assert freeze.update_frozen(manifest, modified_sources, manifest_path=tmp_manifest, root=tmp_path) == 1
 
 
-def _load_freeze_script() -> Any:
-    spec = importlib.util.spec_from_file_location("freeze_script", ROOT / "scripts" / "freeze.py")
-    assert spec is not None and spec.loader is not None
-    freeze = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(freeze)
-    return freeze
+def test_frozen_module_cli_check() -> None:
+    running_py = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if running_py != _load_manifest()["python"]:
+        pytest.skip(f"Running Python {running_py} differs from manifest Python.")
+    proc = subprocess.run(
+        [sys.executable, "-m", "recovery_reliability_benchmark.frozen_manifest", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stderr == ""
 
 
 def test_snapshot_folder_matches_manifest() -> None:
@@ -138,7 +143,6 @@ def test_snapshot_folder_matches_manifest() -> None:
 
 
 def test_amend_before_tag(tmp_path: Path) -> None:
-    freeze = _load_freeze_script()
     shutil.copytree(ROOT / "frozen", tmp_path / "frozen")
     tmp_manifest = tmp_path / "frozen" / "manifest.json"
     stale = tmp_path / "frozen" / "snapshots" / "recovery_reliability_benchmark.removed.function.txt"

@@ -1,23 +1,19 @@
-"""Unit tests for the spontaneous-epochs table conversion and transform script."""
+"""Unit tests for epochs.py and adapters/sharf2022.py."""
 
 from __future__ import annotations
 
-import importlib.util
+import shlex
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
+import scipy.io as sio
 
-ROOT = Path(__file__).resolve().parent.parent
-
-
-def _load_spontaneous_epochs():
-    script_path = ROOT / "scripts" / "spontaneous_epochs.py"
-    spec = importlib.util.spec_from_file_location("spontaneous_epochs", script_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from adapters import sharf2022
+from recovery_reliability_benchmark.cli import check_main
+from recovery_reliability_benchmark.epochs import TRANSFORM_MEASURES, build_epoch_tables
+from recovery_reliability_benchmark.report import main as report_main
 
 
 def _hand_built_units() -> list[SimpleNamespace]:
@@ -48,11 +44,10 @@ def _hand_built_units() -> list[SimpleNamespace]:
 
 
 def test_build_recording_tables_hand_built_units() -> None:
-    mod = _load_spontaneous_epochs()
     fs = 20000.0
     epoch_s = 5.0
 
-    built = mod.build_recording_tables(
+    built = sharf2022.build_recording_tables(
         raw_units=_hand_built_units(),
         fs=fs,
         epoch_s=epoch_s,
@@ -98,13 +93,12 @@ def test_build_recording_tables_hand_built_units() -> None:
     ]
 
 
-def test_build_recording_tables_transforms(tmp_path: Path) -> None:
-    mod = _load_spontaneous_epochs()
+def test_build_recording_tables_transforms() -> None:
     fs = 20000.0
     raw_units = _hand_built_units()
 
     for epoch_s in (5.0, 2.5):
-        built = mod.build_recording_tables(
+        built = sharf2022.build_recording_tables(
             raw_units=raw_units,
             fs=fs,
             epoch_s=epoch_s,
@@ -118,16 +112,13 @@ def test_build_recording_tables_transforms(tmp_path: Path) -> None:
             "trial_index",
             "stim_time_ns",
             "condition",
-            "firing_rate_hz",
-            "log_firing_rate_hz",
-            "sqrt_firing_rate_hz",
-            "rank_firing_rate_hz",
+            *TRANSFORM_MEASURES,
         ]
         rate = responses["firing_rate_hz"].to_numpy(dtype=float)
         np.testing.assert_allclose(responses["log_firing_rate_hz"], np.log10(rate + 1.0 / epoch_s))
         np.testing.assert_allclose(responses["sqrt_firing_rate_hz"], np.sqrt(rate))
 
-    built_5s = mod.build_recording_tables(
+    built_5s = sharf2022.build_recording_tables(
         raw_units=raw_units, fs=fs, epoch_s=5.0, stem="2950", preparation_id="L2", transforms=True
     )
     resp_5s = built_5s["responses"]
@@ -141,10 +132,51 @@ def test_build_recording_tables_transforms(tmp_path: Path) -> None:
         2: [3.0, 1.5, 1.5],
     }
 
-    sample_row = dict.fromkeys(mod.TRANSFORM_COLUMNS, "0.990")
-    sample_row.update(organoid="L2", stem="2950", n_units=173, rho_max_minus_min="0.004")
-    md_path = mod.write_transforms_markdown([sample_row], tmp_path)
-    lines = md_path.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lines) == 3
-    assert "rho_max_minus_min" in lines[0]
-    assert "0.004" in lines[2]
+
+def test_build_epoch_tables_validation() -> None:
+    with pytest.raises(ValueError, match="epoch_s"):
+        build_epoch_tables(["u0"], {"u0": [1.0]}, epoch_s=0.0)
+    with pytest.raises(ValueError, match="duplicates"):
+        build_epoch_tables(["u0", "u0"], {"u0": [1.0]}, epoch_s=2.0)
+
+
+def test_sharf2022_adapter_end_to_end_with_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    rng = np.random.default_rng(0)
+    fs = 1000.0
+    unit_dtype = [("unit_id", "O"), ("spike_train", "O"), ("x_max", "O"), ("y_max", "O")]
+    units_arr = np.empty(10, dtype=unit_dtype)
+    for idx in range(10):
+        rate_hz = 1.0 + idx * 2.0
+        isis = rng.exponential(1.0 / rate_hz, size=int(rate_hz * 60))
+        times_s = np.cumsum(isis)
+        times_s = times_s[times_s <= 55.0]
+        if idx == 9:
+            times_s = np.append(times_s, 52.0)
+        units_arr[idx] = (idx, (times_s * fs).astype(np.int64), float(idx * 10), float(idx * 20))
+
+    mat_path = tmp_path / "2950.mat"
+    sio.savemat(mat_path, {"units": units_arr, "fs": fs})
+
+    out_dir = tmp_path / "adapted"
+    rc = sharf2022.main(
+        [
+            "--recording",
+            str(mat_path),
+            "--out",
+            str(out_dir),
+            "--epoch-s",
+            "5.0",
+            "--min-epochs",
+            "10",
+            "--transforms",
+        ]
+    )
+    assert rc == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 2
+    assert lines[0].startswith("rrb-check ")
+    assert lines[1].startswith("rrb-report ")
+    assert check_main(shlex.split(lines[0])[1:]) == 0
+    assert report_main([*shlex.split(lines[1])[1:], "--n-perm", "10"]) == 0
+    assert (out_dir / "2950" / "report" / "evaluate.json").is_file()
+    assert (out_dir / "2950" / "report" / "summary.md").is_file()

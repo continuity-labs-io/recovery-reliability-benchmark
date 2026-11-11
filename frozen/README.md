@@ -79,7 +79,7 @@ Every function and constant below is registered in `recovery_reliability_benchma
 
 ### 3. What is not frozen
 
-Adapters (`scripts/`), input orchestration (`inputs.from_spikes`, `inputs.from_responses`), runner and CLI (`run.py`, `cli.py`), report formatting and plotting (`text_report.py`, `summary.py`, `report.py`), dataset writers and loaders (`writer.py`, `read_tables`, `read_spikes`, `spikes.spike_times_by_unit`, `metadata.py`), spike-train generators (`synthetic.exponential_recovery`, `synthetic.make_spike_trains`, `synthetic.make_two_condition_spike_trains`) and synthetic condition offsets, documentation, and new measure names live in the open layer and may evolve without a frozen-layer update.
+Adapters (`adapters/`), input orchestration (`inputs.from_spikes`, `inputs.from_responses`), runner and CLI (`run.py`, `cli.py`), report formatting and plotting (`text_report.py`, `summary.py`, `report.py`), dataset writers, epoch builders, and loaders (`writer.py`, `epochs.py`, `read_tables`, `read_spikes`, `spikes.spike_times_by_unit`, `metadata.py`), calibration simulations and manifest tooling (`thresholds.py`, `spikes_path_checks.py`, `frozen_manifest.py`), spike-train generators (`synthetic.exponential_recovery`, `synthetic.make_spike_trains`, `synthetic.make_two_condition_spike_trains`) and synthetic condition offsets, documentation, and new measure names live in the open layer and may evolve without a frozen-layer update.
 
 ### 4. How to change frozen code
 
@@ -87,21 +87,21 @@ Adapters (`scripts/`), input orchestration (`inputs.from_spikes`, `inputs.from_r
 
 1. Keep the version in `pyproject.toml`.
 2. Add at least one line starting with `Frozen:` under that version in `CHANGELOG.md` naming each changed function or constant and the reason.
-3. Run `python scripts/freeze.py --amend` (refuses once `v<version>` is tagged).
+3. Run `python -m recovery_reliability_benchmark.frozen_manifest --amend` (refuses once `v<version>` is tagged).
 4. Run `pytest` and confirm all tests pass.
 
 **Once `v<version>` is tagged** (advancing to a new version):
 
 1. Bump the minor version in `pyproject.toml` (and `CITATION.cff`).
 2. Add a heading for the new version in `CHANGELOG.md` containing at least one line starting with `Frozen:` naming each changed function or constant and the reason.
-3. Run `python scripts/freeze.py --update`.
+3. Run `python -m recovery_reliability_benchmark.frozen_manifest --update`.
 4. Run `pytest` and confirm all tests pass.
 
 Results computed under different versions of the frozen layer are never compared without explicitly stating the versions.
 
 ### 5. Optional pre-push hook
 
-`.githooks/pre-push` runs `python scripts/freeze.py --check`. Enable it locally with:
+`.githooks/pre-push` runs `python -m recovery_reliability_benchmark.frozen_manifest --check`. Enable it locally with:
 
 ```sh
 git config core.hooksPath .githooks

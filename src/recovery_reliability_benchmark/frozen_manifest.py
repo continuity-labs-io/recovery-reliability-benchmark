@@ -16,17 +16,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(ROOT / "src"))
+import recovery_reliability_benchmark
 
-import recovery_reliability_benchmark  # noqa: E402
-from recovery_reliability_benchmark.frozen import (  # noqa: E402
-    FROZEN_CONSTANTS,
-    FROZEN_FUNCTIONS,
-    normalized_source,
-)
+from .frozen import FROZEN_CONSTANTS, FROZEN_FUNCTIONS, normalized_source
 
+ROOT = Path(__file__).resolve().parents[2]
 FROZEN_DIR = ROOT / "frozen"
 SNAP_DIR = FROZEN_DIR / "snapshots"
 MANIFEST_PATH = FROZEN_DIR / "manifest.json"
@@ -188,7 +182,14 @@ def update_frozen(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the freeze CLI in --init, --check, --update, or --amend mode."""
+    """Run the freeze CLI in ``--init``, ``--check``, ``--update``, or ``--amend`` mode.
+
+    Args:
+        argv: Optional CLI argument list (defaults to ``sys.argv[1:]``).
+
+    Returns:
+        Exit status code (0 on success, 1 on mismatch or error).
+    """
     parser = argparse.ArgumentParser(description="Manage frozen-layer snapshots and manifest.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--init", action="store_true", help="Create initial manifest and snapshots.")

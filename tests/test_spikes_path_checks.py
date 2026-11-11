@@ -1,11 +1,12 @@
-"""Tests for the spikes-path simulation script and pinned numbers in docs/spikes_path_checks.json."""
+"""Tests for spikes_path_checks.py and pinned numbers in docs/spikes_path_checks.json."""
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import math
 from pathlib import Path
+
+from recovery_reliability_benchmark import spikes_path_checks
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -54,15 +55,6 @@ EXPECTED_OTHER_MEASURES: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
-def _load_spikes_path_checks():
-    script_path = ROOT / "scripts" / "spikes_path_checks.py"
-    spec = importlib.util.spec_from_file_location("spikes_path_checks", script_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def test_json_has_six_keys_and_matches_expected_values() -> None:
     json_path = ROOT / "docs" / "spikes_path_checks.json"
     md_path = ROOT / "docs" / "spikes_path_checks.md"
@@ -102,8 +94,7 @@ def test_json_has_six_keys_and_matches_expected_values() -> None:
 
 
 def test_smoke_single_session_strong_20_seed_0() -> None:
-    mod = _load_spikes_path_checks()
-    result = mod.simulate_seed("strong", n_trials=20, seed=0)
+    result = spikes_path_checks.simulate_seed("strong", n_trials=20, seed=0)
     assert set(result.keys()) == set(FOUR_MEASURES)
     for measure in FOUR_MEASURES:
         stats = result[measure]

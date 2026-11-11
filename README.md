@@ -32,7 +32,7 @@ The `Reliability` column is the within-session split-half ceiling across units: 
 
 ## Run it on your recordings
 
-A laboratory provides three things on a shared recording clock: spike times per unit, stimulus onset times, and a condition label per stimulus. Copy [`scripts/adapter_template.py`](scripts/adapter_template.py) and fill in `load_recording(path)` to extract those arrays and pass them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json`.
+A laboratory provides three things on a shared recording clock: spike times per unit, stimulus onset times, and a condition label per stimulus. Copy [`adapters/adapter_template.py`](adapters/adapter_template.py) and fill in `load_recording(path)` to extract those arrays and pass them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, and `analysis.json`.
 
 The protocol asks for at least 2.0 s of recording after each stimulus (`min-dataset-6`), at least 1.0 s of quiet before each stimulus (`min-dataset-7`, so stimulus onsets must be at least 3.0 s apart, plus the load duration), 20 trials per condition recommended (10 minimum, `min-dataset-2`), and 30 units recommended (8 minimum, `min-dataset-3`). Check conformance first, then generate the report:
 

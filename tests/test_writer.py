@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import importlib.util
 import shlex
 from pathlib import Path
-from types import ModuleType
 
 import numpy as np
 import pytest
 
+from adapters import adapter_template
 from recovery_reliability_benchmark.cli import check_main
 from recovery_reliability_benchmark.measures import AnalysisParams
 from recovery_reliability_benchmark.metadata import Condition, Preparation, load_conditions, load_preparation
@@ -20,7 +19,7 @@ from recovery_reliability_benchmark.writer import read_dataset, write_dataset
 
 ROOT = Path(__file__).resolve().parent.parent
 TWO_COND_DIR = ROOT / "examples" / "two_conditions"
-ADAPTER_TEMPLATE_PATH = ROOT / "scripts" / "adapter_template.py"
+ADAPTER_TEMPLATE_PATH = ROOT / "adapters" / "adapter_template.py"
 
 
 def _make_d_1_5_0() -> tuple[
@@ -283,32 +282,25 @@ def test_make_examples_two_conditions_byte_identical(tmp_path: Path) -> None:
         assert generated_bytes == committed_bytes, f"Byte mismatch in {name}"
 
 
-def _load_adapter_template() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("adapter_template", ADAPTER_TEMPLATE_PATH)
-    assert spec is not None and spec.loader is not None
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
 def test_adapter_template(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     text = ADAPTER_TEMPLATE_PATH.read_text(encoding="utf-8")
     assert len(text.splitlines()) < 60
-    mod = _load_adapter_template()
-    assert mod.__doc__ is not None
-    assert "2 s" in mod.__doc__
-    assert "8 units" in mod.__doc__
-    assert "an adapter contains no analysis" in mod.__doc__
+    assert adapter_template.__doc__ is not None
+    assert "2 s" in adapter_template.__doc__
+    assert "8 units" in adapter_template.__doc__
+    assert "an adapter contains no analysis" in adapter_template.__doc__
 
     with pytest.raises(NotImplementedError):
-        mod.load_recording(tmp_path / "dummy.raw")
+        adapter_template.load_recording(tmp_path / "dummy.raw")
 
     unit_ids, spike_times_s, onsets_s, conditions, *_ = _make_d_1_5_0()
-    monkeypatch.setattr(mod, "load_recording", lambda _path: (unit_ids, spike_times_s, onsets_s, conditions))
+    monkeypatch.setattr(
+        adapter_template, "load_recording", lambda _path: (unit_ids, spike_times_s, onsets_s, conditions)
+    )
     out_dir = tmp_path / "adapted"
-    rc = mod.main([str(tmp_path / "session.raw"), "--out", str(out_dir)])
+    rc = adapter_template.main([str(tmp_path / "session.raw"), "--out", str(out_dir)])
     assert rc == 0
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 2

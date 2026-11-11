@@ -1,5 +1,5 @@
 {
-  "generated_by": "python scripts/thresholds.py --seeds 1000 --out docs/thresholds",
+  "generated_by": "python -m recovery_reliability_benchmark.thresholds --seeds 1000 --out docs/thresholds",
   "seeds": 1000,
   "cells": [
     {

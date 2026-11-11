@@ -228,9 +228,9 @@ def main(argv: list[str] | None = None) -> int:
 
     cells.sort(key=lambda c: (c["rho1"], c["n_conditions"], c["n_trials"], c["n_units"]))
 
-    cmd = f"python scripts/thresholds.py --seeds {seeds} --out {args.out}"
+    cmd = f"python -m recovery_reliability_benchmark.thresholds --seeds {seeds} --out {args.out}"
     if args.fast:
-        cmd = f"python scripts/thresholds.py --fast --out {args.out}"
+        cmd = f"python -m recovery_reliability_benchmark.thresholds --fast --out {args.out}"
 
     write_json(out_json, cells, seeds=seeds, command=cmd)
     write_table(out_md, cells, seeds=seeds, command=cmd)

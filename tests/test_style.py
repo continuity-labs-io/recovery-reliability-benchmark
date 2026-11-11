@@ -27,8 +27,11 @@ PACKAGE_MODULES = (
     "metadata",
     "synthetic",
     "thresholds",
+    "spikes_path_checks",
     "frozen",
+    "frozen_manifest",
     "analysis",
+    "epochs",
     "excess",
     "measures",
     "spikes",
@@ -41,12 +44,18 @@ PACKAGE_MODULES = (
 )
 
 
+def test_banned_top_level_directories() -> None:
+    for banned in ("scripts", "demos"):
+        assert not (ROOT / banned).exists(), f"Top-level '{banned}/' directory is banned."
+
+
 def test_source_files_under_300_lines() -> None:
     offenders: list[str] = []
-    for path in sorted(PKG_DIR.rglob("*.py")):
-        n_lines = len(path.read_text(encoding="utf-8").splitlines())
-        if n_lines > 300:
-            offenders.append(f"{path.relative_to(ROOT)}: {n_lines} lines")
+    for folder in (PKG_DIR, ROOT / "adapters", ROOT / "examples"):
+        for path in sorted(folder.rglob("*.py")):
+            n_lines = len(path.read_text(encoding="utf-8").splitlines())
+            if n_lines > 300:
+                offenders.append(f"{path.relative_to(ROOT)}: {n_lines} lines")
     assert not offenders, "Source files exceeding 300 lines:\n" + "\n".join(offenders)
 
 
@@ -129,7 +138,7 @@ def test_glossary_symbols_resolve() -> None:
 def test_no_ab_half_names() -> None:
     pattern = re.compile(r"_[AB]\b|\"n_[AB]\"|\"half [AB]\"|half [AB]")
     offenders: list[str] = []
-    for folder in ("src", "tests"):
+    for folder in ("src", "tests", "adapters", "examples"):
         for path in sorted((ROOT / folder).rglob("*")):
             if not path.is_file() or path.suffix != ".py":
                 continue

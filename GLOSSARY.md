@@ -84,7 +84,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **`analysis.json`.** Sidecar JSON file declaring `measures.AnalysisParams` before the run, loaded by `metadata.load_analysis` and written by `metadata.write_analysis`; its SHA-256 fingerprint is printed in the report. SPEC "Preparation and condition metadata".
 
-**Adapter.** A format-conversion script (starting from `scripts/adapter_template.py`) that reads a laboratory's native recording file, extracts `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock, and delegates file formatting to `writer.write_dataset`. An adapter contains no analysis and does not change what conformance means. SPEC §8; CONTRIBUTING "Writing an adapter".
+**Adapter.** A format-conversion script (starting from `adapters/adapter_template.py`) that reads a laboratory's native recording file, extracts `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock, and delegates file formatting to `writer.write_dataset`. An adapter contains no analysis and does not change what conformance means. SPEC §8; CONTRIBUTING "Writing an adapter".
 
 **Reference writer (`writer.write_dataset`).** Single writer for the benchmark's spikes-path files (`units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`), converting seconds to integer nanoseconds with `int(round(t * 1e9))`, ordering `spikes.csv` by `unit_ids` with ascending timestamps, and rejecting malformed inputs with `ValueError` while leaving contract conformance checks to `rrb-check`; paired with `writer.read_dataset`. SPEC §9; `writer.py`.
 
@@ -192,7 +192,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Pseudo-replication.** Counting non-independent observations (trials from one preparation, pairs sharing a unit) as if they were independent samples. The census exists to make it visible.
 
-**Threshold simulation.** `scripts/thresholds.py`: synthetic sessions at the min-dataset-2/min-dataset-3 thresholds, 1,000 seeds per cell, reporting where the estimate lands. The basis for the MUST and SHOULD numbers and for the interval statements in SPEC §4–5. `docs/thresholds.md`.
+**Threshold simulation.** `thresholds.py` (`python -m recovery_reliability_benchmark.thresholds`): synthetic sessions at the min-dataset-2/min-dataset-3 thresholds, 1,000 seeds per cell, reporting where the estimate lands. The basis for the MUST and SHOULD numbers and for the interval statements in SPEC §4–5. `docs/thresholds.md`.
 
 ---
 
@@ -256,7 +256,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Benchmark (as used here).** A fixed computation that every contributed dataset is scored by. The measures are what get scored; the datasets are the test set; the spec is the admission rule for the test set. Closer to an inter-laboratory ring trial than to an ImageNet-style benchmark. README.
 
-**Frozen layer.** The functions and constants that implement the `METHOD.md` and `SPEC.md` procedure (the check functions in `checks.CHECKS` and `checks_spikes.py`, `contract.validate`, `contract.build_report`, `analysis.AnalysisParams`, `measures.unit_measures`, `excess.excess_measures`, `spikes.halves_from_spikes`, `evaluate.split_halves`, `evaluate.reliability_ceiling`, `evaluate.variance_components`, `evaluate.headline`, `sensitivity.condition_sensitivity`, `controls.permutation_null`, `controls.positive_control`, `controls.census`, `synthetic.make_tables`, `protocol.Protocol.fingerprint`, and the threshold, analysis-fingerprint, inclusion, reference-measure, and control constants), registered in `frozen.FROZEN_FUNCTIONS` and `frozen.FROZEN_CONSTANTS` and snapshotted under `frozen/`. Never modified in response to a dataset's result; any change requires a minor version bump, a `Frozen:` entry in `CHANGELOG.md`, and `python scripts/freeze.py --update`. `frozen/README.md`; `frozen.py`.
+**Frozen layer.** The functions and constants that implement the `METHOD.md` and `SPEC.md` procedure (the check functions in `checks.CHECKS` and `checks_spikes.py`, `contract.validate`, `contract.build_report`, `analysis.AnalysisParams`, `measures.unit_measures`, `excess.excess_measures`, `spikes.halves_from_spikes`, `evaluate.split_halves`, `evaluate.reliability_ceiling`, `evaluate.variance_components`, `evaluate.headline`, `sensitivity.condition_sensitivity`, `controls.permutation_null`, `controls.positive_control`, `controls.census`, `synthetic.make_tables`, `protocol.Protocol.fingerprint`, and the threshold, analysis-fingerprint, inclusion, reference-measure, and control constants), registered in `frozen.FROZEN_FUNCTIONS` and `frozen.FROZEN_CONSTANTS` and snapshotted under `frozen/`. Never modified in response to a dataset's result; any change requires a minor version bump, a `Frozen:` entry in `CHANGELOG.md`, and `python -m recovery_reliability_benchmark.frozen_manifest --update`. `frozen/README.md`; `frozen.py`.
 
 **Ring trial (inter-laboratory study).** Several laboratories run the same procedure on their own material and the results are compared. The benchmark's multi-lab phase is one.
 

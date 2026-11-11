@@ -22,7 +22,6 @@ report = ["matplotlib>=3.7"]
 rrb-check = "recovery_reliability_benchmark.cli:check_main"
 rrb-evaluate = "recovery_reliability_benchmark.cli:evaluate_main"
 rrb-report = "recovery_reliability_benchmark.report:main"
-rrb-thresholds = "recovery_reliability_benchmark.thresholds:main"
 
 [dependency-groups]
 dev = [
@@ -36,7 +35,7 @@ packages = ["src/recovery_reliability_benchmark"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 
 [tool.ruff]
 line-length = 110
