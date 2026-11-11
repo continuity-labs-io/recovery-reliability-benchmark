@@ -47,11 +47,11 @@ def check_measures_allowed_and_numeric(ctx: ValidationContext) -> None:
 
 
 def check_identifiers(ctx: ValidationContext) -> None:
-    """Check unique unit_id, no orphan response rows, and non-null trial_index (SPEC §9); casts ID columns on ctx.
+    """Check unique unit_id, no orphan response rows, and non-null trial_index and condition (SPEC §9); casts ID columns on ctx.
     Args:
         ctx: Validation context with units and responses tables.
     Raises:
-        ContractViolation: With Requirement.SCHEMA on duplicate unit_id, orphan response unit_id, or null trial_index.
+        ContractViolation: With Requirement.SCHEMA on duplicate unit_id, orphan response unit_id, or null trial_index or condition.
     """
     for col in contract.ID_COLUMNS:
         ctx.units[col] = ctx.units[col].astype(str)
@@ -68,10 +68,11 @@ def check_identifiers(ctx: ValidationContext) -> None:
         count = int((ctx.responses["unit_id"] == bad_id).sum())
         msg = f"{count} responses rows reference unit_id '{bad_id}', which is not in units."
         raise ContractViolation(Requirement.SCHEMA, msg, found=count, required=0)
-    null_trial_index = int(ctx.responses["trial_index"].isna().sum())
-    if null_trial_index > 0:
-        msg = f"{null_trial_index} responses rows have a null trial_index, requires 0."
-        raise ContractViolation(Requirement.SCHEMA, msg, found=null_trial_index, required=0)
+    for col in ("trial_index", "condition"):
+        n_null = int(ctx.responses[col].isna().sum())
+        if n_null > 0:
+            msg = f"{n_null} responses rows have a null {col}, requires 0."
+            raise ContractViolation(Requirement.SCHEMA, msg, found=n_null, required=0)
 
 
 def check_measures_vary_within_groups(ctx: ValidationContext) -> None:

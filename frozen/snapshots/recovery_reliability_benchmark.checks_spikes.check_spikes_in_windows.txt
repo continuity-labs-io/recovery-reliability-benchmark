@@ -1,0 +1,5 @@
+@frozen('SPEC SCHEMA')
+def check_spikes_in_windows(counts: pd.DataFrame, n_spikes: int) -> None:
+    if int(counts['spike_count'].sum()) == 0:
+        msg = f'0 of {n_spikes} spikes fall inside a post-stimulus window, requires at least 1. Check that spike_time_ns and stim_time_ns are integer nanoseconds on the same clock.'
+        raise ContractViolation(Requirement.SCHEMA, msg, found=0, required=1)

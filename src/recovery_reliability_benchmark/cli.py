@@ -11,9 +11,8 @@ from typing import Any
 
 import pandas as pd
 
-from . import checks_spikes
-from . import spikes as spikes_mod
 from .contract import SPEC_VERSION, ContractViolation, _validate_durations, read_spikes, read_tables, validate
+from .inputs import validate_spikes_path
 from .measures import AnalysisParams
 from .metadata import load_analysis, load_conditions, load_preparation
 from .run import run
@@ -140,18 +139,13 @@ def check_main(argv: list[str] | None = None) -> int:
     try:
         prep = load_preparation(args.preparation) if args.preparation is not None else None
         conds = load_conditions(args.conditions) if args.conditions is not None else None
-        if analysis is not None and spikes is not None:
-            trials = spikes_mod.trial_table(responses)
-            val_table = spikes_mod.per_trial_counts_table(units, trials, spikes, analysis)
-            val_measures = ["spike_count"]
-        else:
-            trials, val_table, val_measures = None, responses, measures
         ef = set(extra_forbidden) if extra_forbidden else None
-        result = validate(units, val_table, val_measures, w, d, ef, prep, conds, spikes)
-        if analysis is not None and trials is not None:
-            checks_spikes.check_pre_stimulus_window(trials, analysis, d)
+        if analysis is not None and spikes is not None:
+            result, _trials = validate_spikes_path(units, responses, spikes, analysis, ef, prep, conds)
             result["pre_stim_window_s"] = float(analysis.pre_stim_window_s)
             result["analysis_fingerprint"] = analysis.fingerprint()
+        else:
+            result = validate(units, responses, measures, w, d, ef, prep, conds, spikes)
     except ContractViolation as exc:
         _emit_report(
             "violation", inputs_meta, arguments_meta, violation=exc.to_dict()

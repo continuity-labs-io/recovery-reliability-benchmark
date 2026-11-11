@@ -106,6 +106,45 @@ def from_responses(
     )
 
 
+def validate_spikes_path(
+    units: pd.DataFrame,
+    responses: pd.DataFrame,
+    spikes: pd.DataFrame,
+    analysis: AnalysisParams,
+    extra_forbidden: set[str] | None = None,
+    preparation: Preparation | None = None,
+    conditions: dict[str, Condition] | None = None,
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    """Run every contract check of the spikes path, in order.
+
+    Args:
+        units: Recording-unit table.
+        responses: Trial table carrying ``trial_index``, ``stim_time_ns``, and ``condition``.
+        spikes: Spike-timestamp DataFrame.
+        analysis: ``AnalysisParams`` defining the load duration and the two windows.
+        extra_forbidden: Additional column names disallowed as measures.
+        preparation: Optional validated ``Preparation`` metadata model.
+        conditions: Optional mapping of condition labels to ``Condition`` metadata models.
+
+    Returns:
+        Tuple ``(report, trials)`` of the conformance report from ``validate`` on the per-trial
+        spike count table and the deduplicated trial table.
+
+    Raises:
+        ContractViolation: On the first failed requirement.
+    """
+    checks_spikes.check_spikes_path_tables(units, responses, spikes, analysis)
+    trials = spikes_mod.trial_table(responses)
+    counts = spikes_mod.per_trial_counts_table(units, trials, spikes, analysis)
+    checks_spikes.check_spikes_in_windows(counts, int(len(spikes)))
+    post_w, load_s = float(analysis.post_stim_window_s), float(analysis.load_duration_s)
+    report = validate(
+        units, counts, ["spike_count"], post_w, load_s, extra_forbidden, preparation, conditions, spikes
+    )
+    checks_spikes.check_pre_stimulus_window(trials, analysis, load_s)
+    return report, trials
+
+
 def from_spikes(
     units: pd.DataFrame,
     responses: pd.DataFrame,
@@ -155,19 +194,9 @@ def from_spikes(
     all_measures = list(dict.fromkeys([*measure_list, SPIKES_REFERENCE_MEASURE]))
     post_w = float(analysis.post_stim_window_s)
     load_s = float(analysis.load_duration_s)
-    trials = spikes_mod.trial_table(responses)
-    counts = spikes_mod.per_trial_counts_table(units, trials, spikes, analysis)
-    val = validate(
-        units,
-        counts,
-        ["spike_count"],
-        post_w,
-        load_s,
-        preparation=preparation,
-        conditions=conditions,
-        spikes=spikes,
+    val, trials = validate_spikes_path(
+        units, responses, spikes, analysis, preparation=preparation, conditions=conditions
     )
-    checks_spikes.check_pre_stimulus_window(trials, analysis, load_s)
     evaluated_conditions = val["evaluated_conditions"]
     eval_trials = trials[trials["condition"].astype(str).isin(set(evaluated_conditions))]
     halves, flags = spikes_mod.halves_from_spikes(units, eval_trials, spikes, analysis, all_measures)

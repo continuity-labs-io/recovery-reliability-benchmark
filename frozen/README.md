@@ -28,6 +28,8 @@ Every function and constant below is registered in `recovery_reliability_benchma
 | `recovery_reliability_benchmark.checks.check_trials_per_condition` | function | SPEC min-dataset-2 |
 | `recovery_reliability_benchmark.checks_spikes.check_pre_stimulus_window` | function | SPEC min-dataset-7 |
 | `recovery_reliability_benchmark.checks_spikes.check_scored_units` | function | SPEC min-dataset-3 |
+| `recovery_reliability_benchmark.checks_spikes.check_spikes_in_windows` | function | SPEC SCHEMA |
+| `recovery_reliability_benchmark.checks_spikes.check_spikes_path_tables` | function | SPEC SCHEMA |
 | `recovery_reliability_benchmark.contract.build_report` | function | SPEC conformance levels |
 | `recovery_reliability_benchmark.contract.validate` | function | SPEC conformance levels |
 | `recovery_reliability_benchmark.controls.census` | function | METHOD independence accounting |

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-11-10
 
+- Frozen: check_identifiers rejects a null condition under SCHEMA (it crashed before).
+- Frozen: new checks_spikes.check_spikes_path_tables and checks_spikes.check_spikes_in_windows run before spikes are counted, so a missing column, a null, an inconsistent trial or a clock mismatch gives a contract violation instead of a traceback; check_scored_units takes one argument order.
 - Frozen: recovery_measures returns NaN for t_peak and t_half_peak when no spike falls in any bin (peak_rate stays 0.0), so a silent unit is not scored for a peak time.
 - Frozen: AnalysisParams gains artifact_blank_s (default 0.003 s); trial_latencies keeps latencies in [artifact_blank_s, post_stim_window_s); excess_measures counts over post_stim_window_s - artifact_blank_s; DEFAULT_ANALYSIS_FINGERPRINT_2S changes with the new field.
 - Frozen: excess_measures takes per-trial pre-stimulus counts and gates t_half_excess on the trial-to-trial spread of per-trial excess (sum(d) > min_excess_z * sqrt(n) * sd(d)) instead of sqrt(N); unit_measures passes the counts.

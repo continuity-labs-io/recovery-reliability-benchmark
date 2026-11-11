@@ -20,7 +20,7 @@
     },
     "recovery_reliability_benchmark.checks.check_identifiers": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_identifiers.txt",
-      "sha256": "cd059c6878c6078ceaad686f72aed323c0f77415c112f4b8a86ede2c01eac068"
+      "sha256": "a51f2720a115ecdaebf1fb7e8cd1297bb4d63a5ed437b10af93bd331ba33f417"
     },
     "recovery_reliability_benchmark.checks.check_measures_allowed_and_numeric": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks.check_measures_allowed_and_numeric.txt",
@@ -64,7 +64,15 @@
     },
     "recovery_reliability_benchmark.checks_spikes.check_scored_units": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks_spikes.check_scored_units.txt",
-      "sha256": "cb7291cf956295578a90dbabfdfbdda51641c0f64d096d9d92cb66c5de2c51a3"
+      "sha256": "b7ada6b93c44be90ef16ed57d732b1be4c677f74be4349a0b89a1eefee336f13"
+    },
+    "recovery_reliability_benchmark.checks_spikes.check_spikes_in_windows": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks_spikes.check_spikes_in_windows.txt",
+      "sha256": "7d06af15ce51dff15d7a74d726f4e07052f57a2789d277fc93234c66e3947821"
+    },
+    "recovery_reliability_benchmark.checks_spikes.check_spikes_path_tables": {
+      "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks_spikes.check_spikes_path_tables.txt",
+      "sha256": "fea86f2fd63ae5a16b78d97cab50d6593def7e0acaef0675f6c4b58f2dd6ce14"
     },
     "recovery_reliability_benchmark.contract.build_report": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.contract.build_report.txt",

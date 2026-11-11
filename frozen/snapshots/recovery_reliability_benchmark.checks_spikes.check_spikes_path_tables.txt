@@ -1,0 +1,15 @@
+@frozen('SPEC SCHEMA')
+def check_spikes_path_tables(units: pd.DataFrame, responses: pd.DataFrame, spikes: pd.DataFrame, params: AnalysisParams) -> None:
+    tables = (('units', units, contract.UNITS_REQUIRED), ('responses', responses, TRIALS_REQUIRED), ('spikes', spikes, contract.SPIKES_REQUIRED))
+    for name, table, required in tables:
+        for col in required:
+            if col not in table.columns:
+                raise ContractViolation(Requirement.SCHEMA, f"{name} is missing required column '{col}'.")
+    for name, table, col in (('responses', responses, 'trial_index'), ('responses', responses, 'condition'), ('spikes', spikes, 'spike_time_ns')):
+        n_null = int(table[col].isna().sum())
+        if n_null > 0:
+            msg = f'{n_null} {name} rows have a null {col}, requires 0.'
+            raise ContractViolation(Requirement.SCHEMA, msg, found=n_null, required=0)
+    ctx = ValidationContext(units=units, responses=responses, measures=[], post_stim_window_s=float(params.post_stim_window_s), load_duration_s=float(params.load_duration_s), forbidden=frozenset(), preparation=None, conditions=None, spikes=None)
+    checks.check_stimulus_timeline(ctx)
+    checks.check_post_stimulus_window(ctx)
