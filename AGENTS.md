@@ -8,7 +8,7 @@ Read `frozen/README.md` before modifying any code.
 
 - Never edit frozen functions, frozen constants, `frozen/snapshots/`, or `frozen/manifest.json` to make a test pass.
 - Never tune thresholds, split rules, inclusion rules, or measure definitions in response to a dataset's result.
-- If a task requires changing a frozen function or constant, stop and report to the user unless the prompt explicitly instructs a version bump and `CHANGELOG.md` `Frozen:` entry.
+- If a task requires changing a frozen function or constant, stop and report to the user unless the prompt explicitly instructs either a pre-tag amend (keep the version, add a `Frozen:` line under that version in `CHANGELOG.md`, and run `python scripts/freeze.py --amend`, which refuses once `v<version>` is tagged) or a version bump with a `CHANGELOG.md` `Frozen:` entry and `python scripts/freeze.py --update`.
 
 ## Code standards
 

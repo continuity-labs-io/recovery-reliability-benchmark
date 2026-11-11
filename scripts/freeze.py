@@ -1,4 +1,4 @@
-"""Manage the frozen-layer manifest and AST snapshots (--init, --check, --update)."""
+"""Manage the frozen-layer manifest and AST snapshots (--init, --check, --update, --amend)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ import importlib
 import json
 import pkgutil
 import re
+import subprocess
 import sys
 import tomllib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +71,10 @@ def _write_state(
         snap_path.write_text(src, encoding="utf-8")
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    listed = {(root / entry["snapshot"]).resolve() for entry in manifest["functions"].values()}
+    for snap_file in (root / "frozen" / "snapshots").glob("*.txt"):
+        if snap_file.resolve() not in listed:
+            snap_file.unlink()
 
 
 def _compare_states(
@@ -113,33 +119,86 @@ def _has_changelog_frozen_line(version: str, root: Path = ROOT) -> bool:
     return False
 
 
+def _git_tag_exists(version: str, root: Path = ROOT) -> bool:
+    result = subprocess.run(
+        ["git", "tag", "--list", f"v{version}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return bool(result.stdout.strip())
+
+
 def update_frozen(
     manifest: dict[str, Any],
     sources: dict[str, str],
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
+    amend: bool = False,
+    tag_exists: Callable[[str], bool] | None = None,
 ) -> int:
-    """Update frozen manifest and snapshots after a version bump."""
+    """Update or amend frozen manifest and snapshots.
+
+    Args:
+        manifest: Newly computed manifest dictionary.
+        sources: Mapping of qualified function names to normalized source strings.
+        manifest_path: Path to the stored manifest JSON file.
+        root: Repository root directory.
+        amend: If True, re-snapshot in place while the version is not tagged.
+        tag_exists: Callable checking whether ``v<version>`` exists in git tags.
+
+    Returns:
+        Exit status code (0 on success, 1 on error).
+    """
     old_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    diffs = _compare_states(old_manifest, manifest, sources, root=root)
-    if manifest["version"] == old_manifest.get("version"):
-        print("error: pyproject.toml version matches manifest version; bump version first.", file=sys.stderr)
+    version = str(manifest["version"])
+    if amend:
+        if version != old_manifest.get("version"):
+            print(
+                "error: --amend keeps the version, but pyproject.toml differs; use --update.",
+                file=sys.stderr,
+            )
+            return 1
+        check_tag = tag_exists if tag_exists is not None else lambda v: _git_tag_exists(v, root=root)
+        try:
+            is_tagged = check_tag(version)
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(f"error: cannot check git tags ({exc}).", file=sys.stderr)
+            return 1
+        if is_tagged:
+            print(f"error: v{version} is tagged; bump the version and use --update.", file=sys.stderr)
+            return 1
+    elif version == old_manifest.get("version"):
+        print(
+            "error: pyproject.toml version matches manifest version; "
+            "bump version first (or use --amend while the version is not tagged).",
+            file=sys.stderr,
+        )
         return 1
-    if diffs and not _has_changelog_frozen_line(manifest["version"], root=root):
-        print(f"error: CHANGELOG.md has no 'Frozen:' line under {manifest['version']}.", file=sys.stderr)
+
+    diffs = _compare_states(old_manifest, manifest, sources, root=root)
+    if diffs and not _has_changelog_frozen_line(version, root=root):
+        print(f"error: CHANGELOG.md has no 'Frozen:' line under {version}.", file=sys.stderr)
         return 1
     _write_state(manifest, sources, manifest_path=manifest_path, root=root)
-    print("\n".join([f"Updated frozen manifest to {manifest['version']}.", *diffs]))
+    verb = "Amended" if amend else "Updated"
+    print("\n".join([f"{verb} frozen manifest at {version}.", *diffs]))
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the freeze CLI in --init, --check, or --update mode."""
+    """Run the freeze CLI in --init, --check, --update, or --amend mode."""
     parser = argparse.ArgumentParser(description="Manage frozen-layer snapshots and manifest.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--init", action="store_true", help="Create initial manifest and snapshots.")
     group.add_argument("--check", action="store_true", help="Verify current code matches snapshots.")
     group.add_argument("--update", action="store_true", help="Update snapshots after a version bump.")
+    group.add_argument(
+        "--amend",
+        action="store_true",
+        help="Re-snapshot frozen items in place while the version is not tagged.",
+    )
     args = parser.parse_args(argv)
 
     manifest, sources = _compute_state()
@@ -159,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(diffs))
             return 1
         return 0
-    return update_frozen(manifest, sources)
+    return update_frozen(manifest, sources, amend=args.amend)
 
 
 if __name__ == "__main__":

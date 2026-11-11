@@ -67,9 +67,10 @@ def test_snapshots_match() -> None:
                 )
             )
             pytest.fail(
-                f"Frozen function {name} changed. If this is intended: bump the "
-                "version in pyproject.toml, add a 'Frozen:' line under that version in CHANGELOG.md, "
-                f"run python scripts/freeze.py --update. See frozen/README.md.\n{diff}",
+                f"Frozen function {name} changed. If this is intended: add a 'Frozen:' line under "
+                "the version in CHANGELOG.md and run python scripts/freeze.py --amend while the "
+                "version is not tagged, or bump the version in pyproject.toml and run "
+                f"python scripts/freeze.py --update once it is. See frozen/README.md.\n{diff}",
                 pytrace=False,
             )
 
@@ -120,3 +121,55 @@ def test_update_version_only_refresh(tmp_path: Path) -> None:
     first_fn = sorted(sources)[0]
     modified_sources = {**sources, first_fn: sources[first_fn] + "    pass\n"}
     assert freeze.update_frozen(manifest, modified_sources, manifest_path=tmp_manifest, root=tmp_path) == 1
+
+
+def _load_freeze_script() -> Any:
+    spec = importlib.util.spec_from_file_location("freeze_script", ROOT / "scripts" / "freeze.py")
+    assert spec is not None and spec.loader is not None
+    freeze = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(freeze)
+    return freeze
+
+
+def test_snapshot_folder_matches_manifest() -> None:
+    manifest = _load_manifest()
+    on_disk = {p.name for p in (ROOT / "frozen" / "snapshots").glob("*.txt")}
+    assert on_disk == {Path(entry["snapshot"]).name for entry in manifest["functions"].values()}
+
+
+def test_amend_before_tag(tmp_path: Path) -> None:
+    freeze = _load_freeze_script()
+    shutil.copytree(ROOT / "frozen", tmp_path / "frozen")
+    tmp_manifest = tmp_path / "frozen" / "manifest.json"
+    stale = tmp_path / "frozen" / "snapshots" / "recovery_reliability_benchmark.removed.function.txt"
+    stale.write_text("def function():\n    pass\n", encoding="utf-8")
+    manifest, sources = freeze._compute_state()
+    version = manifest["version"]
+    first_fn = sorted(sources)[0]
+    changed = {**sources, first_fn: sources[first_fn] + "    pass\n"}
+    changelog = tmp_path / "CHANGELOG.md"
+
+    def amend(tagged: bool) -> int:
+        return freeze.update_frozen(
+            manifest,
+            changed,
+            manifest_path=tmp_manifest,
+            root=tmp_path,
+            amend=True,
+            tag_exists=lambda _v: tagged,
+        )
+
+    changelog.write_text(f"# Changelog\n\n## [{version}]\n\n- Docs update.\n", encoding="utf-8")
+    assert amend(tagged=False) == 1
+    changelog.write_text(f"# Changelog\n\n## [{version}]\n\n- Frozen: example change.\n", encoding="utf-8")
+    assert amend(tagged=True) == 1
+    assert stale.is_file()
+    assert amend(tagged=False) == 0
+    assert not stale.exists()
+    snapshot = tmp_path / "frozen" / "snapshots" / f"{first_fn}.txt"
+    assert snapshot.read_text(encoding="utf-8") == changed[first_fn]
+
+    old_data = json.loads(tmp_manifest.read_text(encoding="utf-8"))
+    old_data["version"] = "0.0.1"
+    tmp_manifest.write_text(json.dumps(old_data, indent=2) + "\n", encoding="utf-8")
+    assert amend(tagged=False) == 1

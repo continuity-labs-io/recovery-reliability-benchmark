@@ -81,6 +81,15 @@ Adapters (`scripts/`), input orchestration (`inputs.from_spikes`, `inputs.from_r
 
 ### 4. How to change frozen code
 
+**Before `v<version>` is tagged** (re-snapshotting at the current version):
+
+1. Keep the version in `pyproject.toml`.
+2. Add at least one line starting with `Frozen:` under that version in `CHANGELOG.md` naming each changed function or constant and the reason.
+3. Run `python scripts/freeze.py --amend` (refuses once `v<version>` is tagged).
+4. Run `pytest` and confirm all tests pass.
+
+**Once `v<version>` is tagged** (advancing to a new version):
+
 1. Bump the minor version in `pyproject.toml` (and `CITATION.cff`).
 2. Add a heading for the new version in `CHANGELOG.md` containing at least one line starting with `Frozen:` naming each changed function or constant and the reason.
 3. Run `python scripts/freeze.py --update`.
