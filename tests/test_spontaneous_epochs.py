@@ -1,4 +1,4 @@
-"""Unit tests for the Sharf 2022 G0 epoching and table conversion script."""
+"""Unit tests for the spontaneous-epochs table conversion and transform script."""
 
 from __future__ import annotations
 
@@ -11,25 +11,21 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _load_sharf2022_g0():
-    script_path = ROOT / "scripts" / "sharf2022_g0.py"
-    spec = importlib.util.spec_from_file_location("sharf2022_g0", script_path)
+def _load_spontaneous_epochs():
+    script_path = ROOT / "scripts" / "spontaneous_epochs.py"
+    spec = importlib.util.spec_from_file_location("spontaneous_epochs", script_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def test_build_recording_tables_hand_built_units() -> None:
-    sharf = _load_sharf2022_g0()
-    fs = 20000.0
-    epoch_s = 5.0
-
+def _hand_built_units() -> list[SimpleNamespace]:
     # 3 units spanning 17.0 s (max sample = 340000 at fs=20000):
     # - u10: 2 spikes in epoch 0, 0 in epoch 1, 3 in epoch 2, plus 1 spike at 17 s (dropped)
     # - u20: single spike stored as a 0-D scalar (as squeeze_me=True produces) in epoch 1 (6 s)
     # - u30: empty spike train (shape (0,)) across all epochs
-    raw_units = [
+    return [
         SimpleNamespace(
             unit_id=10,
             spike_train=np.array([10000, 50000, 200000, 240000, 299999, 340000], dtype=np.int64),
@@ -50,8 +46,14 @@ def test_build_recording_tables_hand_built_units() -> None:
         ),
     ]
 
-    built = sharf.build_recording_tables(
-        raw_units=raw_units,
+
+def test_build_recording_tables_hand_built_units() -> None:
+    mod = _load_spontaneous_epochs()
+    fs = 20000.0
+    epoch_s = 5.0
+
+    built = mod.build_recording_tables(
+        raw_units=_hand_built_units(),
         fs=fs,
         epoch_s=epoch_s,
         stem="2950",
@@ -97,31 +99,12 @@ def test_build_recording_tables_hand_built_units() -> None:
 
 
 def test_build_recording_tables_transforms(tmp_path: Path) -> None:
-    sharf = _load_sharf2022_g0()
+    mod = _load_spontaneous_epochs()
     fs = 20000.0
-    raw_units = [
-        SimpleNamespace(
-            unit_id=10,
-            spike_train=np.array([10000, 50000, 200000, 240000, 299999, 340000], dtype=np.int64),
-            x_max=100.0,
-            y_max=200.0,
-        ),
-        SimpleNamespace(
-            unit_id=20,
-            spike_train=np.array(120000, dtype=np.int64),
-            x_max=110.0,
-            y_max=210.0,
-        ),
-        SimpleNamespace(
-            unit_id=30,
-            spike_train=np.array([], dtype=np.int64),
-            x_max=120.0,
-            y_max=220.0,
-        ),
-    ]
+    raw_units = _hand_built_units()
 
     for epoch_s in (5.0, 2.5):
-        built = sharf.build_recording_tables(
+        built = mod.build_recording_tables(
             raw_units=raw_units,
             fs=fs,
             epoch_s=epoch_s,
@@ -144,7 +127,7 @@ def test_build_recording_tables_transforms(tmp_path: Path) -> None:
         np.testing.assert_allclose(responses["log_firing_rate_hz"], np.log10(rate + 1.0 / epoch_s))
         np.testing.assert_allclose(responses["sqrt_firing_rate_hz"], np.sqrt(rate))
 
-    built_5s = sharf.build_recording_tables(
+    built_5s = mod.build_recording_tables(
         raw_units=raw_units, fs=fs, epoch_s=5.0, stem="2950", preparation_id="L2", transforms=True
     )
     resp_5s = built_5s["responses"]
@@ -158,9 +141,9 @@ def test_build_recording_tables_transforms(tmp_path: Path) -> None:
         2: [3.0, 1.5, 1.5],
     }
 
-    sample_row = dict.fromkeys(sharf.TRANSFORM_COLUMNS, "0.990")
+    sample_row = dict.fromkeys(mod.TRANSFORM_COLUMNS, "0.990")
     sample_row.update(organoid="L2", stem="2950", n_units=173, rho_max_minus_min="0.004")
-    md_path = sharf.write_transforms_markdown([sample_row], tmp_path)
+    md_path = mod.write_transforms_markdown([sample_row], tmp_path)
     lines = md_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == 3
     assert "rho_max_minus_min" in lines[0]

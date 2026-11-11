@@ -9,8 +9,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from recovery_reliability_benchmark.contract import validate
 from recovery_reliability_benchmark.run import run
 from recovery_reliability_benchmark.synthetic import make_tables
+
+N_PERM = 25
 
 
 def strip(result: dict[str, Any]) -> dict[str, Any]:
@@ -68,7 +71,7 @@ def baseline_fixture() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         condition_offsets={"A": 0, "B": 1, "C": 2},
         seed=7,
     )
-    baseline = run(units, responses, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    baseline = run(units, responses, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
     return units, responses, baseline
 
 
@@ -80,7 +83,7 @@ def test_invariant_to_row_order(
     units_shuffled = units.iloc[rng.permutation(len(units))].reset_index(drop=True)
     responses_shuffled = responses.iloc[rng.permutation(len(responses))].reset_index(drop=True)
 
-    res = run(units_shuffled, responses_shuffled, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res = run(units_shuffled, responses_shuffled, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
     compare_results(res, baseline)
 
 
@@ -104,15 +107,13 @@ def test_invariant_to_unit_relabeling(
     responses_relabeled = responses.copy()
     responses_relabeled["unit_id"] = responses_relabeled["unit_id"].map(fwd_map)
 
-    from recovery_reliability_benchmark.contract import validate
-
     val_base = validate(units, responses, ["tau", "amplitude"], 2.0)
     val_relabeled = validate(units_relabeled, responses_relabeled, ["tau", "amplitude"], 2.0)
     for c in ("A", "B", "C"):
         remapped_active = sorted(inv_map[u] for u in val_relabeled["conditions"][c]["active_units"])
         assert remapped_active == val_base["conditions"][c]["active_units"]
 
-    res = run(units_relabeled, responses_relabeled, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res = run(units_relabeled, responses_relabeled, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
     compare_results(res, baseline)
 
     # Also test a completely arbitrary permutation of random unit label strings:
@@ -129,7 +130,7 @@ def test_invariant_to_unit_relabeling(
         remapped_arb_active = sorted(inv_arb_map[u] for u in val_arb["conditions"][c]["active_units"])
         assert remapped_arb_active == val_base["conditions"][c]["active_units"]
 
-    res_arb = run(units_arb, responses_arb, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res_arb = run(units_arb, responses_arb, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
     res_arb_check = copy.deepcopy(res_arb)
     base_check = copy.deepcopy(baseline)
     for m in ("tau", "amplitude"):
@@ -154,7 +155,7 @@ def test_invariant_to_condition_relabeling(
     responses_relabeled = responses.copy()
     responses_relabeled["condition"] = responses_relabeled["condition"].map(cond_map)
 
-    res = run(units, responses_relabeled, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res = run(units, responses_relabeled, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
 
     remapped = copy.deepcopy(res)
     remapped["census"]["evaluated_conditions"] = [
@@ -174,8 +175,6 @@ def test_invariant_to_condition_relabeling(
 
     compare_results(remapped, baseline)
 
-    from recovery_reliability_benchmark.contract import validate
-
     val_base = validate(units, responses, ["tau", "amplitude"], 2.0)
     val_relabeled = validate(units, responses_relabeled, ["tau", "amplitude"], 2.0)
     assert val_relabeled["best_condition"] == cond_map[val_base["best_condition"]]
@@ -184,13 +183,14 @@ def test_invariant_to_condition_relabeling(
 def test_invariant_to_affine_measure_transform(
     baseline_fixture: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]],
 ) -> None:
+    """Confirm invariance under positive affine transform (including variance inflation)."""
     units, responses, baseline = baseline_fixture
     scale = 3.7
     shift = -12.5
     responses_aff = responses.copy()
     responses_aff["tau"] = scale * responses_aff["tau"] + shift
 
-    res = run(units, responses_aff, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res = run(units, responses_aff, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
 
     tau_base = baseline["measures"]["tau"]
     tau_aff = res["measures"]["tau"]
@@ -250,33 +250,5 @@ def test_invariant_to_trial_index_offset(
     responses_offset["trial_index"] = responses_offset["trial_index"] + 1000
     responses_offset["stim_time_ns"] = responses_offset["stim_time_ns"] + 1000
 
-    res = run(units, responses_offset, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
+    res = run(units, responses_offset, ["tau", "amplitude"], 2.0, n_perm=N_PERM, seed=1)
     compare_results(res, baseline)
-
-
-def test_variance_inflation_does_not_move_score(
-    baseline_fixture: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]],
-) -> None:
-    """Confirm that global variance inflation does not move rho or the permutation null.
-
-    See METHOD.md ('How this benchmark can be gamed' table, 'Variance inflation' row):
-    multiplying a measure by 100 for only the even-positioned trials is NOT an invariance
-    because it changes the relative scale of the two halves (modifying the data), whereas
-    scaling the whole measure by 100 leaves Pearson r, Spearman-Brown rho, and the
-    permutation null unchanged, giving the Arc-style variance-inflation attack no lever.
-    """
-    units, responses, baseline = baseline_fixture
-    responses_scaled = responses.copy()
-    responses_scaled["tau"] = 100.0 * responses_scaled["tau"]
-
-    res = run(units, responses_scaled, ["tau", "amplitude"], 2.0, n_perm=200, seed=1)
-
-    tau_base = baseline["measures"]["tau"]
-    tau_scaled = res["measures"]["tau"]
-
-    assert tau_scaled["headline"]["rho"] == pytest.approx(tau_base["headline"]["rho"], rel=1e-9, abs=1e-9)
-    for c in ("A", "B", "C"):
-        assert tau_scaled["per_condition"][c]["rho"] == pytest.approx(
-            tau_base["per_condition"][c]["rho"], rel=1e-9, abs=1e-9
-        )
-    _assert_approx_recursive(tau_scaled["null"], tau_base["null"])

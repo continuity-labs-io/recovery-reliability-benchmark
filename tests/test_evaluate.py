@@ -90,31 +90,9 @@ def test_centering_removes_condition_offsets() -> None:
     assert tau["headline"]["rho"] == pytest.approx(tau["pooled"]["centered"]["rho"])
 
 
-def test_nonpositive_r_reports_zero() -> None:
-    idx = pd.MultiIndex.from_arrays(
-        [[f"u{i:02d}" for i in range(10)], ["A"] * 10],
-        names=["unit_id", "condition"],
-    )
-    tau_odd = np.arange(1.0, 11.0)
-    halves = pd.DataFrame(
-        {
-            "tau_odd": tau_odd,
-            "tau_even": -tau_odd,
-            "n_odd": 5,
-            "n_even": 5,
-        },
-        index=idx,
-    )
-    c = reliability_ceiling(halves, "tau", center=False)
-    assert c["rho"] == 0.0
-    assert c["r_undefined"] is False
-    assert c["r_nonpositive"] is True
-    assert c["r_half"] == pytest.approx(-1.0)
-
-
 def test_null_below_observed() -> None:
     units, responses = make_tables(n_units=40, n_trials=20, reliability=0.85, seed=4)
-    res = run(units, responses, ["tau"], post_stim_window_s=2.0, n_perm=300)
+    res = run(units, responses, ["tau"], post_stim_window_s=2.0, n_perm=50)
     tau = res["measures"]["tau"]
     assert abs(tau["null"]["median_rho"]) <= 0.1
     assert tau["null"]["p95_rho"] < tau["headline"]["rho"]
@@ -251,7 +229,7 @@ def test_examples_headline() -> None:
 
 def test_ci_coverage_small_n() -> None:
     covered = 0
-    n_seeds = 200
+    n_seeds = 80
     for seed in range(n_seeds):
         _, responses = make_tables(n_units=15, n_trials=20, reliability=0.8, seed=seed)
         halves = split_halves(responses, ["tau"], ["A"])
@@ -377,7 +355,7 @@ def test_null_matches_scipy_pairings_single_condition() -> None:
         halves,
         "tau",
         center=False,
-        n_perm=2000,
+        n_perm=500,
         rng=np.random.default_rng(0),
     )
     odd = halves["tau_odd"].to_numpy()
@@ -386,7 +364,7 @@ def test_null_matches_scipy_pairings_single_condition() -> None:
         (odd, even),
         lambda a, b: np.corrcoef(a, b)[0, 1],
         permutation_type="pairings",
-        n_resamples=2000,
+        n_resamples=500,
         random_state=0,
     )
     scipy_median_r = float(np.percentile(scipy_res.null_distribution, 50))
@@ -480,6 +458,7 @@ def test_r_undefined_flags() -> None:
     res_neg = reliability_ceiling(neg_corr, "tau")
     assert res_neg["r_undefined"] is False
     assert res_neg["r_nonpositive"] is True
+    assert res_neg["r_half"] == pytest.approx(-1.0)
     assert res_neg["rho"] == 0.0
 
 

@@ -1,4 +1,4 @@
-"""Run v0.1.0 against the Sharf 2022 Dryad organoid spontaneous recordings (G0 machinery test)."""
+"""Evaluate fixed-duration spontaneous epochs from Kilosort2 spike recordings."""
 
 from __future__ import annotations
 
@@ -114,7 +114,7 @@ def process_recording(
         seed: Random seed passed to rrb-evaluate.
         transforms: When True, evaluate all four raw and transformed firing-rate measures together.
     Returns:
-        Dictionary of summary and transform fields for summary.md, transforms.md, and g0.png.
+        Dictionary of summary and transform fields for summary.md, transforms.md, and halves.png.
     """
     stem, organoid = mat_path.stem, CHIP_TO_ORGANOID[mat_path.stem.split("_")[-1]]
     mat_data = sio.loadmat(mat_path, struct_as_record=False, squeeze_me=True)
@@ -187,13 +187,13 @@ def process_recording(
     return row
 
 
-def write_g0_plot(rows: Sequence[dict[str, Any]], out_dir: Path) -> Path:
-    """Render odd-half vs even-half mean firing_rate_hz panels to {out}/g0.png.
+def write_halves_plot(rows: Sequence[dict[str, Any]], out_dir: Path) -> Path:
+    """Render odd-half vs even-half mean firing_rate_hz panels to {out}/halves.png.
     Args:
         rows: Per-recording summary rows produced by process_recording.
         out_dir: Output root directory containing per-recording subdirectories.
     Returns:
-        Path to the written g0.png figure.
+        Path to the written halves.png figure.
     """
     import matplotlib
 
@@ -231,7 +231,7 @@ def write_g0_plot(rows: Sequence[dict[str, Any]], out_dir: Path) -> Path:
     for ax in flat_axes[len(rows) :]:
         ax.axis("off")
     fig.tight_layout()
-    fig.savefig(out_png := out_dir / "g0.png", dpi=150)
+    fig.savefig(out_png := out_dir / "halves.png", dpi=150)
     plt.close(fig)
     return out_png
 
@@ -266,15 +266,17 @@ def write_transforms_markdown(rows: Sequence[dict[str, Any]], out_dir: Path) -> 
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the Sharf 2022 G0 machinery test across all spontaneous recordings.
+    """Evaluate fixed-duration spontaneous epochs across Kilosort2 recordings.
     Args:
         argv: Optional CLI argument list (defaults to sys.argv[1:]).
     Returns:
         Exit code (0 on completion).
     """
-    parser = argparse.ArgumentParser(description="Run v0.1.0 against Sharf 2022 spontaneous recordings.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate benchmark reliability on fixed-duration spontaneous epochs."
+    )
     parser.add_argument("--root", type=Path, default=Path("data/sharf2022/kilosort2"))
-    parser.add_argument("--out", type=Path, default=Path("output/sharf2022"))
+    parser.add_argument("--out", type=Path, default=Path("output/spontaneous_epochs"))
     parser.add_argument("--epoch-s", type=float, default=5.0)
     parser.add_argument("--min-epochs", type=int, default=20)
     parser.add_argument("--n-perm", type=int, default=1000)
@@ -288,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         for rel in RECORDING_RELPATHS
     ]  # fmt: skip
     write_summary_markdown(rows, args.out)
-    write_g0_plot(rows, args.out)
+    write_halves_plot(rows, args.out)
     if args.transforms:
         write_transforms_markdown(rows, args.out)
     return 0

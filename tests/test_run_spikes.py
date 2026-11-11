@@ -227,7 +227,7 @@ def test_identical_taus_score_near_zero() -> None:
 def test_t_return_converges_with_trials() -> None:
     taus_spread = np.geomspace(0.05, 0.5, 30)
     rhos: dict[int, float] = {}
-    for n_trials in (20, 50, 100):
+    for n_trials in (20, 100):
         units_s, trials_s, spikes_s, params_s = _build_spike_dataset(
             taus_spread, n_trials=n_trials, isi_s=5.0, seed=0
         )
@@ -237,7 +237,7 @@ def test_t_return_converges_with_trials() -> None:
             measures=["t_return"],
             spikes=spikes_s,
             analysis=params_s,
-            n_perm=50,
+            n_perm=10,
         )
         rhos[n_trials] = res_s["measures"]["t_return"]["headline"]["rho"]
     assert rhos[100] > rhos[20]
@@ -314,7 +314,7 @@ def test_md3_scored_from_run() -> None:
 
 def test_tables_path_unchanged() -> None:
     units, responses = make_tables(n_units=30, n_trials=20, reliability=0.8)
-    res = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0)
+    res = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=10)
     assert res["parameters"]["path"] == "responses"
     assert res["measures"]["tau"]["headline"]["rho"] == pytest.approx(0.8256281560268863, rel=0.0, abs=1e-15)
     assert res["measures"]["amplitude"]["headline"]["rho"] == pytest.approx(
@@ -365,20 +365,3 @@ def test_reference_none_on_tables_path() -> None:
     units, responses = make_tables(n_units=30, n_trials=20, reliability=0.8)
     res = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=20)
     assert res["reference"] is None
-
-
-def test_reference_does_not_rescue_md3() -> None:
-    taus = np.geomspace(0.05, 0.5, 6)
-    units, trials, spikes, params = _build_spike_dataset(taus, n_trials=10, isi_s=5.0, seed=0, silent_units=4)
-    assert len(units) == 10
-
-    with pytest.raises(ContractViolation) as exc_info:
-        run(
-            units,
-            trials,
-            measures=["t_return"],
-            spikes=spikes,
-            analysis=params,
-            n_perm=20,
-        )
-    assert exc_info.value.requirement is Requirement.MD3

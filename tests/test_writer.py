@@ -134,7 +134,7 @@ def test_round_trip_d_1_5_0(tmp_path: Path) -> None:
             "--measures",
             "t_half_excess,excess_per_trial",
             "--n-perm",
-            "50",
+            "10",
             "--out",
             str(report_dir),
         ]

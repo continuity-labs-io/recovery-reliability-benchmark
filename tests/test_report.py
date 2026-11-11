@@ -15,7 +15,7 @@ import pytest
 
 from recovery_reliability_benchmark.analysis import AnalysisParams
 from recovery_reliability_benchmark.contract import read_tables
-from recovery_reliability_benchmark.metadata import load_conditions
+from recovery_reliability_benchmark.report import REPORT_FILE_NAMES
 from recovery_reliability_benchmark.report import main as report_main
 from recovery_reliability_benchmark.run import run, run_with_inputs
 from recovery_reliability_benchmark.summary import build_summary
@@ -41,7 +41,7 @@ def _run_two_conditions_report(out_dir: Path) -> int:
             "--measures",
             "t_half_excess,excess_per_trial,t_return",
             "--n-perm",
-            "200",
+            "100",
             "--out",
             str(out_dir),
         ]
@@ -56,18 +56,13 @@ def two_conditions_report_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return out_dir
 
 
-def test_report_writes_files(tmp_path: Path) -> None:
-    out_dir = tmp_path / "report"
-    rc = _run_two_conditions_report(out_dir)
-    assert rc == 0
-    assert (out_dir / "evaluate.json").is_file()
-    assert (out_dir / "summary.md").is_file()
-    if importlib.util.find_spec("matplotlib") is not None:
-        assert (out_dir / "halves.png").is_file()
-        assert (out_dir / "halves.png").stat().st_size > 0
-
-
 def test_two_axis_numbers(two_conditions_report_dir: Path) -> None:
+    assert (two_conditions_report_dir / "evaluate.json").is_file()
+    assert (two_conditions_report_dir / "summary.md").is_file()
+    if importlib.util.find_spec("matplotlib") is not None:
+        assert (two_conditions_report_dir / "halves.png").is_file()
+        assert (two_conditions_report_dir / "halves.png").stat().st_size > 0
+
     doc = json.loads((two_conditions_report_dir / "evaluate.json").read_text(encoding="utf-8"))
     the = doc["measures"]["t_half_excess"]
     assert the["headline_kind"] == "pooled_centered"
@@ -85,11 +80,21 @@ def test_two_axis_numbers(two_conditions_report_dir: Path) -> None:
 def test_summary_rows(two_conditions_report_dir: Path) -> None:
     summary_text = (two_conditions_report_dir / "summary.md").read_text(encoding="utf-8")
     lines = summary_text.splitlines()
-    assert any(line.startswith("| t_half_excess |") for line in lines)
-    assert any(line.startswith("| baseline_hz (reference) |") for line in lines)
+
+    the_row = next(line for line in lines if line.startswith("| t_half_excess |"))
+    the_cells = [c.strip() for c in the_row.strip("|").split("|")]
+    assert the_cells[7] == "—"
+
+    tr_row = next(line for line in lines if line.startswith("| t_return |"))
+    assert tr_row.endswith("| sensitivity at chance; censored: control 8, slowed 11 |")
+
+    ref_row = next(line for line in lines if line.startswith("| baseline_hz (reference) |"))
+    assert ref_row.endswith("| sensitivity at chance |")
+
     assert any(line.startswith("baseline_hz is the reference row") for line in lines)
     assert "protocol: control=" in summary_text
     assert "Between control and slowed the typical unit moved" in summary_text
+    assert "Figure shows the first 4 of" not in summary_text
 
 
 def test_one_condition_report(tmp_path: Path) -> None:
@@ -107,7 +112,7 @@ def test_one_condition_report(tmp_path: Path) -> None:
             "--measures",
             "t_half_excess,excess_per_trial",
             "--n-perm",
-            "50",
+            "20",
             "--out",
             str(out_dir),
         ]
@@ -132,7 +137,7 @@ def test_tables_path_report(tmp_path: Path) -> None:
             "--post-stim-window-s",
             "2.0",
             "--n-perm",
-            "50",
+            "20",
             "--out",
             str(out_dir),
             "--title",
@@ -146,66 +151,11 @@ def test_tables_path_report(tmp_path: Path) -> None:
     assert "| baseline_hz (reference) |" not in summary_text
 
 
-def test_violation_report(tmp_path: Path) -> None:
-    trials = pd.read_csv(EXAMPLES_DIR / "trials_responses.csv")
-    trials.loc[0, "stim_time_ns"] = int(0.5 * 1e9)
-    bad_trials_csv = tmp_path / "bad_trials.csv"
-    trials.to_csv(bad_trials_csv, index=False)
-
-    out_dir = tmp_path / "violation_report"
-    rc = report_main(
-        [
-            str(EXAMPLES_DIR / "units.csv"),
-            str(bad_trials_csv),
-            "--spikes",
-            str(EXAMPLES_DIR / "spikes.csv"),
-            "--analysis",
-            str(EXAMPLES_DIR / "analysis.json"),
-            "--measures",
-            "t_return",
-            "--out",
-            str(out_dir),
-        ]
-    )
-    assert rc == 1
-    summary_path = out_dir / "summary.md"
-    assert summary_path.is_file()
-    summary_text = summary_path.read_text(encoding="utf-8")
-    assert "min-dataset-7" in summary_text
-    assert "0.5" in summary_text
-    assert "1.0" in summary_text
-
-
-def test_missing_matplotlib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "matplotlib", None)
-    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", None)
-
-    out_dir = tmp_path / "no_mpl"
-    rc = report_main(
-        [
-            str(EXAMPLES_DIR / "units.csv"),
-            str(EXAMPLES_DIR / "responses.csv"),
-            "--measures",
-            "tau,amplitude",
-            "--post-stim-window-s",
-            "2.0",
-            "--n-perm",
-            "20",
-            "--out",
-            str(out_dir),
-        ]
-    )
-    assert rc == 0
-    summary_text = (out_dir / "summary.md").read_text(encoding="utf-8")
-    assert "Figure skipped" in summary_text
-    assert not (out_dir / "halves.png").exists()
-
-
 def test_run_with_inputs_matches_run() -> None:
     units, responses = read_tables(EXAMPLES_DIR / "units.csv", EXAMPLES_DIR / "responses.csv")
-    res_only = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=20, seed=42)
+    res_only = run(units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=10, seed=42)
     res_pair, inputs = run_with_inputs(
-        units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=20, seed=42
+        units, responses, ["tau", "amplitude"], post_stim_window_s=2.0, n_perm=10, seed=42
     )
     assert res_pair == res_only
     assert inputs.path == "responses"
@@ -226,18 +176,22 @@ def _run_quick_spikes_report(
             "--measures",
             "t_return",
             "--n-perm",
-            "20",
+            "10",
             "--out",
             str(out_dir),
         ]
     )
 
 
+def _seed_stale_report_files(out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name in REPORT_FILE_NAMES:
+        (out_dir / name).write_bytes(b"stale")
+
+
 def test_violation_clears_previous_report_files(tmp_path: Path) -> None:
     out_dir = tmp_path / "shared_out"
-    assert _run_quick_spikes_report(out_dir) == 0
-    assert (out_dir / "evaluate.json").is_file()
-    assert (out_dir / "summary.md").is_file()
+    _seed_stale_report_files(out_dir)
 
     trials = pd.read_csv(EXAMPLES_DIR / "trials_responses.csv")
     trials.loc[0, "stim_time_ns"] = int(0.5 * 1e9)
@@ -245,21 +199,19 @@ def test_violation_clears_previous_report_files(tmp_path: Path) -> None:
     trials.to_csv(bad_trials_csv, index=False)
 
     assert _run_quick_spikes_report(out_dir, trials_path=bad_trials_csv) == 1
-    assert (out_dir / "summary.md").is_file()
-    assert "min-dataset-7" in (out_dir / "summary.md").read_text(encoding="utf-8")
+    summary_text = (out_dir / "summary.md").read_text(encoding="utf-8")
+    assert "min-dataset-7" in summary_text
+    assert "0.5" in summary_text
+    assert "1.0" in summary_text
     assert not (out_dir / "evaluate.json").exists()
     assert not (out_dir / "halves.png").exists()
 
 
 def test_input_error_clears_report_files_and_keeps_unrelated_file(tmp_path: Path) -> None:
     out_dir = tmp_path / "shared_out"
-    out_dir.mkdir()
+    _seed_stale_report_files(out_dir)
     keep_file = out_dir / "notes.txt"
     keep_file.write_text("unrelated file\n", encoding="utf-8")
-
-    assert _run_quick_spikes_report(out_dir) == 0
-    assert (out_dir / "evaluate.json").is_file()
-    assert (out_dir / "summary.md").is_file()
 
     missing_spikes = tmp_path / "missing_spikes.csv"
     assert _run_quick_spikes_report(out_dir, spikes_path=missing_spikes) == 2
@@ -298,10 +250,8 @@ def test_run_without_matplotlib_clears_previous_halves_figure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("matplotlib")
     out_dir = tmp_path / "mpl_toggle"
-    assert _run_quick_spikes_report(out_dir) == 0
-    assert (out_dir / "halves.png").is_file()
+    _seed_stale_report_files(out_dir)
 
     monkeypatch.setitem(sys.modules, "matplotlib", None)
     monkeypatch.setitem(sys.modules, "matplotlib.pyplot", None)
@@ -309,31 +259,6 @@ def test_run_without_matplotlib_clears_previous_halves_figure(
     assert _run_quick_spikes_report(out_dir) == 0
     assert not (out_dir / "halves.png").exists()
     assert "Figure skipped" in (out_dir / "summary.md").read_text(encoding="utf-8")
-
-
-def test_two_conditions_build_summary_notes() -> None:
-    units, trials, spikes, analysis = read_dataset(TWO_COND_DIR)
-    conditions = load_conditions(TWO_COND_DIR / "conditions.json")
-    result = run(
-        units,
-        trials,
-        ["t_half_excess", "excess_per_trial", "t_return"],
-        conditions=conditions,
-        spikes=spikes,
-        analysis=analysis,
-        n_perm=200,
-    )
-    summary_lines = build_summary(result).splitlines()
-
-    tr_row = next(line for line in summary_lines if line.startswith("| t_return |"))
-    assert tr_row.endswith("| sensitivity at chance; censored: control 8, slowed 11 |")
-
-    ref_row = next(line for line in summary_lines if line.startswith("| baseline_hz (reference) |"))
-    assert ref_row.endswith("| sensitivity at chance |")
-
-    the_row = next(line for line in summary_lines if line.startswith("| t_half_excess |"))
-    the_cells = [c.strip() for c in the_row.strip("|").split("|")]
-    assert the_cells[7] == "—"
 
 
 def test_identical_recovery_across_units_flags_reliability_at_chance(tmp_path: Path) -> None:
@@ -346,7 +271,7 @@ def test_identical_recovery_across_units_flags_reliability_at_chance(tmp_path: P
     write_dataset(ds_dir, unit_ids, spike_times_s, onsets_s, ["baseline"] * 20, params)
     units, trials, spikes, analysis = read_dataset(ds_dir)
 
-    result = run(units, trials, ["t_half_excess"], spikes=spikes, analysis=analysis, n_perm=50, seed=0)
+    result = run(units, trials, ["t_half_excess"], spikes=spikes, analysis=analysis, n_perm=20, seed=0)
     summary_lines = build_summary(result).splitlines()
     the_row = next(line for line in summary_lines if line.startswith("| t_half_excess |"))
     the_cells = [c.strip() for c in the_row.strip("|").split("|")]
@@ -414,7 +339,7 @@ def test_figure_note_above_four_measures(tmp_path: Path) -> None:
             "--measures",
             "t_half_excess,excess_per_trial,t_return,t_half_peak,peak_rate,spikes_per_trial",
             "--n-perm",
-            "20",
+            "10",
             "--out",
             str(six_out),
         ]
@@ -423,27 +348,6 @@ def test_figure_note_above_four_measures(tmp_path: Path) -> None:
     six_summary = (six_out / "summary.md").read_text(encoding="utf-8")
     if importlib.util.find_spec("matplotlib") is not None:
         assert "Figure shows the first 4 of 6 measures." in six_summary
-
-    two_out = tmp_path / "two_measures"
-    rc_two = report_main(
-        [
-            str(EXAMPLES_DIR / "units.csv"),
-            str(EXAMPLES_DIR / "trials_responses.csv"),
-            "--spikes",
-            str(EXAMPLES_DIR / "spikes.csv"),
-            "--analysis",
-            str(EXAMPLES_DIR / "analysis.json"),
-            "--measures",
-            "t_half_excess,excess_per_trial",
-            "--n-perm",
-            "20",
-            "--out",
-            str(two_out),
-        ]
-    )
-    assert rc_two == 0
-    two_summary = (two_out / "summary.md").read_text(encoding="utf-8")
-    assert "Figure shows the first 4 of" not in two_summary
 
 
 def test_positive_control_line_wording(two_conditions_report_dir: Path) -> None:

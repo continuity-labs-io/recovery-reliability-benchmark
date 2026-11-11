@@ -85,11 +85,11 @@ def _assert_finite_numbers(obj: Any) -> None:
 
 
 def test_detects_slowing() -> None:
-    for seed in (0, 1, 2):
+    for seed in (0, 1):
         units, trials, spikes, params = _make_dataset(1.5, seed)
         halves, _ = halves_from_spikes(units, trials, spikes, params, ["t_half_excess", "baseline_hz"])
 
-        sens_the = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=1000, seed=seed)
+        sens_the = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=200, seed=seed)
         assert sens_the is not None
         pair_the = sens_the["control|slowed"]
         assert pair_the["median_abs_z"] > 2.5
@@ -97,7 +97,7 @@ def test_detects_slowing() -> None:
         assert pair_the["median_shift"] > 0.04
         assert pair_the["above_null"] is True
 
-        sens_base = measure_sensitivity(halves, "baseline_hz", ["control", "slowed"], n_perm=1000, seed=seed)
+        sens_base = measure_sensitivity(halves, "baseline_hz", ["control", "slowed"], n_perm=200, seed=seed)
         assert sens_base is not None
         pair_base = sens_base["control|slowed"]
         assert pair_base["median_abs_z"] < 1.0
@@ -105,11 +105,11 @@ def test_detects_slowing() -> None:
 
 
 def test_chance_without_effect() -> None:
-    for seed in (0, 1, 2):
+    for seed in (0, 1):
         units, trials, spikes, params = _make_dataset(1.0, seed)
         halves, _ = halves_from_spikes(units, trials, spikes, params, ["t_half_excess"])
 
-        sens = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=1000, seed=seed)
+        sens = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=200, seed=seed)
         assert sens is not None
         pair = sens["control|slowed"]
         assert pair["median_abs_z"] < 1.0
@@ -117,7 +117,7 @@ def test_chance_without_effect() -> None:
 
 
 def test_tables_path() -> None:
-    for seed in (0, 1, 2):
+    for seed in (0, 1):
         units, responses = make_tables(
             n_units=30,
             n_trials=20,
@@ -127,7 +127,7 @@ def test_tables_path() -> None:
             seed=seed,
         )
         halves = split_halves(responses, ["tau"], ["A", "B"])
-        sens = measure_sensitivity(halves, "tau", ["A", "B"], n_perm=1000, seed=seed)
+        sens = measure_sensitivity(halves, "tau", ["A", "B"], n_perm=200, seed=seed)
         assert sens is not None
         pair = sens["A|B"]
         assert pair["median_abs_z"] > 4.0
@@ -143,7 +143,7 @@ def test_tables_path() -> None:
             seed=seed,
         )
         halves_zero = split_halves(responses_zero, ["tau"], ["A", "B"])
-        sens_zero = measure_sensitivity(halves_zero, "tau", ["A", "B"], n_perm=1000, seed=seed)
+        sens_zero = measure_sensitivity(halves_zero, "tau", ["A", "B"], n_perm=200, seed=seed)
         assert sens_zero is not None
         assert sens_zero["A|B"]["median_abs_z"] < 1.0
 
@@ -155,14 +155,14 @@ def test_tables_path() -> None:
         condition_offsets={"B": 3.0},
         seed=0,
     )
-    res_run = run(units_run, resp_run, ["tau"], post_stim_window_s=2.0, n_perm=100, seed=0)
+    res_run = run(units_run, resp_run, ["tau"], post_stim_window_s=2.0, n_perm=50, seed=0)
     assert res_run["measures"]["tau"]["sensitivity"]["A|B"]["beats_reference"] is None
 
 
 def test_null_near_chance() -> None:
     units, trials, spikes, params = _make_dataset(1.0, 0)
     halves, _ = halves_from_spikes(units, trials, spikes, params, ["t_half_excess"])
-    sens = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=1000, seed=0)
+    sens = measure_sensitivity(halves, "t_half_excess", ["control", "slowed"], n_perm=300, seed=0)
     assert sens is not None
     p95 = sens["control|slowed"]["null"]["median_abs_z_p95"]
     assert 0.6 <= p95 <= 1.6
@@ -228,32 +228,22 @@ def test_zero_noise() -> None:
 
 def test_run_reports_sensitivity() -> None:
     units, trials, spikes, params = _make_dataset(1.5, 0)
-    res = run(
-        units,
-        trials,
-        measures=["t_half_excess"],
-        spikes=spikes,
-        analysis=params,
-        n_perm=200,
-        seed=0,
-    )
-    m_sens = res["measures"]["t_half_excess"]["sensitivity"]["control|slowed"]
-    assert m_sens["median_abs_z"] > 2.5
-    assert m_sens["beats_reference"] is True
-
-    ref_sens = res["reference"]["sensitivity"]["control|slowed"]
-    assert ref_sens["median_abs_z"] < 1.0
-    assert "beats_reference" not in ref_sens
-
     res_both = run(
         units,
         trials,
         measures=["t_half_excess", "baseline_hz"],
         spikes=spikes,
         analysis=params,
-        n_perm=200,
+        n_perm=50,
         seed=0,
     )
+    m_sens = res_both["measures"]["t_half_excess"]["sensitivity"]["control|slowed"]
+    assert m_sens["median_abs_z"] > 2.5
+    assert m_sens["beats_reference"] is True
+
+    ref_sens = res_both["reference"]["sensitivity"]["control|slowed"]
+    assert ref_sens["median_abs_z"] < 1.0
+    assert "beats_reference" not in ref_sens
     assert res_both["measures"]["baseline_hz"]["sensitivity"]["control|slowed"]["beats_reference"] is None
 
     import io

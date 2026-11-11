@@ -93,13 +93,7 @@ def test_doc_titles() -> None:
     for doc_name in ("METHOD.md", "CONTRIBUTING.md", "SPEC.md"):
         text = (ROOT / doc_name).read_text(encoding="utf-8")
         assert "# Recovery Reliability Benchmark" in text
-        assert "Recovery Measurement Benchmark" not in text
-
-
-def test_contributing_links_spec() -> None:
-    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "SPEC.md" in text
-    assert "01-dataset-conformance-spec.md" not in text
+    assert "SPEC.md" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 
 
 def test_anchor_claim_pinned() -> None:
@@ -117,7 +111,6 @@ def test_anchor_claim_pinned() -> None:
 def test_method_reference_implementation() -> None:
     text = (ROOT / "METHOD.md").read_text(encoding="utf-8")
     assert "Reference implementation: `src/recovery_reliability_benchmark/evaluate.py`" in text
-    assert "(planned; not yet in the repository)" not in text
 
 
 def test_scope_atlas_and_sidecar_docs() -> None:

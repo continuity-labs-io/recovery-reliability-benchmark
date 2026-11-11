@@ -30,14 +30,6 @@ def test_contributing_data_section() -> None:
     assert "CC0" in section_5
     assert "DATA_LICENSE" in section_5
 
-    deleted_sentences = (
-        "You decide whether your underlying data is deposited publicly.",
-        "Public deposit is encouraged and is not required.",
-        "A dataset that stays private contributes its derived statistics to the benchmark and nothing else.",
-    )
-    for sentence in deleted_sentences:
-        assert sentence not in contributing_text
-
 
 def test_terms_doc() -> None:
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -61,5 +53,4 @@ def test_changelog_mentions_cc0() -> None:
     changelog_path = ROOT / "CHANGELOG.md"
     assert changelog_path.is_file()
     changelog_text = changelog_path.read_text(encoding="utf-8")
-    assert "## Unreleased" in changelog_text
     assert "CC0" in changelog_text

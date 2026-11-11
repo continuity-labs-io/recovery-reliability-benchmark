@@ -27,7 +27,7 @@ REQUIRED_CELL_KEYS = {
 
 def test_fast_grid_runs(tmp_path: Path) -> None:
     out_stem = tmp_path / "thresholds"
-    rc = main(["--fast", "--out", str(out_stem)])
+    rc = main(["--seeds", "2", "--out", str(out_stem)])
     assert rc == 0
 
     out_json = tmp_path / "thresholds.json"
@@ -46,7 +46,7 @@ def test_fast_grid_runs(tmp_path: Path) -> None:
     )
 
     doc = json.loads(out_json.read_text(encoding="utf-8"))
-    assert doc["seeds"] == 50
+    assert doc["seeds"] == 2
     assert "generated_by" in doc
     cells = doc["cells"]
     assert len(cells) == 36

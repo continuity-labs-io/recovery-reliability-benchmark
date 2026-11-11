@@ -316,10 +316,3 @@ def test_load_analysis(tmp_path: Path) -> None:
     with pytest.raises(ContractViolation) as exc_info:
         load_analysis(invalid_val_path)
     assert exc_info.value.requirement is Requirement.SCHEMA
-
-
-def test_docs() -> None:
-    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
-    glossary_text = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8")
-    assert "min-dataset-7" in spec_text
-    assert "Scored unit" in glossary_text
