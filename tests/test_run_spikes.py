@@ -262,6 +262,21 @@ def test_md7_from_run() -> None:
     assert exc_info.value.requirement is Requirement.MD7
 
 
+@pytest.mark.parametrize(("isi_s", "accepted"), [(2.0, False), (2.5, False), (2.9, False), (3.0, True)])
+def test_md7_spacing_from_run(isi_s: float, accepted: bool) -> None:
+    taus = np.geomspace(0.05, 0.5, 10)
+    units, trials, spikes, params = _build_spike_dataset(taus, n_trials=10, isi_s=isi_s, seed=0)
+    if accepted:
+        res = run(units, trials, measures=["t_half_excess"], spikes=spikes, analysis=params, n_perm=20)
+        assert res["status"] == "ok"
+        return
+    with pytest.raises(ContractViolation) as exc_info:
+        run(units, trials, measures=["t_half_excess"], spikes=spikes, analysis=params, n_perm=20)
+    assert exc_info.value.requirement is Requirement.MD7
+    assert exc_info.value.found == pytest.approx(isi_s - 2.0)
+    assert exc_info.value.required == 1.0
+
+
 def test_md3_scored_from_run() -> None:
     taus = np.geomspace(0.05, 0.5, 6)
     units, trials, spikes, params = _build_spike_dataset(taus, n_trials=10, isi_s=5.0, seed=0, silent_units=4)

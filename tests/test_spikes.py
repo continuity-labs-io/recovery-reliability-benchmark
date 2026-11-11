@@ -222,17 +222,49 @@ def test_pre_window_violations() -> None:
 
     trials_tight_gap = trials_ok.copy()
     prev_onset_s = trials_tight_gap.loc[6, "stim_time_ns"] / 1e9
-    trials_tight_gap.loc[7, "stim_time_ns"] = int(round((prev_onset_s + 1.0 + 0.8) * 1e9))
+    trials_tight_gap.loc[7, "stim_time_ns"] = int(round((prev_onset_s + 1.0 + 2.0 + 0.8) * 1e9))
     with pytest.raises(ContractViolation) as exc_info:
         check_pre_stimulus_window(trials_tight_gap, params_1s, load_duration_s=1.0)
     assert exc_info.value.requirement is Requirement.MD7
     assert "Trial 7" in exc_info.value.message
+    assert exc_info.value.found == pytest.approx(0.8)
+    assert exc_info.value.required == 1.0
     assert (
         exc_info.value.message
-        == "Trial 7 has 0.800 s between the previous load end and its onset, requires 1.0 s."
+        == "Trial 7 has 0.800 s between the end of the previous post-stimulus window and its onset (gap 3.800 s minus load 1.000 s minus post-stimulus window 2.000 s), requires 1.0 s."
     )
 
     check_pre_stimulus_window(trials_ok, params_1s, load_duration_s=1.0)
+
+
+@pytest.mark.parametrize(
+    "first_onset_ns", [1_000_000_000, 1_100_000_000, 4_700_000_001, 1_762_800_000_123_456_789]
+)
+def test_pre_window_spacing_boundary(first_onset_ns: int) -> None:
+    params = AnalysisParams(post_stim_window_s=2.0)
+
+    def trials_spaced(gap_ns: int) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "trial_index": list(range(10)),
+                "stim_time_ns": [first_onset_ns + k * gap_ns for k in range(10)],
+                "condition": "baseline",
+            }
+        )
+
+    check_pre_stimulus_window(trials_spaced(3_000_000_000), params)
+    with pytest.raises(ContractViolation) as exc_info:
+        check_pre_stimulus_window(trials_spaced(2_999_999_999), params)
+    assert exc_info.value.requirement is Requirement.MD7
+    assert (
+        "Trial 1 has 1.000 s between the end of the previous post-stimulus window" in exc_info.value.message
+    )
+    assert "(gap 3.000 s minus load 0.000 s minus post-stimulus window 2.000 s)" in exc_info.value.message
+
+    params_loaded = AnalysisParams(post_stim_window_s=2.0, load_duration_s=0.3)
+    check_pre_stimulus_window(trials_spaced(3_300_000_000), params_loaded)
+    with pytest.raises(ContractViolation):
+        check_pre_stimulus_window(trials_spaced(3_299_999_999), params_loaded)
 
 
 def test_check_scored_units_md3() -> None:

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-11-10
 
+- Frozen: check_pre_stimulus_window requires the pre-stimulus window to start after the previous trial's post-stimulus window (onsets at least load + post + pre apart).
 - Frozen: SPEC_VERSION 1.0 -> 1.1
 - Frozen: analysis.py (`AnalysisParams.to_dict`, `AnalysisParams.fingerprint`, `AnalysisParams.effective_edges`, `DEFAULT_ANALYSIS_FINGERPRINT_2S`) joined the frozen layer at 0.2.0.
 - Frozen: measures.py (`trial_latencies`, `pre_counts`, `baseline_hz`, `baseline_variance_hz2`, `bin_counts`, `psth_rate`, `recovery_measures`, `unit_measures`) joined the frozen layer at 0.2.0.

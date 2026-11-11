@@ -60,7 +60,7 @@
     },
     "recovery_reliability_benchmark.checks_spikes.check_pre_stimulus_window": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks_spikes.check_pre_stimulus_window.txt",
-      "sha256": "7b47339a82ee5a2328a9d79aa0d1f787305c87a844b5449d407932e8d864dcfa"
+      "sha256": "cdaed8055dcd8de5253ab519863273d003b408a36e7b7b137e37237151b46727"
     },
     "recovery_reliability_benchmark.checks_spikes.check_scored_units": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.checks_spikes.check_scored_units.txt",

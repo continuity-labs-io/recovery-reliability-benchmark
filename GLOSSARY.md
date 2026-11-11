@@ -202,7 +202,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Minimum dataset requirements (min-dataset-1 to min-dataset-6).** The six requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6). SPEC §4; `Requirement` enum.
 
-**Pre-stimulus window (`min-dataset-7`).** Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s (`contract.MD7_MUST`), fits before the first onset on the recording clock, and fits between every previous load end and the next onset (`checks_spikes.check_pre_stimulus_window`). SPEC min-dataset-7; `contract.Requirement.MD7`.
+**Pre-stimulus window (`min-dataset-7`).** Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s (`contract.MD7_MUST`), fits before the first onset on the recording clock, and starts at or after the end of every previous trial's post-stimulus window, so consecutive stimulus onsets are at least `load_duration_s + post_stim_window_s + pre_stim_window_s` apart (3.0 s plus load duration at the defaults; `checks_spikes.check_pre_stimulus_window`). SPEC min-dataset-7; `contract.Requirement.MD7`.
 
 **MUST, SHOULD, MAY.** RFC 2119 words. MUST thresholds are admission floors: below them the computation is undefined. SHOULD thresholds are where the estimate becomes precise enough to act on. SPEC header, §4.
 

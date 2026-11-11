@@ -24,7 +24,7 @@ That is the whole ask. If a dataset does not conform, there is nothing to discus
 
 ## Protocol advice
 
-- **2.0 s after and 1.0 s before each stimulus.** Record at least 2.0 s after every conditioning load ends (`min-dataset-6`) and leave at least 1.0 s of quiet before every stimulus onset (`min-dataset-7`), including before the first stimulus on the recording clock.
+- **2.0 s after and 1.0 s before each stimulus.** Record at least 2.0 s after every conditioning load ends (`min-dataset-6`) and leave at least 1.0 s of quiet before every stimulus onset (`min-dataset-7`), starting at or after the end of the previous trial's post-stimulus window (so stimulus onsets are at least 3.0 s apart plus the load duration) and including before the first stimulus on the recording clock.
 - **20 or more trials per condition.** Ten trials is the admission floor (`min-dataset-2`); 20 or more trials per condition are recommended, and weak or sparse firing benefits from 40.
 - **The same load on every trial.** Deliver the identical conditioning load on every trial within a condition. When multiple stimulation loads or compounds are run in the same session, give each regime its own condition label.
 - **The protocol recorded in `conditions.json`.** Encode the commanded `Protocol` (`protocol.py`) as actually delivered in `conditions.json`, alongside any compound, dose, and vehicle, so each condition carries a reproducible protocol fingerprint.
@@ -105,7 +105,7 @@ A submitted measure is a named function from the raw inputs (spike times, stimul
 
 ## Writing an adapter
 
-Before writing an adapter for a laboratory's recording format, check two things in the format description: at least 2.0 s of recording after each stimulus (`min-dataset-6`), and at least 8 units (`min-dataset-3`). Copy `scripts/adapter_template.py` and implement `load_recording(path)` returning `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock. An adapter contains no analysis: it extracts identifiers, spike timestamps, stimulus onsets, and condition labels and hands them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`, then prints the `rrb-check` and `rrb-report` commands to run locally.
+Before writing an adapter for a laboratory's recording format, check three things in the format description: at least 2.0 s of recording after each stimulus (`min-dataset-6`), at least 8 units (`min-dataset-3`), and at least 3.0 s between stimulus onsets, plus the load duration (`min-dataset-7`). Copy `scripts/adapter_template.py` and implement `load_recording(path)` returning `(unit_ids, spike_times_s, onsets_s, conditions)` in seconds on the recording clock. An adapter contains no analysis: it extracts identifiers, spike timestamps, stimulus onsets, and condition labels and hands them to `writer.write_dataset`, which writes `units.csv`, `trials_responses.csv`, `spikes.csv`, `analysis.json`, and optional `preparation.json` and `conditions.json`, then prints the `rrb-check` and `rrb-report` commands to run locally.
 
 ---
 

@@ -93,7 +93,7 @@ The dataset MUST provide per-trial data: exactly one row per unit and trial. One
 Each trial MUST carry at least 2.0 seconds of recording after stimulus onset. The submitter declares the analysis window. The declared window MUST be at least 2.0 s, and for every trial except the last it MUST fit before the next stimulus onset. The last trial has no following onset and is not checked. If the stimulus is a conditioning train of nonzero duration, the submitter MAY declare that duration; the window is then required after the train ends, which only tightens the check. This is the requirement that most often fails, because many stimulation protocols use short inter-stimulus intervals. A protocol truncating at 200 ms cannot resolve a seconds-scale return.
 
 **min-dataset-7 — Pre-stimulus window.**
-Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s, fits before the first onset on the recording clock, and fits between every previous load end and the next onset. The baseline is read from the pre-stimulus window, and with the 2 s post-stimulus requirement a 1 s pre-window always fits except before the first trial.
+Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s, fits before the first onset on the recording clock, and starts at or after the end of every previous trial's post-stimulus window (`load_duration_s + post_stim_window_s` after the previous onset). The baseline is read from `[onset - pre_stim_window_s, onset)` so it is clear of the preceding recovery window; with the defaults, stimulus onsets are at least 3.0 s apart plus the load duration.
 
 ---
 
@@ -319,7 +319,7 @@ Requirement IDs are stable across minor versions. Thresholds change only in a ma
 
 SPEC versions (`1.1`) and benchmark package versions (`0.2.0`) are distinct.
 
-**Version 1.1** (additions to 1.0): `min-dataset-7` (1.0 s pre-stimulus window before the first onset and between every previous load end and the next onset) and the spikes path (`--spikes` and `--analysis` with `analysis.json`, benchmark-computed PSTH and bin-free recovery measures plus the `baseline_hz` reference measure, per-measure unit scoring under `SPIKES_INCLUSION_RULE`, and the reference dataset writer `writer.write_dataset`).
+**Version 1.1** (additions to 1.0): `min-dataset-7` (1.0 s pre-stimulus window before the first onset and starting at or after the end of every previous post-stimulus window) and the spikes path (`--spikes` and `--analysis` with `analysis.json`, benchmark-computed PSTH and bin-free recovery measures plus the `baseline_hz` reference measure, per-measure unit scoring under `SPIKES_INCLUSION_RULE`, and the reference dataset writer `writer.write_dataset`).
 
 ---
 

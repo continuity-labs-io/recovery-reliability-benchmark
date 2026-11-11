@@ -73,7 +73,7 @@ _REQUIREMENT_DESCRIPTIONS: dict[Requirement, str] = {
     Requirement.MD4: "Stimulus timestamps. Onset time of every stimulus on the same clock as the responses, non-null, strictly increasing within a condition, one timestamp and one condition per trial_index across units.",
     Requirement.MD5: "Trial-level resolution. Exactly one row per (unit_id, trial_index); rows are trials, not summary statistics.",
     Requirement.MD6: "Post-stimulus window. At least 2.0 s of recording after each stimulus onset: the declared post_stim_window_s is at least 2.0 s and fits before the next onset (minus load_duration_s).",
-    Requirement.MD7: "Pre-stimulus window. Applies when measures are computed from spikes: the declared pre_stim_window_s is at least 1.0 s, fits before the first onset on the recording clock, and fits between every previous load end and the next onset.",
+    Requirement.MD7: "Pre-stimulus window. Applies when measures are computed from spikes: the declared pre_stim_window_s is at least 1.0 s, fits before the first onset on the recording clock, and fits between the end of every previous post-stimulus window and the next onset.",
 }
 
 

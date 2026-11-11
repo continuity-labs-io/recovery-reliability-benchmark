@@ -1,8 +1,9 @@
 """Template for converting one recording session into benchmark files.
 
-Read two things in a lab's format description before writing an adapter:
+Read three things in a lab's format description before writing an adapter:
 1. At least 2 s of recording after each stimulus (min-dataset-6).
 2. At least 8 units (min-dataset-3).
+3. At least 3 s between stimulus onsets, plus the load duration (min-dataset-7).
 
 By design, an adapter contains no analysis: it extracts unit IDs, spike timestamps,
 stimulus onsets, and condition labels on the recording clock in seconds, and hands

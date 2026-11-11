@@ -340,5 +340,6 @@ def test_readme_example_table_matches_two_conditions() -> None:
     recordings_section = _section_text(readme_text, "## Run it on your recordings")
     assert f"{MD6_MUST:.1f} s of recording after each stimulus" in recordings_section
     assert f"{MD7_MUST:.1f} s of quiet before each stimulus" in recordings_section
+    assert f"at least {MD6_MUST + MD7_MUST:.1f} s apart" in recordings_section
     assert f"{MD2_SHOULD} trials per condition recommended ({MD2_MUST} minimum" in recordings_section
     assert f"{MD3_SHOULD} units recommended ({MD3_MUST} minimum" in recordings_section
