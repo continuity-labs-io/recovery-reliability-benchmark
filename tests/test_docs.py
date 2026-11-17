@@ -404,3 +404,55 @@ def test_spec_separates_conformance_from_contribution() -> None:
         spikes=None,
     )
     assert report["conformance"] == "fully_conforming"
+
+
+def test_contributor_contact_and_project_metadata() -> None:
+    for doc_name in ("CONTRIBUTING.md", "CITATION.cff", "README.md"):
+        text = (ROOT / doc_name).read_text(encoding="utf-8")
+        assert "ryan@continuitylabs.io" in text, f"{doc_name} is missing contact email"
+
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert {"name": "Ryan J. McCall", "email": "ryan@continuitylabs.io"} in pyproject["authors"]
+    assert pyproject["urls"] == {
+        "Homepage": "https://continuitylabs.io",
+        "Repository": "https://github.com/continuity-labs-io/recovery-reliability-benchmark",
+        "Issues": "https://github.com/continuity-labs-io/recovery-reliability-benchmark/issues",
+    }
+
+
+def test_requirement_count_wording() -> None:
+    for rel_path in (
+        Path("SPEC.md"),
+        Path("GLOSSARY.md"),
+        Path("src/recovery_reliability_benchmark/contract.py"),
+    ):
+        text = (ROOT / rel_path).read_text(encoding="utf-8")
+        assert "six requirements" not in text, f"{rel_path} still contains 'six requirements'"
+        assert "six SPEC.md requirements" not in text, f"{rel_path} still contains 'six SPEC.md requirements'"
+
+    spec_text = (ROOT / "SPEC.md").read_text(encoding="utf-8")
+    assert "All six MUST conditions" not in spec_text
+    assert "(min-dataset-1 through min-dataset-6, plus min-dataset-7 on the spikes path)" in spec_text
+    assert "(min-dataset-1 through min-dataset-6, plus min-dataset-7 on the spikes path)" in (
+        ROOT / "METHOD.md"
+    ).read_text(encoding="utf-8")
+    assert "**Minimum dataset requirements (min-dataset-1 to min-dataset-7).**" in (
+        ROOT / "GLOSSARY.md"
+    ).read_text(encoding="utf-8")
+    assert "not one of the minimum dataset requirements." in Requirement.SCHEMA.description
+
+
+def test_readme_example_labeled_simulated() -> None:
+    example_section = _section_text((ROOT / "README.md").read_text(encoding="utf-8"), "## Run the example")
+    assert "\n| " in example_section
+    before_table = example_section.split("\n| ", maxsplit=1)[0]
+    assert "simulated" in before_table
+    assert "No real stimulation recording has been scored yet" in example_section
+
+
+def test_glossary_contract_violation_section_reference() -> None:
+    glossary_lines = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8").splitlines()
+    matches = [line for line in glossary_lines if line.startswith("**ContractViolation.**")]
+    assert len(matches) == 1
+    assert "SPEC §14" in matches[0]
+    assert "SPEC §11" not in matches[0]

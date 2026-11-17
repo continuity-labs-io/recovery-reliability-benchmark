@@ -44,7 +44,7 @@ When measures are computed from spike times (`--spikes` and `--analysis`), the t
 
 ## 3. Procedure
 
-Input: a conforming dataset (min-dataset-1 through min-dataset-6), one or more measure columns, and the evaluated conditions identified by `validate()`.
+Input: a conforming dataset (min-dataset-1 through min-dataset-6, plus min-dataset-7 on the spikes path), one or more measure columns, and the evaluated conditions identified by `validate()`.
 
 **Step 1. Partition.** Within each `(unit_id, condition)` group in the evaluated conditions, sort trials by `trial_index` and assign 1-based positions `1, 2, 3, ...` within the group (not by global `trial_index` parity, which can leave one half empty when conditions are interleaved or trials are excluded).
 

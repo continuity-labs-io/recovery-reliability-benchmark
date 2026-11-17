@@ -7,6 +7,8 @@ import importlib
 import re
 from pathlib import Path
 
+from recovery_reliability_benchmark.report import REPORT_FILE_NAMES
+
 ROOT = Path(__file__).resolve().parent.parent
 PKG_DIR = ROOT / "src" / "recovery_reliability_benchmark"
 
@@ -133,6 +135,25 @@ def test_glossary_symbols_resolve() -> None:
             unresolved.append(raw_token)
     assert checked > 0
     assert not unresolved, "Unresolved GLOSSARY.md code symbols:\n" + "\n".join(unresolved)
+
+
+def test_glossary_markdown_paths_exist() -> None:
+    glossary_text = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8")
+    tokens = re.findall(r"`([^`]+)`", glossary_text)
+    missing: list[str] = []
+    checked = 0
+    for raw_token in tokens:
+        cleaned = raw_token.strip()
+        if not cleaned.endswith(".md"):
+            continue
+        if cleaned in REPORT_FILE_NAMES:
+            continue
+        checked += 1
+        candidate = (ROOT / cleaned).resolve()
+        if not (candidate.is_relative_to(ROOT) and candidate.is_file()):
+            missing.append(raw_token)
+    assert checked > 0
+    assert not missing, "Missing GLOSSARY.md markdown paths:\n" + "\n".join(missing)
 
 
 def test_no_ab_half_names() -> None:

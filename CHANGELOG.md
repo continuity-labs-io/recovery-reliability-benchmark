@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- README labels the example dataset and its results table as simulated; GLOSSARY ContractViolation entry cites SPEC §14.
+- Documentation and metadata cleanup: add contributor contact email and project URLs, remove a stray local path from GLOSSARY.md, and align requirement-count wording with SPEC v1.1.
 - Zenodo v0.2.0 DOI recorded (10.5281/zenodo.24143857); release checklist added to AGENTS.md.
 
 ## [0.2.0] - 2026-11-11

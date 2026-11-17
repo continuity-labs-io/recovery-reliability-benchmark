@@ -66,7 +66,7 @@ class Requirement(StrEnum):
 
 
 _REQUIREMENT_DESCRIPTIONS: dict[Requirement, str] = {
-    Requirement.SCHEMA: "Input tables are well-formed: required columns present, measures numeric and allowed, unit_id unique, no responses rows for unknown units. A property of the CSV container, not of the dataset; not one of the six SPEC.md requirements.",
+    Requirement.SCHEMA: "Input tables are well-formed: required columns present, measures numeric and allowed, unit_id unique, no responses rows for unknown units. A property of the CSV container, not of the dataset; not one of the minimum dataset requirements.",
     Requirement.MD1: "Single session. Exactly one preparation_id, one session_id and one recording_id (a session is one continuous acquisition, so a second recording is a second session).",
     Requirement.MD2: "Repeated trials. At least 10 trials of at least one condition; SHOULD 20. Below 10 the two halves are too short for the correlation to be stable.",
     Requirement.MD3: "Multiple recording units. At least 8 units active in every trial of the evaluated condition; SHOULD 30. A unit is active in a trial when it has a row for it with every measure non-null.",

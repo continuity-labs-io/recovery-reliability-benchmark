@@ -101,7 +101,7 @@ Applies when measures are computed from spikes: the declared `pre_stim_window_s`
 
 Levels are evaluated per condition.
 
-**Conforming.** All six MUST conditions hold for at least one condition. The dataset supports the computation.
+**Conforming.** All applicable MUST requirements (min-dataset-1 through min-dataset-6, plus min-dataset-7 on the spikes path) hold for at least one condition. The dataset supports the computation.
 
 **Fully conforming.** All MUST and all SHOULD conditions hold for at least one condition. The simulated 95% interval of the estimate narrows from [0.00, 0.95] at the MUST thresholds to [0.67, 0.92] at the SHOULD thresholds (single-trial reliability 0.2); see docs/thresholds.md.
 
@@ -163,7 +163,7 @@ A measure MUST be a column of `responses.csv` other than the four required colum
 
 Identifiers are compared as strings. A unit that appears in `responses.csv` MUST appear in `units.csv`.
 
-These rules are checks on the container, reported under the name SCHEMA. They are not among the six requirements.
+These rules are checks on the container, reported under the name SCHEMA. They are not among the minimum dataset requirements.
 
 **Evaluating from spikes.** When `rrb-check`, `rrb-evaluate`, or `rrb-report` is invoked with `--spikes` and `--analysis`, `responses.csv` carries the trial columns (`trial_index`, `stim_time_ns`, `condition`), any measure columns in `responses.csv` are ignored, the benchmark computes the requested measures per half from `spikes.csv` under `analysis.json`, and `min-dataset-7` applies. The three tables are checked before any spike is counted: required columns and nulls under SCHEMA, then the stimulus timeline under `min-dataset-4` and `min-dataset-6`, with the same messages as the tables path. A dataset with no spike inside any post-stimulus window is rejected under SCHEMA, with a note to check that `spike_time_ns` and `stim_time_ns` are integer nanoseconds on the same clock.
 

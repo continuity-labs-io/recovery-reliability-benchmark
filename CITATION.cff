@@ -5,6 +5,7 @@ authors:
   - family-names: McCall
     given-names: Ryan J.
     affiliation: Continuity Labs
+    email: ryan@continuitylabs.io
 version: 0.2.0
 doi: 10.5281/zenodo.24020731
 identifiers:

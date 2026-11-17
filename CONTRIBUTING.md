@@ -130,7 +130,7 @@ The functions and constants implementing `METHOD.md` and `SPEC.md` form the froz
 
 Run the conformance check locally. If it passes, get in touch. If it fails, the error names the requirement and the shortfall, and that information is useful to you regardless of whether you contribute.
 
-Ryan J. McCall, Continuity Labs.
+Ryan J. McCall, Continuity Labs — ryan@continuitylabs.io (or open an issue on GitHub with questions before sending data).
 
 ---
 

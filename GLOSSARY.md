@@ -202,7 +202,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Conformance check.** Running `rrb-check` on `units.csv` and `responses.csv` (and `--spikes` and `--analysis` on the spikes path). Produces a verdict and counts, or the first violation. Runs locally; nothing leaves the machine. SPEC §14.
 
-**Minimum dataset requirements (min-dataset-1 to min-dataset-6).** The six requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6). SPEC §4; `Requirement` enum.
+**Minimum dataset requirements (min-dataset-1 to min-dataset-7).** The requirements a dataset MUST meet: one preparation/session/recording (min-dataset-1), enough trials (min-dataset-2), enough active units (min-dataset-3), consistent stimulus timestamps (min-dataset-4), one row per unit and trial (min-dataset-5), enough recording after each stimulus (min-dataset-6), and, on the spikes path, enough quiet before each stimulus (min-dataset-7). SPEC §4; `Requirement` enum.
 
 **Pre-stimulus window (`min-dataset-7`).** Applies when measures are computed from spikes: the declared `pre_stim_window_s` is at least 1.0 s (`contract.MD7_MUST`), fits before the first onset on the recording clock, and starts at or after the end of every previous trial's post-stimulus window, so consecutive stimulus onsets are at least `load_duration_s + post_stim_window_s + pre_stim_window_s` apart (3.0 s plus load duration at the defaults; `checks_spikes.check_pre_stimulus_window`). SPEC min-dataset-7; `contract.Requirement.MD7`.
 
@@ -214,13 +214,13 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Best condition.** Among evaluated conditions, the one missing the fewest SHOULD thresholds (ties: more active units, then more trials, then name). Determines the dataset's conformance level and the per-condition headline.
 
-**SCHEMA checks.** Checks on the container rather than the dataset: required columns present, measures numeric and allowed, `unit_id` unique, no orphan rows, sidecars consistent. Reported under the name SCHEMA; not one of the six requirements. SPEC §9.
+**SCHEMA checks.** Checks on the container rather than the dataset: required columns present, measures numeric and allowed, `unit_id` unique, no orphan rows, sidecars consistent. Reported under the name SCHEMA; not one of the minimum dataset requirements. SPEC §9.
 
 **Check registry (`checks.CHECKS`).** The ordered tuple of `(Requirement, name, check_fn)` entries that `contract.validate` runs from top to bottom, stopping at the first `ContractViolation`. Schema checks run before `min-dataset-1` through `min-dataset-6`; adding a requirement means adding a check function and a registry entry in `checks.py`.
 
 **Validation context (`contract.ValidationContext`).** The dataclass holding working copies of the input tables, declared parameters, optional sidecars, and intermediate derived state (`conditions_info`, `trials`, `gaps_s`) that each check in `checks.CHECKS` reads and populates before `contract.build_report` assembles the conformance report.
 
-**ContractViolation.** The exception (and CLI exit code 1) raised on the first failed check, naming the requirement, the value found and the value required. SPEC §11; `contract.ContractViolation`.
+**ContractViolation.** The exception (and CLI exit code 1) raised on the first failed check, naming the requirement, the value found and the value required. SPEC §14; `contract.ContractViolation`.
 
 **Optional data (optional-dataset-1 to optional-dataset-5).** Items that add value without being required: multiple amplitudes, repeated sessions, both polarities, preparation metadata, raw signal. SPEC §7.
 
@@ -286,7 +286,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Surrogate endpoint.** A measurable stand-in for an outcome that is slow or hard to observe directly. The long-term aim is for a recovery measure to serve as a surrogate for the effect of an intervention: a measure whose change under a treatment tracks the treatment's effect on function and, in model organisms, on lifespan. Reliability is a precondition for that use, not evidence of it.
 
-**Pharmacology screening (safety pharmacology, neurotoxicity screening).** Testing compounds on cultured tissue for adverse functional effects. Current MEA endpoints are statistics of spontaneous activity (firing rate, bursts, synchrony, field potential duration); recovery after a standardized load is not among them. `claude/assay-landscape.md`.
+**Pharmacology screening (safety pharmacology, neurotoxicity screening).** Testing compounds on cultured tissue for adverse functional effects. Current MEA endpoints are statistics of spontaneous activity (firing rate, bursts, synchrony, field potential duration); recovery after a standardized load is not among them.
 
 **Tissue release testing (release criteria, potency assay).** The tests a manufactured tissue product must pass before it is released for use: identity, purity, viability, sterility and a product-specific potency assay. Functional, non-destructive release criteria are rare. The second half of the anchor claim.
 

@@ -11,9 +11,14 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSE-DOCS"]
 authors = [
-    { name = "Ryan J. McCall" },
+    { name = "Ryan J. McCall", email = "ryan@continuitylabs.io" },
 ]
 dependencies = ["numpy>=1.24", "pandas>=2.0", "pydantic>=2.0", "scipy>=1.10"]
+
+[project.urls]
+Homepage = "https://continuitylabs.io"
+Repository = "https://github.com/continuity-labs-io/recovery-reliability-benchmark"
+Issues = "https://github.com/continuity-labs-io/recovery-reliability-benchmark/issues"
 
 [project.optional-dependencies]
 report = ["matplotlib>=3.7"]
