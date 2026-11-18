@@ -73,6 +73,7 @@ Reliability is not validity: a high within-session ceiling shows that a measure 
 - [FROZEN](frozen/README.md) — Frozen-layer manifest, AST snapshots, and change governance.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Dataset contribution workflow, adapter guide, CC0 data licensing, and withdrawal terms.
 - [docs/terms.md](docs/terms.md) — Maintainer position, paid-engagement derived-data clause, and archive governance.
+- [docs/pass_rule.md](docs/pass_rule.md) — Pre-registered replication plan and pass rule for the first stimulated recordings.
 
 ## Citing
 
@@ -84,4 +85,4 @@ Every release is archived on Zenodo. Cite the version you used. The version DOI 
 
 Copyright 2026 Continuity Labs / Ryan J. McCall.
 
-Unless otherwise noted, all code, tests, and configuration in this repository (including `src/` and `tests/`) are licensed under the Apache License, Version 2.0; see [LICENSE](LICENSE). The specification and documentation files ([README.md](README.md), [SPEC.md](SPEC.md), [CONTRIBUTING.md](CONTRIBUTING.md), [METHOD.md](METHOD.md), [GLOSSARY.md](GLOSSARY.md), [frozen/README.md](frozen/README.md), and [docs/terms.md](docs/terms.md)) are licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS). Contributed datasets are released under CC0 1.0; see DATA_LICENSE and CONTRIBUTING.md §5. Continuity Labs' position as maintainer is in docs/terms.md.
+Unless otherwise noted, all code, tests, and configuration in this repository (including `src/` and `tests/`) are licensed under the Apache License, Version 2.0; see [LICENSE](LICENSE). The specification and documentation files ([README.md](README.md), [SPEC.md](SPEC.md), [CONTRIBUTING.md](CONTRIBUTING.md), [METHOD.md](METHOD.md), [GLOSSARY.md](GLOSSARY.md), [frozen/README.md](frozen/README.md), [docs/terms.md](docs/terms.md), and [docs/pass_rule.md](docs/pass_rule.md)) are licensed under CC BY 4.0; see [LICENSE-DOCS](LICENSE-DOCS). Contributed datasets are released under CC0 1.0; see DATA_LICENSE and CONTRIBUTING.md §5. Continuity Labs' position as maintainer is in docs/terms.md.

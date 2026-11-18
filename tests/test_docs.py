@@ -456,3 +456,25 @@ def test_glossary_contract_violation_section_reference() -> None:
     assert len(matches) == 1
     assert "SPEC §14" in matches[0]
     assert "SPEC §11" not in matches[0]
+
+
+def test_pass_rule_doc() -> None:
+    pass_rule_path = ROOT / "docs" / "pass_rule.md"
+    assert pass_rule_path.is_file()
+    text = pass_rule_path.read_text(encoding="utf-8")
+    assert "LICENSE-DOCS" in text
+    for phrase in ("Plan version 1", "at least 0.70", "at least 0.50"):
+        assert phrase in text
+    for row in ("| 6 | 6 |", "| 7 | 7 |", "| 8 | 8 |", "| 9 | 8 |"):
+        assert row in text
+
+    pkg_sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "src" / "recovery_reliability_benchmark").rglob("*.py"))
+    )
+    for field_name in ("above_null", "beats_reference"):
+        assert f"`{field_name}`" in text
+        assert field_name in pkg_sources
+
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert readme_text.count("docs/pass_rule.md") >= 2
