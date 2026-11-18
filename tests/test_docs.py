@@ -222,11 +222,13 @@ def test_zenodo_doi_recorded() -> None:
     assert "10.5281/zenodo.24143857" in readme_text
 
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    assert version == "0.2.1"
     cite_lines = [line for line in readme_text.splitlines() if line.startswith("> McCall")]
     assert len(cite_lines) == 1
     assert f"(v{version})" in cite_lines[0]
-    assert "https://doi.org/10.5281/zenodo.24143857" in cite_lines[0]
+    assert "https://doi.org/10.5281/zenodo.24020731" in cite_lines[0]
     assert "10.5281/zenodo.24020732" not in cite_lines[0]
+    assert "10.5281/zenodo.24143857" not in cite_lines[0]
 
     agents_text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     assert "## Releasing" in agents_text

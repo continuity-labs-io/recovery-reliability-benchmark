@@ -79,7 +79,7 @@ Reliability is not validity: a high within-session ceiling shows that a measure 
 
 Every release is archived on Zenodo. Cite the version you used. The version DOI for v0.2.0 is [10.5281/zenodo.24143857](https://doi.org/10.5281/zenodo.24143857) (v0.1.0: [10.5281/zenodo.24020732](https://doi.org/10.5281/zenodo.24020732)); [10.5281/zenodo.24020731](https://doi.org/10.5281/zenodo.24020731) always resolves to the latest release. Citation metadata is in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button renders it.
 
-> McCall, R. J. (2026). Recovery Reliability Benchmark (v0.2.0). Continuity Labs. https://doi.org/10.5281/zenodo.24143857
+> McCall, R. J. (2026). Recovery Reliability Benchmark (v0.2.1). Continuity Labs. https://doi.org/10.5281/zenodo.24020731
 
 ## Licensing
 

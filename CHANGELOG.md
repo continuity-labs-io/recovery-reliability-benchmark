@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## [0.2.1] - 2026-11-18
+
+Scope of this release: documentation only. Adds the pre-registered replication plan and pass rule (docs/pass_rule.md). The frozen layer is unchanged from 0.2.0.
+
 - docs/pass_rule.md: pre-registered replication plan and pass rule (plan version 1), posted before any stimulated recording is scored.
 - README labels the example dataset and its results table as simulated; GLOSSARY ContractViolation entry cites SPEC §14.
 - Documentation and metadata cleanup: add contributor contact email and project URLs, remove a stray local path from GLOSSARY.md, and align requirement-count wording with SPEC v1.1.
