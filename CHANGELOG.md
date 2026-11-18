@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Zenodo v0.2.1 DOI recorded (10.5281/zenodo.24352999); automated release workflow skill added (`.agents/skills/release/`).
+
 ## [0.2.1] - 2026-11-18
 
 Scope of this release: documentation only. Adds the pre-registered replication plan and pass rule (docs/pass_rule.md). The frozen layer is unchanged from 0.2.0.
