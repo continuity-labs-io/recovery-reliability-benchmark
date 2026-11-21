@@ -294,7 +294,7 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Resilience (stress-and-recover).** In aging research, the capacity to return to baseline after a perturbation; measured in animals as recovery time after a challenge. The benchmark is the tissue-level, in-vitro version of that measurement, with reliability established first.
 
-**Anchor claim.** "Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported." README; SPEC §1.
+**Anchor claim.** "Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology, and ion-channel pharmacology measures recovery from inactivation in cell lines engineered to express one channel. At the tissue level they are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported." README; SPEC §1.
 
 **Restitution (cardiac).** The dependence of action potential duration on the preceding diastolic interval after a conditioning drive; the nearest established recovery-kinetics measurement in cardiac electrophysiology. A research measurement, not a screening endpoint as far as found.
 

@@ -99,13 +99,22 @@ def test_doc_titles() -> None:
 def test_anchor_claim_pinned() -> None:
     anchor_claim = (
         "Recovery kinetics after a conditioning load are an established mechanistic "
-        "measurement in synaptic and cardiac physiology. They are not used as an "
-        "endpoint in pharmacology screening or tissue release testing, and their "
-        "per-unit reliability has not been reported."
+        "measurement in synaptic and cardiac physiology, and ion-channel pharmacology "
+        "measures recovery from inactivation in cell lines engineered to express one "
+        "channel. At the tissue level they are not used as an endpoint in pharmacology "
+        "screening or tissue release testing, and their per-unit reliability has not "
+        "been reported."
     )
-    for doc_name in ("README.md", "SPEC.md"):
+    old_sentence = "They are not used as an endpoint in pharmacology screening"
+    for doc_name in ("README.md", "SPEC.md", "GLOSSARY.md"):
         text = (ROOT / doc_name).read_text(encoding="utf-8")
         assert anchor_claim in text
+        assert old_sentence not in text
+        assert old_sentence not in " ".join(text.split())
+
+    cff_normalized = " ".join((ROOT / "CITATION.cff").read_text(encoding="utf-8").split())
+    assert anchor_claim in cff_normalized
+    assert old_sentence not in cff_normalized
 
 
 def test_method_reference_implementation() -> None:

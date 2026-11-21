@@ -4,7 +4,7 @@
 
 A public benchmark testing whether recovery kinetics after a standardized conditioning load are reliable enough to serve as a functional endpoint. The computation is fixed while every laboratory brings its own recordings, and conforming datasets contribute rows keyed by (protocol fingerprint, condition, preparation) to a public atlas.
 
-Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported.
+Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology, and ion-channel pharmacology measures recovery from inactivation in cell lines engineered to express one channel. At the tissue level they are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported.
 
 ## Run the example
 

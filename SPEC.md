@@ -18,7 +18,7 @@ Version 0.x of the benchmark covers neural preparations: dissociated cultures, o
 
 ## 1. What the benchmark asks
 
-Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology. They are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported. If you know of a counterexample, open an issue. The claim is meant to be checked.
+Recovery kinetics after a conditioning load are an established mechanistic measurement in synaptic and cardiac physiology, and ion-channel pharmacology measures recovery from inactivation in cell lines engineered to express one channel. At the tissue level they are not used as an endpoint in pharmacology screening or tissue release testing, and their per-unit reliability has not been reported. If you know of a counterexample, open an issue. The claim is meant to be checked.
 
 The benchmark asks whether they can be. The first question, which gates every other one, is whether a recovery measure is reliable enough to distinguish a preparation from a repeat of itself.
 

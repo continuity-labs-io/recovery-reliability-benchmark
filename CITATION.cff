@@ -26,8 +26,10 @@ repository-code: https://github.com/continuity-labs-io/recovery-reliability-benc
 license: Apache-2.0
 abstract: >-
   Recovery kinetics after a conditioning load are an established mechanistic
-  measurement in synaptic and cardiac physiology. They are not used as an
-  endpoint in pharmacology screening or tissue release testing, and their
-  per-unit reliability has not been reported. This repository holds the
-  conformance specification, its reference checker, a stimulation-protocol
-  schema, and the reliability-ceiling computation.
+  measurement in synaptic and cardiac physiology, and ion-channel pharmacology
+  measures recovery from inactivation in cell lines engineered to express one
+  channel. At the tissue level they are not used as an endpoint in
+  pharmacology screening or tissue release testing, and their per-unit
+  reliability has not been reported. This repository holds the conformance
+  specification, its reference checker, a stimulation-protocol schema, and the
+  reliability-ceiling computation.

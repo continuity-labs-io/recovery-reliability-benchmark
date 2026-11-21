@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Anchor claim narrowed to the tissue level (README, SPEC §1, GLOSSARY, CITATION.cff). Ion-channel pharmacology measures recovery from inactivation on automated patch clamp in recombinant cell lines (Lukacs et al. 2021, doi:10.3389/fphar.2021.738260), and FDA's recommended voltage protocols for cardiac ion channels include one for the kinetics of hERG block (2018, https://www.fda.gov/media/129686/download).
 - Zenodo v0.2.1 DOI recorded (10.5281/zenodo.24352999); automated release workflow skill added (`.agents/skills/release/`).
 
 ## [0.2.1] - 2026-11-18
