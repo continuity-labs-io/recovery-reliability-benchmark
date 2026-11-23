@@ -11,6 +11,10 @@ def _check_days_compatible(first: DayInputs, second: DayInputs) -> list[str]:
     sess_second = str(second.units['session_id'].iloc[0])
     if sess_first == sess_second:
         raise ValueError(f"Both days share session_id '{sess_first}'; across-day comparison requires distinct sessions.")
+    first_units = set(first.units['unit_id'].astype(str))
+    second_units = set(second.units['unit_id'].astype(str))
+    if not first_units & second_units:
+        raise ValueError(f'No unit_id appears on both days (first: {len(first_units)} units, second: {len(second_units)} units). Units are matched by unit_id, so both days must come from one sort.')
     if first.conditions is not None and second.conditions is not None:
         for label in sorted(set(first.conditions) & set(second.conditions)):
             c_first, c_second = (first.conditions[label].fingerprint, second.conditions[label].fingerprint)

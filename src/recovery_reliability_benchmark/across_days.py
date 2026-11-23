@@ -13,13 +13,12 @@ import pandas as pd
 
 from . import controls
 from .analysis import AnalysisParams
-from .contract import ContractViolation
+from .contract import ID_COLUMNS
 from .evaluate import reliability_ceiling
 from .frozen import frozen
 from .inputs import EvaluationInputs, from_spikes
-from .metadata import Condition, Preparation, load_conditions, load_preparation
+from .metadata import Condition, Preparation, load_analysis, load_conditions, load_preparation
 from .spikes import MEASURE_KEYS
-from .writer import read_dataset
 
 
 @dataclass(frozen=True)
@@ -41,6 +40,15 @@ def _validate_measure_name(measure: str) -> None:
         raise ValueError(f"Unknown measure '{measure}'. Available measures: {', '.join(MEASURE_KEYS)}.")
 
 
+def _read_csv_checked(path: Path, dtypes: dict[str, str], int_reason: str | None = None) -> pd.DataFrame:
+    try:
+        return pd.read_csv(path, dtype=dtypes)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeError) as exc:
+        raise ValueError(f"{path}: {exc}") from exc
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{path}: {int_reason or exc}") from exc
+
+
 def load_day(directory: str | Path, measure: str) -> DayInputs:
     """Load and contract-check one spikes-path dataset directory for ``measure``.
 
@@ -53,32 +61,37 @@ def load_day(directory: str | Path, measure: str) -> DayInputs:
 
     Raises:
         FileNotFoundError: If ``directory`` or any required dataset file is missing.
-        ValueError: If ``measure`` is unknown or CSV integer columns cannot be decoded.
+        ValueError: If ``measure`` is unknown or a CSV file is empty, unparseable, or has
+            non-integer index/timestamp columns.
         ContractViolation: If the dataset fails any spikes-path contract requirement.
     """
     _validate_measure_name(measure)
     base = Path(directory)
     if not base.is_dir():
-        raise FileNotFoundError(f"Dataset directory not found: {base}")
+        raise FileNotFoundError(f"folder not found: {base}")
 
-    try:
-        units, trials, spikes, analysis = read_dataset(base)
-    except (
-        FileNotFoundError,
-        ContractViolation,
-        pd.errors.EmptyDataError,
-        pd.errors.ParserError,
-        UnicodeError,
-    ):
-        raise
-    except TypeError as exc:
-        raise ValueError(
-            f"{base}: trial_index, stim_time_ns, and spike_time_ns must be whole numbers."
-        ) from exc
+    units_path, trials_path = base / "units.csv", base / "trials_responses.csv"
+    spikes_path, analysis_path = base / "spikes.csv", base / "analysis.json"
+    for req_path in (units_path, trials_path, spikes_path, analysis_path):
+        if not req_path.is_file():
+            raise FileNotFoundError(f"missing file: {req_path}")
+    resp_dtypes = {"unit_id": str, "condition": str, "trial_index": "Int64", "stim_time_ns": "Int64"}
+    trials_err = "trial_index and stim_time_ns must be whole numbers (stim_time_ns in nanoseconds)."
+    spikes_err = "spike_time_ns must be whole numbers in nanoseconds."
+    units = _read_csv_checked(units_path, dict.fromkeys(ID_COLUMNS, str))
+    trials = _read_csv_checked(trials_path, resp_dtypes, trials_err)
+    spikes = _read_csv_checked(spikes_path, {"unit_id": str, "spike_time_ns": "Int64"}, spikes_err)
+    analysis = load_analysis(analysis_path)
 
     prep_path, cond_path = base / "preparation.json", base / "conditions.json"
-    preparation = load_preparation(prep_path) if prep_path.is_file() else None
-    conditions = load_conditions(cond_path) if cond_path.is_file() else None
+    sidecar_path = prep_path
+    try:
+        preparation = load_preparation(prep_path) if prep_path.is_file() else None
+        sidecar_path = cond_path
+        conditions = load_conditions(cond_path) if cond_path.is_file() else None
+    except UnicodeError as exc:
+        raise ValueError(f"{sidecar_path}: {exc}") from exc
+
     eval_inputs = from_spikes(
         units, trials, [measure], spikes, analysis, preparation=preparation, conditions=conditions
     )
@@ -102,6 +115,15 @@ def _check_days_compatible(first: DayInputs, second: DayInputs) -> list[str]:
     if sess_first == sess_second:
         raise ValueError(
             f"Both days share session_id '{sess_first}'; across-day comparison requires distinct sessions."
+        )
+
+    first_units = set(first.units["unit_id"].astype(str))
+    second_units = set(second.units["unit_id"].astype(str))
+    if not (first_units & second_units):
+        raise ValueError(
+            f"No unit_id appears on both days (first: {len(first_units)} units, "
+            f"second: {len(second_units)} units). "
+            "Units are matched by unit_id, so both days must come from one sort."
         )
 
     if first.conditions is not None and second.conditions is not None:
@@ -190,14 +212,12 @@ def across_day_comparison(
 
     Returns:
         Dictionary of across-day correlation, interval, per-condition and pooled values,
-        null summary, within-session reliabilities, fraction of within-session reliability,
-        and dataset/unit counts.
+        null summary, within-session reliabilities, fraction, and unit counts.
 
     Raises:
         FileNotFoundError: If either dataset directory or a required file is missing.
         ContractViolation: If either day fails any spikes-path contract check.
-        ValueError: If ``n_perm < 1``, ``measure`` is unknown, or the two days do not
-            belong together.
+        ValueError: If ``n_perm < 1``, ``measure`` is unknown, or the days are incompatible.
     """
     if n_perm < 1:
         raise ValueError(f"n_perm must be >= 1, got {n_perm}.")
@@ -232,12 +252,14 @@ def across_day_comparison(
     p95_r = float(raw_null["p95_r"])
     above_null: bool | None = None if (r_undefined or math.isnan(p95_r)) else bool(r_across > p95_r)
 
-    f_halves = first_day.inputs.halves.loc[frame.index]
-    s_halves = second_day.inputs.halves.loc[frame.index]
-    rho_first = float(reliability_ceiling(f_halves, measure, center=center)["rho"])
-    rho_second = float(reliability_ceiling(s_halves, measure, center=center)["rho"])
-    geo_mean = float(np.sqrt(rho_first * rho_second))
-    fraction_of_ws = None if (r_undefined or geo_mean == 0.0) else float(r_across / geo_mean)
+    ws_first = reliability_ceiling(first_day.inputs.halves.loc[frame.index], measure, center=center)
+    ws_second = reliability_ceiling(second_day.inputs.halves.loc[frame.index], measure, center=center)
+    rho_first = None if ws_first["r_undefined"] else float(ws_first["rho"])
+    rho_second = None if ws_second["r_undefined"] else float(ws_second["rho"])
+    geo_mean = None if (rho_first is None or rho_second is None) else float(np.sqrt(rho_first * rho_second))
+    fraction_of_ws = (
+        None if (r_undefined or geo_mean is None or geo_mean == 0.0) else float(r_across / geo_mean)
+    )
 
     first_units = set(first_day.units["unit_id"].astype(str))
     second_units = set(second_day.units["unit_id"].astype(str))
@@ -262,11 +284,7 @@ def across_day_comparison(
         "r_undefined": r_undefined,
         "per_condition": per_condition,
         "pooled": pooled,
-        "null": {
-            "n_perm": int(raw_null["n_perm"]),
-            "p95_r": p95_r,
-            "median_r": float(raw_null["median_r"]),
-        },
+        "null": {"n_perm": int(raw_null["n_perm"]), "p95_r": p95_r, "median_r": float(raw_null["median_r"])},
         "above_null": above_null,
         "within_session": {"first": rho_first, "second": rho_second, "geometric_mean": geo_mean},
         "fraction_of_within_session": fraction_of_ws,

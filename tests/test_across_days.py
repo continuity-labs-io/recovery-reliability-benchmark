@@ -386,7 +386,10 @@ def test_command(
     assert set(doc["inputs"]) == {"first", "second"}
 
     assert across_days_main([str(tmp_path / "missing_dir"), str(second_dir)]) == 2
-    assert capsys.readouterr().err.startswith("error: ")
+    err_missing_first = capsys.readouterr().err
+    assert err_missing_first.startswith("error: ")
+    assert "first day" in err_missing_first
+    assert "folder not found:" in err_missing_first
 
     assert across_days_main([str(first_dir), str(second_dir), "--n-perm", "0"]) == 2
     assert capsys.readouterr().err.startswith("error: ")
@@ -409,13 +412,104 @@ def test_command(
         df = pd.read_csv(disjoint_second / fname, dtype={"unit_id": str})
         df["unit_id"] = df["unit_id"].map(unit_map)
         df.to_csv(disjoint_second / fname, index=False)
-    assert across_days_main([str(first_dir), str(disjoint_second), "--n-perm", "20"]) == 0
-    assert "undefined" in capsys.readouterr().out
-    assert across_days_main([str(first_dir), str(disjoint_second), "--n-perm", "20", "--json"]) == 0
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^No unit_id appears on both days \(first: 30 units, second: 30 units\)\. "
+            r"Units are matched by unit_id, so both days must come from one sort\.$"
+        ),
+    ):
+        across_day_comparison(first_dir, disjoint_second, n_perm=20)
+    assert across_days_main([str(first_dir), str(disjoint_second), "--n-perm", "20"]) == 2
+    disjoint_err = capsys.readouterr().err
+    assert disjoint_err.startswith("error: ")
+    assert "No unit_id appears on both days" in disjoint_err
+
+
+def test_two_matched_units_undefined_within_session(
+    same_tissue_days: tuple[Path, Path],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    first_dir, second_dir = same_tissue_days
+    two_matched = tmp_path / "two_matched_second"
+    shutil.copytree(second_dir, two_matched)
+    unit_map = {UNIT_IDS[i]: (UNIT_IDS[i] if i < 2 else f"other_{i:02d}") for i in range(N_UNITS)}
+    for fname in ("units.csv", "spikes.csv"):
+        df = pd.read_csv(two_matched / fname, dtype={"unit_id": str})
+        df["unit_id"] = df["unit_id"].map(unit_map)
+        df.to_csv(two_matched / fname, index=False)
+
+    res = across_day_comparison(first_dir, two_matched, n_perm=20)
+    assert res["n_units_matched"] == 2
+    assert res["r_undefined"] is True
+    assert res["within_session"] == {"first": None, "second": None, "geometric_mean": None}
+    assert res["fraction_of_within_session"] is None
+
+    assert across_days_main([str(first_dir), str(two_matched), "--n-perm", "20"]) == 0
+    plain_out = capsys.readouterr().out
+    assert "undefined" in plain_out
+    ws_line = next(line for line in plain_out.splitlines() if line.startswith("within_session:"))
+    assert "undefined" in ws_line
+
+    assert across_days_main([str(first_dir), str(two_matched), "--n-perm", "20", "--json"]) == 0
     undef_raw = capsys.readouterr().out
     assert "NaN" not in undef_raw
     undef_doc = json.loads(undef_raw)
     assert undef_doc["result"]["r_undefined"] is True
     assert undef_doc["result"]["r_across_days"] is None
     assert undef_doc["result"]["above_null"] is None
+    assert undef_doc["result"]["within_session"] == {
+        "first": None,
+        "second": None,
+        "geometric_mean": None,
+    }
     assert undef_doc["result"]["fraction_of_within_session"] is None
+
+
+def test_command_day_and_file_error_messages(
+    same_tissue_days: tuple[Path, Path],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    first_dir, second_dir = same_tissue_days
+
+    assert across_days_main([str(tmp_path / "no_such_first"), str(second_dir)]) == 2
+    err_missing_folder = capsys.readouterr().err
+    assert "first day" in err_missing_folder
+    assert "folder not found:" in err_missing_folder
+
+    no_analysis = tmp_path / "second_no_analysis"
+    shutil.copytree(second_dir, no_analysis)
+    (no_analysis / "analysis.json").unlink()
+    assert across_days_main([str(first_dir), str(no_analysis)]) == 2
+    err_no_analysis = capsys.readouterr().err
+    assert "second day" in err_no_analysis
+    assert "missing file:" in err_no_analysis
+    assert "analysis.json" in err_no_analysis
+
+    bad_spikes = tmp_path / "second_bad_spikes"
+    shutil.copytree(second_dir, bad_spikes)
+    (bad_spikes / "spikes.csv").write_text("unit_id,spike_time_ns\nu00,not_an_int\n", encoding="utf-8")
+    assert across_days_main([str(first_dir), str(bad_spikes)]) == 2
+    err_bad_spikes = capsys.readouterr().err
+    assert "second day" in err_bad_spikes
+    assert "spikes.csv" in err_bad_spikes
+
+    bad_trials = tmp_path / "second_bad_trials"
+    shutil.copytree(second_dir, bad_trials)
+    (bad_trials / "trials_responses.csv").write_text(
+        "trial_index,stim_time_ns,condition\n0,1.5,baseline\n", encoding="utf-8"
+    )
+    assert across_days_main([str(first_dir), str(bad_trials)]) == 2
+    err_bad_trials = capsys.readouterr().err
+    assert "second day" in err_bad_trials
+    assert "trials_responses.csv" in err_bad_trials
+
+    empty_units = tmp_path / "first_empty_units"
+    shutil.copytree(first_dir, empty_units)
+    (empty_units / "units.csv").write_text("", encoding="utf-8")
+    assert across_days_main([str(empty_units), str(second_dir)]) == 2
+    err_empty_units = capsys.readouterr().err
+    assert "first day" in err_empty_units
+    assert "units.csv" in err_empty_units

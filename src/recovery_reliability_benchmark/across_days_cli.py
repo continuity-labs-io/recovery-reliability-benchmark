@@ -32,12 +32,12 @@ def _inspect_day_files(directory: str | Path) -> dict[str, dict[str, str]]:
     """Verify required files exist in ``directory`` and hash all dataset files present."""
     base = Path(directory)
     if not base.is_dir():
-        raise FileNotFoundError(f"Dataset directory not found: {base}")
+        raise FileNotFoundError(f"folder not found: {base}")
     meta: dict[str, dict[str, str]] = {}
     for key, filename in _REQUIRED_DAY_FILES:
         fpath = base / filename
         if not fpath.is_file():
-            raise FileNotFoundError(fpath)
+            raise FileNotFoundError(f"missing file: {fpath}")
         meta[key] = {"path": str(fpath), "sha256": file_sha256(fpath)}
     for key, filename in _OPTIONAL_DAY_FILES:
         fpath = base / filename
@@ -99,12 +99,14 @@ def _print_across_days_human(result: dict[str, Any]) -> None:
         f"null_p95_r={p95_str} above_null={result['above_null']}"
     )
 
+    def _fmt(val: float | None) -> str:
+        return "undefined" if val is None else f"{val:.3f}"
+
     ws = result["within_session"]
     frac = result["fraction_of_within_session"]
-    frac_str = f"{frac:.3f}" if frac is not None else "None"
     print(
-        f"within_session: first={ws['first']:.3f} second={ws['second']:.3f} "
-        f"geometric_mean={ws['geometric_mean']:.3f} fraction_of_within_session={frac_str}"
+        f"within_session: first={_fmt(ws['first'])} second={_fmt(ws['second'])} "
+        f"geometric_mean={_fmt(ws['geometric_mean'])} fraction_of_within_session={_fmt(frac)}"
     )
 
 
@@ -133,13 +135,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.n_perm < 1:
             raise ValueError(f"n_perm must be >= 1, got {args.n_perm}.")
         _validate_measure_name(args.measure)
-        first_meta = _inspect_day_files(args.first_dir)
-        second_meta = _inspect_day_files(args.second_dir)
-    except (FileNotFoundError, OSError, ValueError) as exc:
+    except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    inputs_meta = {"first": first_meta, "second": second_meta}
+    inputs_meta: dict[str, dict[str, dict[str, str]]] = {}
+    for label, directory in (("first", args.first_dir), ("second", args.second_dir)):
+        try:
+            inputs_meta[label] = _inspect_day_files(directory)
+        except (FileNotFoundError, OSError) as exc:
+            print(f"error: {label} day: {exc}", file=sys.stderr)
+            return 2
+
     arguments_meta = {
         "first_dir": str(args.first_dir),
         "second_dir": str(args.second_dir),
@@ -168,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             pd.errors.EmptyDataError,
             UnicodeError,
         ) as exc:
-            print(f"error: {exc}", file=sys.stderr)
+            print(f"error: {label} day: {exc}", file=sys.stderr)
             return 2
 
     try:

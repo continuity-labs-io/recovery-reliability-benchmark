@@ -4,11 +4,11 @@
   "functions": {
     "recovery_reliability_benchmark.across_days._check_days_compatible": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.across_days._check_days_compatible.txt",
-      "sha256": "c065869f1b54552206406a9a3131969b8eee552ece39f70163013148e88d6911"
+      "sha256": "fb384208438edc1332a7131ff22c45fd2b8af5c2704874e5b413204eb877334a"
     },
     "recovery_reliability_benchmark.across_days.across_day_comparison": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.across_days.across_day_comparison.txt",
-      "sha256": "af8a170e39739877139705804ab18f70215280b5ee003e0012cb6f0677082cfe"
+      "sha256": "2e5eec1e5a1711e5c8e7c222e9082cde849c22fe09855e49087f14d9bdd9b57f"
     },
     "recovery_reliability_benchmark.across_days.across_day_frame": {
       "snapshot": "frozen/snapshots/recovery_reliability_benchmark.across_days.across_day_frame.txt",

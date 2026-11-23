@@ -1,34 +1,3 @@
-Here is the across-day prompt. It adds the comparison and leaves it unfrozen, and the release prompt will freeze it.
-
-**Three choices it locks in**
-
-These define how gate 3 is scored. They stay changeable until the release freezes them.
-
-- **Two loads.** One correlation pooled across both loads, after removing each load's average. This is the same rule as the headline reliability.
-- **A unit's day value.** The mean of its two half values. In simulation this matched recomputing from all trials within 0.01.
-- **Which units count.** A unit counts only when it is scored on both days.
-
-**Checked first**
-
-I built this design in a sandbox from v0.2.1's own functions and ran it on simulated day pairs.
-
-- Same tissue both days: r 0.98, which is 0.99 to 1.00 of the within-session reliability.
-- A known change in recovery times: the fraction landed within 0.04 of the true correlation in six runs.
-- Units deliberately mismatched on day two: r about −0.5, not above the null.
-
-**Gate**
-
-- Pass: all tests green, and test 1 reports a fraction between 0.9 and 1.1.
-
-**Order**
-
-- The code reuses the frozen correlation and null functions, so nothing frozen changes here.
-- Freezing the new functions needs a version bump. That goes in the next prompt, the 0.3.0 release, with a pass-rule amendment naming the version and the two-load rule.
-- If you have not cut 0.2.2, you can skip it. Version 0.3.0 can archive the amended plan and this code together, as long as it ships before anyone records.
-
-**Prompt**
-
-````text
 Task: add the across-day comparison. One computation module, one command, tests and docs.
 
 Do not change any frozen function, any existing test assertion, the version, or docs/pass_rule.md. Do not register anything in the frozen layer in this task: no @frozen, register or freeze_constant on the new code. `python -m recovery_reliability_benchmark.frozen_manifest --check` must still pass. Read AGENTS.md and frozen/README.md first.
@@ -151,6 +120,3 @@ tests/test_docs.py: add test_across_days_docs. It asserts that METHOD.md contain
 ## 6. Finish
 
 Run ruff check ., ruff format --check ., and pytest. Report the pass and fail counts, the r_across_days and fraction_of_within_session from test 1, and every place where this prompt could not be followed as written.
-````
-
-The design is saved in the project as `claude/across-day-design.md`. Send me the agent's report and I'll write the 0.3.0 release prompt.
