@@ -478,7 +478,14 @@ def test_pass_rule_doc() -> None:
     assert pass_rule_path.is_file()
     text = pass_rule_path.read_text(encoding="utf-8")
     assert "LICENSE-DOCS" in text
-    for phrase in ("Plan version 1", "at least 0.70", "at least 0.50"):
+    for phrase in (
+        "Plan version 1",
+        "Amended 2026-11-23",
+        "at least 0.70",
+        "at least 0.50",
+        "`analysis.json`",
+        "spike sorter",
+    ):
         assert phrase in text
     for row in ("| 6 | 6 |", "| 7 | 7 |", "| 8 | 8 |", "| 9 | 8 |"):
         assert row in text
@@ -487,7 +494,7 @@ def test_pass_rule_doc() -> None:
         path.read_text(encoding="utf-8")
         for path in sorted((ROOT / "src" / "recovery_reliability_benchmark").rglob("*.py"))
     )
-    for field_name in ("above_null", "beats_reference"):
+    for field_name in ("above_null", "beats_reference", "artifact_blank_s"):
         assert f"`{field_name}`" in text
         assert field_name in pkg_sources
 

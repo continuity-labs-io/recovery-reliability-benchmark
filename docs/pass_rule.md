@@ -2,6 +2,8 @@
 
 **Plan version 1.** First published in release v0.2.1 of the Recovery Reliability Benchmark, before any stimulated recording was scored. Results are published whether the gates pass or fail.
 
+**Amended 2026-11-23**, before any site was registered and before any stimulated recording was made. Four settings were added to the site plan in section 5 and one item to the reporting list in section 7. No gate, threshold or measure changed.
+
 This is the plan for one study. It is not part of the benchmark. The benchmark reports a reliability number, its interval and its null for any dataset and sets no bar. This plan sets a bar for the first stimulated recordings, in advance, so the bar cannot move after the results are seen. Another group may set a different bar for a different use.
 
 ## 1. What is fixed
@@ -53,6 +55,10 @@ These settings depend on the host lab and its instrument. They are added to this
 - How the stimulation electrode is chosen. It comes from a separate screening run, not from the scored session.
 - Whether the chip stays on the instrument between days, and the gap between sessions.
 - Whether spike times and stimulus times are made public.
+- The preparation type and the spacing between stimulus onsets.
+- The pulse polarity. It comes from the screening run.
+- The spike sorter, its version and settings, how stimulation artifact is removed before sorting, and how units are matched across days.
+- The analysis parameters, as written in `analysis.json`, with the fingerprint. One artifact blank, `artifact_blank_s`, is used for both loads and both days. It is at least as long as the longest period after a stimulus in which the sorter loses spikes at the higher load, read from the screening run.
 
 ## 6. Where the thresholds come from
 
@@ -64,6 +70,7 @@ These settings depend on the host lab and its instrument. They are added to this
 - Every per-preparation number with its interval and its null.
 - The across-day correlation as a fraction of the within-session reliability (METHOD.md).
 - Every deviation from this plan.
+- The sensitivity result recomputed with the artifact blank doubled. A result that changes is reported as a possible effect of stimulation artifact.
 
 ## 8. Out of scope
 
