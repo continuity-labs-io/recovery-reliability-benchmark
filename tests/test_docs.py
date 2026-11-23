@@ -500,3 +500,22 @@ def test_pass_rule_doc() -> None:
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme_text.count("docs/pass_rule.md") >= 2
+
+
+def test_across_days_docs() -> None:
+    method_text = (ROOT / "METHOD.md").read_text(encoding="utf-8")
+    assert "## Across-day comparison" in method_text
+
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "rrb-across-days day1/ day2/" in readme_text
+
+    glossary_text = (ROOT / "GLOSSARY.md").read_text(encoding="utf-8")
+    assert "`across_days.across_day_comparison`" in glossary_text
+
+    changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    unreleased_text = changelog_text.split("\n## [", maxsplit=1)[0]
+    assert "rrb-across-days" in unreleased_text
+
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    scripts = pyproject["project"]["scripts"]
+    assert scripts["rrb-across-days"] == "recovery_reliability_benchmark.across_days_cli:main"

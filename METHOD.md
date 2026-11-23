@@ -195,6 +195,28 @@ Summarized as `median_abs_z = median(z_u)`, `frac_beyond_2 = mean(z_u > 2)`, `me
 
 ---
 
+## Across-day comparison
+
+Two sessions of one preparation, recorded on different days, are compared for one measure (`across_days.py`, run as `rrb-across-days`). Each session is a conforming spikes-path dataset and is checked on its own first. Units are matched by `unit_id`, so both sessions must come from one sort with one shared set of templates. Both sessions must carry the same `analysis.json`.
+
+**Day value.** A unit's value on a day, in a condition, is the mean of its odd-half and even-half values from that day. The sensitivity axis uses the same unit value.
+
+**Units.** A unit enters a condition when it is scored for the measure on both days in that condition, under the inclusion rule of the spikes path.
+
+**Correlation.** Pearson `r` across units between the first-day and second-day values, with the Fisher interval of section 3 and `n_eff = n_units`. With one condition evaluated on both days, it is that condition's `r`. With two or more, it is the pooled, condition-centered `r`, as in the headline rule. No Spearman-Brown correction is applied, because each day's value already uses all of that day's trials.
+
+**Null.** The second day's values are shuffled across units within each condition and `r` is recomputed `n_perm` times, as in section 5.2. `above_null` is true when `r` is above the 95th percentile of the shuffles.
+
+**Fraction of within-session reliability.** `r` divided by the geometric mean of the two days' within-session reliabilities, each recomputed on the same units and conditions. By the attenuation relation in section 1 it estimates the correlation of the true values between the two days. It can exceed 1 by chance.
+
+The correlation, its interval and the null are computed by `reliability_ceiling` and `permutation_null`, with the first day's value in the odd slot and the second day's value in the even slot. The across-day number runs through the same code as the within-session number.
+
+The benchmark sets no bar on these numbers. A study that uses them sets its own bar in advance (docs/pass_rule.md).
+
+Checked on simulated pairs of sessions (`tests/test_across_days.py`): with unchanged units the fraction is close to 1; with a known change in recovery time constants the fraction is close to the true correlation; with unit identities deliberately mismatched on the second day `r` is not above the null. No real second-day recording has been scored.
+
+---
+
 ## 8. What the number does not say
 
 The ceiling states whether a measure can distinguish a preparation from a repeat of itself within one session. It says nothing about whether the measure repeats across days, responds to an intervention, or relates to any property of the tissue.

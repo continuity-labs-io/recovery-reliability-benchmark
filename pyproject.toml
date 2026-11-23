@@ -24,6 +24,7 @@ Issues = "https://github.com/continuity-labs-io/recovery-reliability-benchmark/i
 report = ["matplotlib>=3.7"]
 
 [project.scripts]
+rrb-across-days = "recovery_reliability_benchmark.across_days_cli:main"
 rrb-check = "recovery_reliability_benchmark.cli:check_main"
 rrb-evaluate = "recovery_reliability_benchmark.cli:evaluate_main"
 rrb-report = "recovery_reliability_benchmark.report:main"

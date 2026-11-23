@@ -16,6 +16,8 @@ DOCSTRING_SKIP: set[str] = set()
 AB_HALF_SKIP: set[str] = set()
 
 PACKAGE_MODULES = (
+    "across_days",
+    "across_days_cli",
     "contract",
     "checks",
     "evaluate",

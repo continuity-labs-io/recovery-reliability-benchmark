@@ -52,6 +52,16 @@ rrb-report dataset/units.csv dataset/trials_responses.csv \
 
 Nothing leaves your machine. To contribute a conforming dataset to the public atlas, see [CONTRIBUTING.md](CONTRIBUTING.md) or email ryan@continuitylabs.io.
 
+## Compare two days
+
+When one preparation is recorded on two days and both recordings are sorted together, so each unit keeps its `unit_id`, compare the days:
+
+```bash
+rrb-across-days day1/ day2/
+```
+
+Each folder is a dataset written by `writer.write_dataset`, and both must use the same `analysis.json`. For `t_half_excess` the command reports the correlation across units between the two days, its 95% interval, a shuffled-unit null, and the correlation as a fraction of the within-session reliability. It has been checked on simulated sessions only. No real second-day recording has been scored.
+
 ## If you only have per-trial numbers
 
 When spike timestamps are unavailable and you already have scalar per-trial measure columns in `responses.csv`, run the tables path directly on `units.csv` and `responses.csv` (without the `baseline_hz` reference row, which requires spikes):

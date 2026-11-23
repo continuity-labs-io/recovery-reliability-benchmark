@@ -194,6 +194,12 @@ Terms as this repository uses them, grouped from the physical experiment up to t
 
 **Threshold simulation.** `thresholds.py` (`python -m recovery_reliability_benchmark.thresholds`): synthetic sessions at the min-dataset-2/min-dataset-3 thresholds, 1,000 seeds per cell, reporting where the estimate lands. The basis for the MUST and SHOULD numbers and for the interval statements in SPEC §4–5. `docs/thresholds.md`.
 
+**Across-day comparison.** For one preparation recorded on two days and sorted with one shared set of templates: the correlation across matched, scored units between each unit's first-day and second-day value of a measure, with its interval, a shuffled-unit null, and the correlation as a fraction of the within-session reliability. `across_days.across_day_comparison`; METHOD "Across-day comparison".
+
+**Day value.** A unit's value of a measure on one day in one condition: the mean of its odd-half and even-half values. `across_days.across_day_frame`.
+
+**Fraction of within-session reliability (`fraction_of_within_session`).** The across-day correlation divided by the geometric mean of the two days' within-session reliabilities on the same units. It estimates the correlation of true values between the two days. METHOD "Across-day comparison".
+
 ---
 
 ## 4. Conformance
