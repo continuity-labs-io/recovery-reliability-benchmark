@@ -1,0 +1,20 @@
+@frozen('METHOD across-day comparison')
+def across_day_frame(first_inputs: EvaluationInputs | DayInputs, second_inputs: EvaluationInputs | DayInputs, measure: str) -> pd.DataFrame:
+    _validate_measure_name(measure)
+    f_eval = first_inputs.inputs if isinstance(first_inputs, DayInputs) else first_inputs
+    s_eval = second_inputs.inputs if isinstance(second_inputs, DayInputs) else second_inputs
+    if f_eval.scored is None or s_eval.scored is None:
+        raise ValueError('across_day_frame requires spikes-path EvaluationInputs with scored unit sets.')
+    if measure not in f_eval.scored or measure not in s_eval.scored:
+        raise ValueError(f"Measure '{measure}' is missing from scored unit sets.")
+    common = sorted(set(f_eval.evaluated_conditions) & set(s_eval.evaluated_conditions))
+    pairs = sorted(((str(u), str(c)) for c in common for u in f_eval.scored[measure][c] & s_eval.scored[measure][c]))
+    col_odd, col_even = (f'{measure}_odd', f'{measure}_even')
+    if not pairs:
+        empty_idx = pd.MultiIndex.from_arrays([[], []], names=['unit_id', 'condition'])
+        return pd.DataFrame({col_odd: pd.Series(dtype=float), col_even: pd.Series(dtype=float)}, index=empty_idx)
+    idx = pd.MultiIndex.from_tuples(pairs, names=['unit_id', 'condition'])
+    f_sub, s_sub = (f_eval.halves.loc[idx], s_eval.halves.loc[idx])
+    first_day_vals = 0.5 * (f_sub[col_odd].astype(float) + f_sub[col_even].astype(float))
+    second_day_vals = 0.5 * (s_sub[col_odd].astype(float) + s_sub[col_even].astype(float))
+    return pd.DataFrame({col_odd: first_day_vals, col_even: second_day_vals}, index=idx)

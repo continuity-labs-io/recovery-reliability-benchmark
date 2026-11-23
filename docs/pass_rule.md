@@ -1,14 +1,20 @@
 # Replication Plan and Pass Rule
 
-**Plan version 1.** First published in release v0.2.1 of the Recovery Reliability Benchmark, before any stimulated recording was scored. Results are published whether the gates pass or fail.
+**Plan version 2.** Published in release v0.3.0 of the Recovery Reliability Benchmark, before any site was registered and before any stimulated recording was made. Results are published whether the gates pass or fail.
 
-**Amended 2026-11-23**, before any site was registered and before any stimulated recording was made. Four settings were added to the site plan in section 5 and one item to the reporting list in section 7. No gate, threshold or measure changed.
+Plan version 1 was published in release v0.2.1 and stays on record there. Changes in version 2, made 2026-11-23:
+
+- Four settings were added to the site plan in section 5.
+- One item was added to the reporting list in section 7.
+- The across-day comparison is released and frozen in v0.3.0. Sections 1 and 3 name it, and section 3 says which correlation gate 3 uses when there are two loads.
+
+No threshold, count rule or measure changed.
 
 This is the plan for one study. It is not part of the benchmark. The benchmark reports a reliability number, its interval and its null for any dataset and sets no bar. This plan sets a bar for the first stimulated recordings, in advance, so the bar cannot move after the results are seen. Another group may set a different bar for a different use.
 
 ## 1. What is fixed
 
-- **Code.** Recovery Reliability Benchmark v0.2.1, SPEC v1.1. The frozen layer is unchanged from v0.2.0. A change to frozen code before scoring means a new version of this plan.
+- **Code.** Recovery Reliability Benchmark v0.3.0, SPEC v1.1. The functions and constants that score R and S are unchanged from v0.2.0. Version 0.3.0 adds the across-day comparison that scores D. A change to frozen code before scoring means a new version of this plan.
 - **Primary measure.** `t_half_excess`. `excess_per_trial` and the reference row `baseline_hz` are reported and are not part of the pass rule.
 - **Recording.** One preparation, one continuous session, two loads as two conditions, 40 stimuli per condition (20 at minimum), stimulus onsets at least 4 s apart plus the load duration, and 1 s of recording before the first stimulus.
 - **Preparation.** One culture on one chip. Preparations are what gets counted. Units on one chip are not independent samples.
@@ -30,7 +36,7 @@ All three are for `t_half_excess`.
 
 Second-day recordings are made for every preparation without waiting for the gate 2 result, because cultures cannot wait.
 
-Release v0.2.1 does not compute the across-day comparison. That code will be written, checked on two simulated sessions with a known answer, and released before any second-day recording is scored.
+The across-day comparison is computed by `rrb-across-days` (METHOD.md, Across-day comparison). It was released and frozen in v0.3.0, after it was checked on simulated pairs of sessions with known answers and before any second-day recording was made. With two loads, the correlation is the pooled, condition-centered one. In the command's output, D is `above_null` true with `r_across_days` at least 0.50, and a preparation with `n_units` below 15 is not evaluable.
 
 ## 4. Count rule
 
@@ -82,7 +88,7 @@ These settings depend on the host lab and its instrument. They are added to this
 ## 9. Already looked at before this plan
 
 - Thirteen spontaneous recordings from Sharf et al. 2022, scored with v0.1.0 as a test of the machinery. No stimulation.
-- Simulations (docs/spikes_path_checks.md, docs/thresholds.md).
+- Simulations (docs/spikes_path_checks.md, docs/thresholds.md, tests/test_across_days.py).
 - No stimulated recording has been scored with `t_half_excess`.
 
 ---

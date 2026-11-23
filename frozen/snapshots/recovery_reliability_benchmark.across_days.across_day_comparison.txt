@@ -1,0 +1,35 @@
+@frozen('METHOD across-day comparison')
+def across_day_comparison(first: str | Path | DayInputs, second: str | Path | DayInputs, measure: str='t_half_excess', n_perm: int=controls.DEFAULT_N_PERM, seed: int=42) -> dict[str, Any]:
+    if n_perm < 1:
+        raise ValueError(f'n_perm must be >= 1, got {n_perm}.')
+    _validate_measure_name(measure)
+    first_day = first if isinstance(first, DayInputs) else load_day(first, measure)
+    second_day = second if isinstance(second, DayInputs) else load_day(second, measure)
+    common = _check_days_compatible(first_day, second_day)
+    frame = across_day_frame(first_day.inputs, second_day.inputs, measure)
+    kind = 'pooled_centered' if len(common) >= 2 else 'per_condition'
+    center = kind == 'pooled_centered'
+    cond_vals = frame.index.get_level_values('condition')
+    per_condition: dict[str, dict[str, Any]] = {}
+    for cond in common:
+        cc = reliability_ceiling(frame.loc[cond_vals == cond], measure, center=False)
+        per_condition[cond] = {'r_across_days': cc['r_half'], 'n_units': cc['n_units']}
+    uncentered_ceil = reliability_ceiling(frame, measure, center=False)
+    centered_ceil = reliability_ceiling(frame, measure, center=True)
+    pooled = {'uncentered': uncentered_ceil['r_half'], 'centered': centered_ceil['r_half']}
+    main_ceil = centered_ceil if center else uncentered_ceil
+    r_across, r_undefined = (float(main_ceil['r_half']), bool(main_ceil['r_undefined']))
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message='^All-NaN slice encountered$', category=RuntimeWarning)
+        raw_null = controls.permutation_null(frame, measure, center, n_perm=int(n_perm), rng=np.random.default_rng(seed))
+    p95_r = float(raw_null['p95_r'])
+    above_null: bool | None = None if r_undefined or math.isnan(p95_r) else bool(r_across > p95_r)
+    f_halves = first_day.inputs.halves.loc[frame.index]
+    s_halves = second_day.inputs.halves.loc[frame.index]
+    rho_first = float(reliability_ceiling(f_halves, measure, center=center)['rho'])
+    rho_second = float(reliability_ceiling(s_halves, measure, center=center)['rho'])
+    geo_mean = float(np.sqrt(rho_first * rho_second))
+    fraction_of_ws = None if r_undefined or geo_mean == 0.0 else float(r_across / geo_mean)
+    first_units = set(first_day.units['unit_id'].astype(str))
+    second_units = set(second_day.units['unit_id'].astype(str))
+    return {'measure': measure, 'kind': kind, 'conditions': common, 'preparation_id': str(first_day.units['preparation_id'].iloc[0]), 'session_ids': {'first': str(first_day.units['session_id'].iloc[0]), 'second': str(second_day.units['session_id'].iloc[0])}, 'analysis_fingerprint': first_day.analysis.fingerprint(), 'n_units_first': int(len(first_day.units)), 'n_units_second': int(len(second_day.units)), 'n_units_matched': int(len(first_units & second_units)), 'n_units': int(main_ceil['n_units']), 'n_pairs': int(main_ceil['n_pairs']), 'r_across_days': r_across, 'r_ci_low': main_ceil['r_ci_low'], 'r_ci_high': main_ceil['r_ci_high'], 'r_undefined': r_undefined, 'per_condition': per_condition, 'pooled': pooled, 'null': {'n_perm': int(raw_null['n_perm']), 'p95_r': p95_r, 'median_r': float(raw_null['median_r'])}, 'above_null': above_null, 'within_session': {'first': rho_first, 'second': rho_second, 'geometric_mean': geo_mean}, 'fraction_of_within_session': fraction_of_ws}

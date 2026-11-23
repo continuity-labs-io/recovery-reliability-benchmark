@@ -12,6 +12,9 @@ Every function and constant below is registered in `recovery_reliability_benchma
 
 | Name | Kind | Reference |
 |---|---|---|
+| `recovery_reliability_benchmark.across_days._check_days_compatible` | function | METHOD across-day comparison |
+| `recovery_reliability_benchmark.across_days.across_day_comparison` | function | METHOD across-day comparison |
+| `recovery_reliability_benchmark.across_days.across_day_frame` | function | METHOD across-day comparison |
 | `recovery_reliability_benchmark.analysis.AnalysisParams.effective_edges` | function | SPEC analysis parameters |
 | `recovery_reliability_benchmark.analysis.AnalysisParams.fingerprint` | function | SPEC analysis parameters |
 | `recovery_reliability_benchmark.analysis.AnalysisParams.to_dict` | function | SPEC analysis parameters |
@@ -79,7 +82,7 @@ Every function and constant below is registered in `recovery_reliability_benchma
 
 ### 3. What is not frozen
 
-Adapters (`adapters/`), input orchestration (`inputs.from_spikes`, `inputs.from_responses`), runner and CLI (`run.py`, `cli.py`), report formatting and plotting (`text_report.py`, `summary.py`, `report.py`), dataset writers, epoch builders, and loaders (`writer.py`, `epochs.py`, `read_tables`, `read_spikes`, `spikes.spike_times_by_unit`, `metadata.py`), calibration simulations and manifest tooling (`thresholds.py`, `spikes_path_checks.py`, `frozen_manifest.py`), spike-train generators (`synthetic.exponential_recovery`, `synthetic.make_spike_trains`, `synthetic.make_two_condition_spike_trains`) and synthetic condition offsets, documentation, and new measure names live in the open layer and may evolve without a frozen-layer update.
+Adapters (`adapters/`), input orchestration (`inputs.from_spikes`, `inputs.from_responses`, `across_days.load_day`), runner and CLI (`run.py`, `cli.py`, `across_days_cli.py`), report formatting and plotting (`text_report.py`, `summary.py`, `report.py`), dataset writers, epoch builders, and loaders (`writer.py`, `epochs.py`, `read_tables`, `read_spikes`, `spikes.spike_times_by_unit`, `metadata.py`), calibration simulations and manifest tooling (`thresholds.py`, `spikes_path_checks.py`, `frozen_manifest.py`), spike-train generators (`synthetic.exponential_recovery`, `synthetic.make_spike_trains`, `synthetic.make_two_condition_spike_trains`) and synthetic condition offsets, documentation, and new measure names live in the open layer and may evolve without a frozen-layer update.
 
 ### 4. How to change frozen code
 

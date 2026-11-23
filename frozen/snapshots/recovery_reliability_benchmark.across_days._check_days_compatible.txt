@@ -1,0 +1,22 @@
+@frozen('METHOD across-day comparison')
+def _check_days_compatible(first: DayInputs, second: DayInputs) -> list[str]:
+    fp_first, fp_second = (first.analysis.fingerprint(), second.analysis.fingerprint())
+    if fp_first != fp_second:
+        raise ValueError(f'analysis.json fingerprints differ between days: {fp_first} != {fp_second}.')
+    prep_first = str(first.units['preparation_id'].iloc[0])
+    prep_second = str(second.units['preparation_id'].iloc[0])
+    if prep_first != prep_second:
+        raise ValueError(f"preparation_id differs between days: '{prep_first}' != '{prep_second}'.")
+    sess_first = str(first.units['session_id'].iloc[0])
+    sess_second = str(second.units['session_id'].iloc[0])
+    if sess_first == sess_second:
+        raise ValueError(f"Both days share session_id '{sess_first}'; across-day comparison requires distinct sessions.")
+    if first.conditions is not None and second.conditions is not None:
+        for label in sorted(set(first.conditions) & set(second.conditions)):
+            c_first, c_second = (first.conditions[label].fingerprint, second.conditions[label].fingerprint)
+            if c_first != c_second:
+                raise ValueError(f"Condition '{label}' has different protocol fingerprints across days: {c_first} != {c_second}.")
+    common = sorted(set(first.inputs.evaluated_conditions) & set(second.inputs.evaluated_conditions))
+    if not common:
+        raise ValueError(f'No condition is in evaluated_conditions on both days (first: {first.inputs.evaluated_conditions}, second: {second.inputs.evaluated_conditions}).')
+    return common

@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- Across-day comparison (`across_days.py`, `rrb-across-days`): for two sessions of one preparation, the correlation across matched, scored units of a measure between days, its interval, a shuffled-unit null, and the correlation as a fraction of the within-session reliability, computed through `reliability_ceiling` and `permutation_null`. Checked on simulated session pairs with known answers. Not yet in the frozen layer; no real second-day recording has been scored.
-- docs/pass_rule.md amended before any site registration: the site plan also registers preparation type and stimulus spacing, pulse polarity, spike sorter and unit matching, and `analysis.json` with one artifact blank for both loads; sensitivity is also reported with the blank doubled. No gate, threshold or measure changed.
+## [0.3.0] - 2026-11-23
+
+Scope of this release: across-day comparison and replication plan version 2. Adds and freezes the unit-matched across-day comparison (across_days.py, rrb-across-days), updates docs/pass_rule.md to plan version 2 before any site registration, and narrows the anchor claim to the tissue level. Validated on simulated session pairs with known answers; no real stimulated or second-day recording has been scored yet. Existing frozen functions and constants are unchanged from 0.2.0.
+
+- Across-day comparison (`across_days.py`, `rrb-across-days`): for two sessions of one preparation, the correlation across matched, scored units of a measure between days, its interval, a shuffled-unit null, and the correlation as a fraction of the within-session reliability, computed through `reliability_ceiling` and `permutation_null`. Checked on simulated session pairs with known answers. No real second-day recording has been scored.
+- docs/pass_rule.md is now plan version 2, published before any site was registered: the site plan also registers preparation type and stimulus spacing, pulse polarity, spike sorter and unit matching, and `analysis.json` with one artifact blank for both loads; sensitivity is also reported with the blank doubled; gate 3 is scored by `rrb-across-days`, with the pooled, condition-centered correlation when there are two loads. No threshold, count rule or measure changed. Plan version 1 stays on record in v0.2.1.
+- Frozen: across_days.py (`across_day_frame`, `across_day_comparison`, `_check_days_compatible`) joined the frozen layer at 0.3.0. No existing frozen function or constant changed.
 - Anchor claim narrowed to the tissue level (README, SPEC §1, GLOSSARY, CITATION.cff). Ion-channel pharmacology measures recovery from inactivation on automated patch clamp in recombinant cell lines (Lukacs et al. 2021, doi:10.3389/fphar.2021.738260), and FDA's recommended voltage protocols for cardiac ion channels include one for the kinetics of hERG block (2018, https://www.fda.gov/media/129686/download).
 - Zenodo v0.2.1 DOI recorded (10.5281/zenodo.24352999); automated release workflow skill added (`.agents/skills/release/`).
 

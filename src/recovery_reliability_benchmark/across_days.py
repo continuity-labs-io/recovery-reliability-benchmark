@@ -15,6 +15,7 @@ from . import controls
 from .analysis import AnalysisParams
 from .contract import ContractViolation
 from .evaluate import reliability_ceiling
+from .frozen import frozen
 from .inputs import EvaluationInputs, from_spikes
 from .metadata import Condition, Preparation, load_conditions, load_preparation
 from .spikes import MEASURE_KEYS
@@ -84,6 +85,7 @@ def load_day(directory: str | Path, measure: str) -> DayInputs:
     return DayInputs(base, units, trials, spikes, analysis, preparation, conditions, eval_inputs)
 
 
+@frozen("METHOD across-day comparison")
 def _check_days_compatible(first: DayInputs, second: DayInputs) -> list[str]:
     """Verify that two validated days belong to the same preparation and analysis setup."""
     fp_first, fp_second = first.analysis.fingerprint(), second.analysis.fingerprint()
@@ -119,6 +121,7 @@ def _check_days_compatible(first: DayInputs, second: DayInputs) -> list[str]:
     return common
 
 
+@frozen("METHOD across-day comparison")
 def across_day_frame(
     first_inputs: EvaluationInputs | DayInputs,
     second_inputs: EvaluationInputs | DayInputs,
@@ -168,6 +171,7 @@ def across_day_frame(
     return pd.DataFrame({col_odd: first_day_vals, col_even: second_day_vals}, index=idx)
 
 
+@frozen("METHOD across-day comparison")
 def across_day_comparison(
     first: str | Path | DayInputs,
     second: str | Path | DayInputs,

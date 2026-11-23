@@ -234,14 +234,14 @@ def test_zenodo_doi_recorded() -> None:
     assert "10.5281/zenodo.24352999" in readme_text
 
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-    assert version == "0.2.1"
+    assert version == "0.3.0"
     cite_lines = [line for line in readme_text.splitlines() if line.startswith("> McCall")]
     assert len(cite_lines) == 1
     assert f"(v{version})" in cite_lines[0]
-    assert "https://doi.org/10.5281/zenodo.24352999" in cite_lines[0]
-    assert "10.5281/zenodo.24020731" not in cite_lines[0]
+    assert "https://doi.org/10.5281/zenodo.24020731" in cite_lines[0]
     assert "10.5281/zenodo.24020732" not in cite_lines[0]
     assert "10.5281/zenodo.24143857" not in cite_lines[0]
+    assert "10.5281/zenodo.24352999" not in cite_lines[0]
 
     agents_text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     assert "## Releasing" in agents_text
@@ -480,11 +480,12 @@ def test_pass_rule_doc() -> None:
     assert "LICENSE-DOCS" in text
     for phrase in (
         "Plan version 1",
-        "Amended 2026-11-23",
+        "Plan version 2",
         "at least 0.70",
         "at least 0.50",
         "`analysis.json`",
         "spike sorter",
+        "`rrb-across-days`",
     ):
         assert phrase in text
     for row in ("| 6 | 6 |", "| 7 | 7 |", "| 8 | 8 |", "| 9 | 8 |"):
@@ -494,7 +495,7 @@ def test_pass_rule_doc() -> None:
         path.read_text(encoding="utf-8")
         for path in sorted((ROOT / "src" / "recovery_reliability_benchmark").rglob("*.py"))
     )
-    for field_name in ("above_null", "beats_reference", "artifact_blank_s"):
+    for field_name in ("above_null", "beats_reference", "artifact_blank_s", "r_across_days"):
         assert f"`{field_name}`" in text
         assert field_name in pkg_sources
 
@@ -513,8 +514,7 @@ def test_across_days_docs() -> None:
     assert "`across_days.across_day_comparison`" in glossary_text
 
     changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased_text = changelog_text.split("\n## [", maxsplit=1)[0]
-    assert "rrb-across-days" in unreleased_text
+    assert "rrb-across-days" in changelog_text
 
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     scripts = pyproject["project"]["scripts"]
