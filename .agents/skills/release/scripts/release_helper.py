@@ -7,6 +7,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -285,6 +286,40 @@ def replace_test_zenodo_doi_recorded(test_docs_text: str, new_fn_src: str) -> st
     return pattern.sub(new_fn_src, test_docs_text, count=1)
 
 
+def reinstall_editable(root: Path, expected_version: str) -> None:
+    """Reinstall the project in editable mode without dependencies and verify its version.
+
+    Args:
+        root: Repository root directory.
+        expected_version: Target semantic version string without leading 'v'.
+
+    Raises:
+        RuntimeError: If the installed package version after reinstall does not match
+            expected_version.
+    """
+    python = venv_tool(root, "python")
+    python_path = shutil.which(python) or python
+    if (root / "uv.lock").is_file():
+        cmd = ["uv", "pip", "install", "--python", python_path, "--no-deps", "--editable", "."]
+    else:
+        cmd = [python, "-m", "pip", "install", "--no-deps", "--editable", "."]
+    run_cmd(cmd, cwd=root, capture=False)
+
+    probe = (
+        "from importlib.metadata import PackageNotFoundError, version\n"
+        "try:\n"
+        "    print(version('recovery-reliability-benchmark'))\n"
+        "except PackageNotFoundError:\n"
+        "    print('not-installed')\n"
+    )
+    installed_version = run_cmd([python, "-c", probe], cwd=root).stdout.strip()
+    if installed_version != expected_version:
+        raise RuntimeError(
+            f"Installed package version after editable reinstall is {installed_version!r}, "
+            f"expected {expected_version!r}."
+        )
+
+
 def run_local_verification(root: Path) -> None:
     """Run ruff check, ruff format --check, frozen_manifest --check, and pytest.
 
@@ -388,6 +423,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     new_test = render_test_zenodo_doi_recorded(version, version_dois, cite_doi=CONCEPT_DOI)
     test_docs_path.write_text(replace_test_zenodo_doi_recorded(test_docs_text, new_test), encoding="utf-8")
 
+    reinstall_editable(root, version)
     run_local_verification(root)
     print(f"Prepared v{version} ({date_str}); ready to commit and push to main.")
     return 0

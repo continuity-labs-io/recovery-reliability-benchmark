@@ -27,7 +27,7 @@ This skill automates the 5-step release checklist in [AGENTS.md](../../../AGENTS
    ```bash
    .venv/bin/python .agents/skills/release/scripts/release_helper.py prepare --version X.Y.Z --scope "Scope of this release: ..."
    ```
-   Commit (`Prepare release vX.Y.Z`) and push `main` (`git push origin main`).
+   `prepare` reinstalls the package in editable mode so the installed version matches the new version. Commit (`Prepare release vX.Y.Z`) and push `main` (`git push origin main`).
 2. If `pyproject.toml` is already committed at `X.Y.Z`, run pre-tag verification directly:
    ```bash
    .venv/bin/python .agents/skills/release/scripts/release_helper.py verify-pretag --version X.Y.Z
