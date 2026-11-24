@@ -225,6 +225,8 @@ def test_zenodo_doi_recorded() -> None:
     assert "Version DOI for v0.2.0" in cff_text
     assert "value: 10.5281/zenodo.24352999" in cff_text
     assert "Version DOI for v0.2.1" in cff_text
+    assert "value: 10.5281/zenodo.24485992" in cff_text
+    assert "Version DOI for v0.3.0" in cff_text
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "zenodo.org/badge/1444426702.svg" in readme_text
@@ -232,13 +234,15 @@ def test_zenodo_doi_recorded() -> None:
     assert "10.5281/zenodo.24020732" in readme_text
     assert "10.5281/zenodo.24143857" in readme_text
     assert "10.5281/zenodo.24352999" in readme_text
+    assert "10.5281/zenodo.24485992" in readme_text
 
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     assert version == "0.3.0"
     cite_lines = [line for line in readme_text.splitlines() if line.startswith("> McCall")]
     assert len(cite_lines) == 1
     assert f"(v{version})" in cite_lines[0]
-    assert "https://doi.org/10.5281/zenodo.24020731" in cite_lines[0]
+    assert "https://doi.org/10.5281/zenodo.24485992" in cite_lines[0]
+    assert "10.5281/zenodo.24020731" not in cite_lines[0]
     assert "10.5281/zenodo.24020732" not in cite_lines[0]
     assert "10.5281/zenodo.24143857" not in cite_lines[0]
     assert "10.5281/zenodo.24352999" not in cite_lines[0]

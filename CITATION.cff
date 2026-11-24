@@ -21,6 +21,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.24352999
     description: Version DOI for v0.2.1.
+  - type: doi
+    value: 10.5281/zenodo.24485992
+    description: Version DOI for v0.3.0.
 date-released: 2026-11-23
 repository-code: https://github.com/continuity-labs-io/recovery-reliability-benchmark
 license: Apache-2.0

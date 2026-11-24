@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Zenodo v0.3.0 DOI recorded (10.5281/zenodo.24485992).
+
 ## [0.3.0] - 2026-11-23
 
 Scope of this release: across-day comparison and replication plan version 2. Adds and freezes the unit-matched across-day comparison (across_days.py, rrb-across-days), updates docs/pass_rule.md to plan version 2 before any site registration, and narrows the anchor claim to the tissue level. Validated on simulated session pairs with known answers; no real stimulated or second-day recording has been scored yet. Existing frozen functions and constants are unchanged from 0.2.0.

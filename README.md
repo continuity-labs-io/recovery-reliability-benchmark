@@ -87,9 +87,9 @@ Reliability is not validity: a high within-session ceiling shows that a measure 
 
 ## Citing
 
-Every release is archived on Zenodo. Cite the version you used. The version DOI for v0.2.1 is [10.5281/zenodo.24352999](https://doi.org/10.5281/zenodo.24352999) (v0.2.0: [10.5281/zenodo.24143857](https://doi.org/10.5281/zenodo.24143857), v0.1.0: [10.5281/zenodo.24020732](https://doi.org/10.5281/zenodo.24020732)); [10.5281/zenodo.24020731](https://doi.org/10.5281/zenodo.24020731) always resolves to the latest release. Citation metadata is in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button renders it.
+Every release is archived on Zenodo. Cite the version you used. The version DOI for v0.3.0 is [10.5281/zenodo.24485992](https://doi.org/10.5281/zenodo.24485992) (v0.2.1: [10.5281/zenodo.24352999](https://doi.org/10.5281/zenodo.24352999), v0.2.0: [10.5281/zenodo.24143857](https://doi.org/10.5281/zenodo.24143857), v0.1.0: [10.5281/zenodo.24020732](https://doi.org/10.5281/zenodo.24020732)); [10.5281/zenodo.24020731](https://doi.org/10.5281/zenodo.24020731) always resolves to the latest release. Citation metadata is in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button renders it.
 
-> McCall, R. J. (2026). Recovery Reliability Benchmark (v0.3.0). Continuity Labs. https://doi.org/10.5281/zenodo.24020731
+> McCall, R. J. (2026). Recovery Reliability Benchmark (v0.3.0). Continuity Labs. https://doi.org/10.5281/zenodo.24485992
 
 ## Licensing
 
